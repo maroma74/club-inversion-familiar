@@ -44,6 +44,31 @@ Abre http://localhost:3000. La base de datos es un archivo SQLite en `prisma/dev
 
 Antes de usarla en serio, cambia `AUTH_SECRET` en `.env` por una cadena larga y aleatoria.
 
+## Despliegue
+
+La app necesita un servidor Node con disco persistente para la base de datos SQLite (o cambiar a PostgreSQL). La compilación de producción está verificada (`npm run build`).
+
+**Con Docker (recomendado, válido para cualquier VPS, Railway, Render, Fly.io o Coolify):**
+
+```bash
+echo 'AUTH_SECRET=pon-aqui-una-cadena-larga-y-aleatoria' > .env
+docker compose up -d --build
+```
+
+La imagen aplica las migraciones y carga la Academia al arrancar (`npm run start:prod`), expone el puerto 3000 y guarda la base de datos en el volumen `clubdata` (`/data/club.db`). Para actualizar: `git pull && docker compose up -d --build`; los datos se conservan.
+
+**Sin Docker (Node 20+):**
+
+```bash
+npm ci
+npm run build
+DATABASE_URL="file:./prod.db" AUTH_SECRET="..." npm run start:prod
+```
+
+**Vercel, Netlify y similares:** no tienen disco persistente, así que SQLite no sirve. Para desplegar ahí hay que cambiar el `provider` de `prisma/schema.prisma` a `postgresql`, apuntar `DATABASE_URL` a una base de datos gestionada (Neon, Supabase, Railway…), regenerar las migraciones con `prisma migrate dev` en local y definir `AUTH_SECRET` en el panel. El resto del código no cambia.
+
+Variables de entorno: `DATABASE_URL` y `AUTH_SECRET` (ver `.env.example`). Los precios se obtienen de Yahoo Finance y CoinGecko, así que el servidor necesita salida a internet.
+
 ## Cómo se usa
 
 1. **Registro.** El padre/madre se registra con «Crear familia» y es administrador. En *Familia* aparece un código de invitación; los hijos se registran con «Tengo un código» y entran en la misma familia.

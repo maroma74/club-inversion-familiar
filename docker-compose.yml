@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      # Define AUTH_SECRET en un archivo .env junto a este compose (o en el entorno)
+      AUTH_SECRET: ${AUTH_SECRET:?Define AUTH_SECRET con una cadena larga y aleatoria}
+      DATABASE_URL: file:/data/club.db
+    volumes:
+      - clubdata:/data
+    restart: unless-stopped
+
+volumes:
+  clubdata:

@@ -9,7 +9,8 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "start:prod": "prisma migrate deploy && prisma db seed && next start"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
