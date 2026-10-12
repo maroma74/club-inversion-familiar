@@ -4,9 +4,13 @@
  * para poder ver desde cuándo se mantiene cada opinión y cuándo cambia.
  */
 import { prisma } from "./prisma";
-import { fetchHistory } from "./stocks";
+import { fetchCryptoHistory, fetchHistory } from "./stocks";
 import { analyze } from "./technical";
-import { fetchProfile, type Profile } from "./fundamentals";
+import { emptyProfile, fetchProfile, type Profile } from "./fundamentals";
+import { isCrypto } from "./prices";
+import { fetchFearGreed, type FearGreed } from "./crypto";
+import { baseSymbol, fetchCryptoProfile, type CryptoProfile } from "./cryptoProfile";
+import { fetchCryptoNews } from "./cryptoNews";
 import { fetchSymbolNews } from "./news";
 import { digestNews, type NewsDigest } from "./newsInsights";
 import { recommend, type Recommendation } from "./recommend";
@@ -18,6 +22,10 @@ export type ClubRecommendation = Recommendation & {
   history: { date: string; action: string; score: number }[];
   profile: Profile;
   newsDigest: NewsDigest | null;
+  crypto: CryptoProfile | null; // ficha de la moneda (CoinGecko), solo en criptomonedas y en la vista de detalle
+  fearGreed: FearGreed | null; // índice de miedo y codicia, solo en criptomonedas
+  newsGeneral: boolean; // las noticias son del mercado cripto en general, no de la moneda
+  usdFallback: boolean; // no hay par en euros en Yahoo y el análisis es sobre el par en dólares
 };
 
 const memo = new Map<string, { at: number; data: ClubRecommendation }>();
@@ -28,14 +36,24 @@ export async function getClubRecommendation(symbol: string, opts: { withNews?: b
   const cached = memo.get(sym);
   if (cached && Date.now() - cached.at < TTL_MS && (!opts.withNews || cached.data.newsDigest !== null)) return cached.data;
 
-  const hist = await fetchHistory(sym, "2y");
+  const crypto = isCrypto(sym);
+  const resolved = crypto ? await fetchCryptoHistory(sym, "2y") : null;
+  const hist = crypto ? (resolved?.hist ?? null) : await fetchHistory(sym, "2y");
   if (!hist) return null;
-  const [profile, newsItems] = await Promise.all([fetchProfile(sym), opts.withNews ? fetchSymbolNews(sym, hist.name).catch(() => []) : Promise.resolve(null)]);
-  const digest = newsItems ? digestNews(newsItems, sym) : null;
-  const analysis = analyze(hist.candles);
+  const coinName = hist.name.replace(/\s+(EUR|USD)$/i, "");
+  const ticker = baseSymbol(hist.symbol);
+  const [profile, newsItems, cryptoProfile, fearGreed, cryptoNews] = await Promise.all([
+    crypto ? Promise.resolve(emptyProfile(sym)) : fetchProfile(sym),
+    !crypto && opts.withNews ? fetchSymbolNews(sym, hist.name).catch(() => []) : Promise.resolve(null),
+    crypto && opts.withNews ? fetchCryptoProfile(hist.symbol, coinName).catch(() => null) : Promise.resolve(null),
+    crypto ? fetchFearGreed().catch(() => null) : Promise.resolve(null),
+    crypto && opts.withNews ? fetchCryptoNews(coinName, ticker).catch(() => ({ items: [], general: false })) : Promise.resolve(null),
+  ]);
+  const digest = cryptoNews ? digestNews(cryptoNews.items, coinName) : newsItems ? digestNews(newsItems, sym) : null;
+  const analysis = analyze(hist.candles, { crypto });
   const rec = recommend(
     analysis,
-    { ticker: hist.symbol, name: hist.name, currency: hist.currency === "GBp" ? "GBX" : hist.currency },
+    { ticker: hist.symbol, name: crypto ? coinName : hist.name, currency: hist.currency === "GBp" ? "GBX" : hist.currency },
     {
       sector: profile.sector,
       industry: profile.industry,
@@ -45,6 +63,9 @@ export async function getClubRecommendation(symbol: string, opts: { withNews?: b
       newsTone: digest?.tone ?? null,
       newsSummary: digest?.summary ?? null,
       isFund: profile.isFund,
+      isCrypto: crypto,
+      cryptoRank: cryptoProfile?.rank ?? null,
+      fearGreed: fearGreed ? { value: fearGreed.value, labelEs: fearGreed.labelEs } : null,
     },
   );
 
@@ -81,6 +102,10 @@ export async function getClubRecommendation(symbol: string, opts: { withNews?: b
     history: rows.slice().reverse().map((r) => ({ date: r.date.toISOString().slice(0, 10), action: r.action, score: r.score })),
     profile,
     newsDigest: digest,
+    crypto: cryptoProfile,
+    fearGreed,
+    newsGeneral: cryptoNews?.general ?? false,
+    usdFallback: resolved?.fallback ?? false,
   };
   boundedSet(memo, sym, { at: Date.now(), data });
   return data;

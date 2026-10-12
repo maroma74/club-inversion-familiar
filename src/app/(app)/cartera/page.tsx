@@ -9,7 +9,7 @@ import { eur, fmtDate } from "@/lib/format";
 import { ActionBadge } from "@/components/ClubRecommendationCard";
 import { DecisionForm } from "./DecisionForm";
 
-const analysisHref = (kind: string, symbol: string) => (kind === "CRYPTO" ? "/cripto" : kind === "ETF" ? `/etf/${encodeURIComponent(symbol)}` : `/acciones/${encodeURIComponent(symbol)}`);
+const analysisHref = (kind: string, symbol: string) => (kind === "CRYPTO" ? `/cripto/${encodeURIComponent(symbol)}` : kind === "ETF" ? `/etf/${encodeURIComponent(symbol)}` : `/acciones/${encodeURIComponent(symbol)}`);
 
 export default async function CarteraPage() {
   const user = await requireUser();

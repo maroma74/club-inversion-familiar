@@ -4,6 +4,7 @@
  * puntuando cada bloque de -2 a +2 solo con los datos disponibles. Uso educativo, no es asesoramiento financiero.
  */
 import type { Analysis } from "./technical";
+import { fp, priceDecimals, rp } from "./fmtPrice";
 
 export type Action = "COMPRAR" | "MANTENER" | "VENDER";
 export type Confidence = "Alta" | "Media" | "Baja";
@@ -18,6 +19,9 @@ export type Extras = {
   newsTone?: "favorable" | "desfavorable" | "neutral" | null;
   newsSummary?: string | null;
   isFund?: boolean; // ETF o fondo: no publica resultados
+  isCrypto?: boolean; // criptomoneda: sin resultados ni beta; umbrales de volatilidad propios de su mercado
+  cryptoRank?: number | null; // puesto por capitalización
+  fearGreed?: { value: number; labelEs: string } | null; // índice de miedo y codicia (solo contexto)
 };
 
 export type Recommendation = {
@@ -34,6 +38,8 @@ export type Recommendation = {
   news: { title: string; publisher: string; publishedAt: Date }[];
   newsSummary: string | null;
   isFund: boolean;
+  isCrypto: boolean;
+  cryptoRank: number | null;
   action: Action;
   bias: string; // "sesgo alcista / vigilar entrada", "neutral", "sesgo bajista / proteger beneficios"
   confidence: Confidence;
@@ -168,7 +174,8 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
   if (a.atr14 !== null) {
     sAvail++;
     const atrPct = a.atr14 / p;
-    if (atrPct > 0.045) { str -= 0.5; sNotes.push(`ATR ${(atrPct * 100).toFixed(1)} % diario (muy volátil)`); }
+    // Una criptomoneda se mueve de forma normal entre un 2 y un 5 % al día: el listón de «muy volátil» es más alto.
+    if (atrPct > (extras.isCrypto ? 0.07 : 0.045)) { str -= 0.5; sNotes.push(`ATR ${(atrPct * 100).toFixed(1)} % diario (muy volátil)`); }
     else sNotes.push(`ATR ${(atrPct * 100).toFixed(1) } % diario`);
   } else missing.push("ATR");
   const distRes = a.resistance !== null ? a.resistance / p - 1 : null;
@@ -198,25 +205,25 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
   const atr = a.atr14;
   let stop: number | null = null, stopReason = "N/D";
   if (a.support !== null && atr !== null && p - a.support <= 2.5 * atr && a.support < p) {
-    stop = r2(a.support * 0.99);
-    stopReason = `bajo el soporte ${a.support.toFixed(2)} (estructura)`;
+    stop = rp(a.support * 0.99);
+    stopReason = `bajo el soporte ${fp(a.support)} (estructura)`;
   } else if (atr !== null) {
-    stop = r2(p - 2 * atr);
-    stopReason = `2× ATR (${atr.toFixed(2)}) bajo el precio`;
+    stop = rp(p - 2 * atr);
+    stopReason = `2× ATR (${fp(atr)}) bajo el precio`;
   } else if (a.support !== null && a.support < p) {
-    stop = r2(a.support * 0.99);
-    stopReason = `bajo el soporte ${a.support.toFixed(2)}`;
+    stop = rp(a.support * 0.99);
+    stopReason = `bajo el soporte ${fp(a.support)}`;
   }
   // Un objetivo debe dejar recorrido: al menos 1× ATR (o un 2 %) por encima del precio.
   const minGap = Math.max(atr ?? 0, p * 0.02);
   const candidates = [a.resistance, a.high52, ...a.fib.map((f) => f.price)].filter((x): x is number => x !== null && x >= p + minGap).sort((x, y) => x - y);
-  let target1: number | null = candidates[0] ?? (atr !== null ? r2(p + 2 * atr) : null);
-  let target2: number | null = candidates.find((c) => target1 !== null && c > target1 * 1.02) ?? (a.high52 > p * 1.02 ? a.high52 : atr !== null ? r2(p + 4 * atr) : null);
-  if (target1 !== null) target1 = r2(target1);
-  if (target2 !== null) target2 = r2(target2);
+  let target1: number | null = candidates[0] ?? (atr !== null ? rp(p + 2 * atr) : null);
+  let target2: number | null = candidates.find((c) => target1 !== null && c > target1 * 1.02) ?? (a.high52 > p * 1.02 ? a.high52 : atr !== null ? rp(p + 4 * atr) : null);
+  if (target1 !== null) target1 = rp(target1);
+  if (target2 !== null) target2 = rp(target2);
   const rr = stop !== null && target1 !== null && p > stop ? r2((target1 - p) / (p - stop)) : null;
-  const entryLow = a.sma20 !== null && a.sma20 < p ? r2(Math.max(a.sma20, a.support ?? 0)) : a.support !== null ? r2(a.support) : null;
-  const entryHigh = r2(p);
+  const entryLow = a.sma20 !== null && a.sma20 < p ? rp(Math.max(a.sma20, a.support ?? 0)) : a.support !== null ? rp(a.support) : null;
+  const entryHigh = rp(p);
 
   // ---------- Decisión ----------
   let action: Action = total >= 1 ? "COMPRAR" : total <= -1 ? "VENDER" : "MANTENER";
@@ -251,6 +258,10 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
     notes.push(`Regla 6: resultados el ${earningsDate} (en ${daysToEarnings} días); confianza penalizada.`);
   }
   if (extras.beta !== null && extras.beta !== undefined && extras.beta > 1.5) confScore -= 0.05;
+  if (extras.isCrypto && extras.fearGreed) {
+    // Solo contexto: el sentimiento general del mercado cripto no altera la puntuación técnica.
+    notes.push(`Contexto: miedo y codicia ${extras.fearGreed.value} (${extras.fearGreed.labelEs.toLowerCase()}); no modifica la puntuación.`);
+  }
   const confidence: Confidence = confScore >= 0.7 ? "Alta" : confScore >= 0.45 ? "Media" : "Baja";
   const horizon = a.adx !== null && a.adx > 25 && Math.abs(total) >= 0.5 ? "medio (1–6 meses)" : "corto (1–4 sem)";
 
@@ -260,15 +271,19 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
   thesis.push(`Momentum ${mom > 0.5 ? "positivo" : mom < -0.5 ? "negativo" : "neutral"} (${mNotes.slice(0, 2).join(", ") || "N/D"}) y volumen ${vol > 0.25 ? "que confirma" : vol < -0.25 ? "que no acompaña" : "neutro"}.`);
   thesis.push(
     action === "COMPRAR"
-      ? `Estructura favorable: ${sNotes.slice(0, 2).join(", ") || "sin notas"}; objetivo ${target1?.toFixed(2) ?? "N/D"} con stop ${stop?.toFixed(2) ?? "N/D"} (R/B 1:${rr?.toFixed(1) ?? "N/D"}).`
+      ? `Estructura favorable: ${sNotes.slice(0, 2).join(", ") || "sin notas"}; objetivo ${(target1 !== null ? fp(target1) : "N/D")} con stop ${(stop !== null ? fp(stop) : "N/D")} (R/B 1:${rr?.toFixed(1) ?? "N/D"}).`
       : action === "VENDER"
-        ? `Estructura deteriorada: ${sNotes.slice(0, 2).join(", ") || "sin notas"}; conviene reducir y esperar a recuperar ${a.sma50 !== null ? `la SMA50 (${a.sma50.toFixed(2)})` : "las medias"}.`
+        ? `Estructura deteriorada: ${sNotes.slice(0, 2).join(", ") || "sin notas"}; conviene reducir y esperar a recuperar ${a.sma50 !== null ? `la SMA50 (${fp(a.sma50)})` : "las medias"}.`
         : `Sin ventaja clara ahora: ${sNotes.slice(0, 2).join(", ") || "estructura neutra"}; esperar ${total > 0 ? "un retroceso a la zona de entrada" : "una señal de giro"}.`,
   );
   const risks: string[] = [];
+  if (extras.isCrypto && extras.fearGreed) {
+    if (extras.fearGreed.value >= 75) risks.push(`Codicia extrema en el mercado cripto (índice ${extras.fearGreed.value}): históricamente coincide con techos de corto plazo y recortes bruscos.`);
+    else if (extras.fearGreed.value <= 25 && action !== "VENDER") risks.push(`Miedo extremo en el mercado cripto (índice ${extras.fearGreed.value}): puede ser zona de oportunidad, pero la caída puede continuar.`);
+  }
   if (earningsSoon) risks.push(`Publica resultados el ${earningsDate} (en ${daysToEarnings} días): el gap posterior puede saltarse el stop.`);
-  if (a.volatility30 !== null && a.volatility30 > 0.4) risks.push(`Volatilidad anualizada alta (${(a.volatility30 * 100).toFixed(0)} %): dimensionar la posición con el ATR.`);
-  if (distRes !== null && distRes < 0.04) risks.push(`Resistencia muy cercana en ${a.resistance!.toFixed(2)}: posible rechazo.`);
+  if (a.volatility30 !== null && a.volatility30 > (extras.isCrypto ? 0.9 : 0.4)) risks.push(`Volatilidad anualizada alta (${(a.volatility30 * 100).toFixed(0)} %): dimensionar la posición con el ATR.`);
+  if (distRes !== null && distRes < 0.04) risks.push(`Resistencia muy cercana en ${fp(a.resistance!)}: posible rechazo.`);
   if (a.rsi !== null && a.rsi > 70) risks.push("RSI en sobrecompra: riesgo de recorte a corto plazo.");
   if (a.rsi !== null && a.rsi < 30 && action !== "COMPRAR") risks.push("RSI en sobreventa: puede rebotar bruscamente contra una posición corta o vendida.");
   if (primaryDown) risks.push("Tendencia principal bajista: los rebotes pueden ser trampas alcistas.");
@@ -277,13 +292,14 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
   if (extras.beta !== null && extras.beta !== undefined && extras.beta > 1.3) risks.push(`Beta ${extras.beta.toFixed(2)}: amplifica los movimientos del mercado.`);
   if (extras.newsTone === "desfavorable" && action !== "VENDER") risks.push("Flujo de noticias desfavorable: la lectura técnica puede deteriorarse si se confirman los titulares.");
   if (extras.newsTone === "favorable" && action === "VENDER") risks.push("Flujo de noticias favorable: un rebote por titulares podría invalidar la señal de venta.");
-  if (!earningsDate && !extras.isFund) risks.push("Fecha de resultados: N/D; comprobar el calendario antes de operar.");
+  if (!earningsDate && !extras.isFund && !extras.isCrypto) risks.push("Fecha de resultados: N/D; comprobar el calendario antes de operar.");
+  if (extras.isCrypto) risks.push("Activo de riesgo muy alto: cotiza 24/7, puede perder gran parte de su valor y el stop puede ejecutarse con deslizamiento.");
   if (missing.length) risks.push(`Indicadores no disponibles: ${missing.join(", ")}.`);
 
   const invalidation =
     action === "VENDER"
-      ? `Cierre diario por encima de ${a.sma50 !== null ? `la SMA50 (${a.sma50.toFixed(2)})` : a.resistance !== null ? `la resistencia ${a.resistance.toFixed(2)}` : "la última resistencia"} con volumen.`
-      : `Cierre diario por debajo de ${stop !== null ? stop.toFixed(2) : "el soporte"}${a.sma200 !== null && p > a.sma200 ? ` o pérdida de la SMA200 (${a.sma200.toFixed(2)})` : ""}.`;
+      ? `Cierre diario por encima de ${a.sma50 !== null ? `la SMA50 (${fp(a.sma50)})` : a.resistance !== null ? `la resistencia ${fp(a.resistance)}` : "la última resistencia"} con volumen.`
+      : `Cierre diario por debajo de ${stop !== null ? fp(stop) : "el soporte"}${a.sma200 !== null && p > a.sma200 ? ` o pérdida de la SMA200 (${fp(a.sma200)})` : ""}.`;
 
   return {
     ticker: meta.ticker,
@@ -299,6 +315,8 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
     news: (extras.news ?? []).slice(0, 3),
     newsSummary: extras.newsSummary ?? null,
     isFund: extras.isFund ?? false,
+    isCrypto: extras.isCrypto ?? false,
+    cryptoRank: extras.cryptoRank ?? null,
     action,
     bias,
     confidence,
@@ -315,14 +333,19 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
 
 export const DISCLAIMER = "Análisis técnico generado a partir de los datos proporcionados. No constituye asesoramiento financiero personalizado. Cada miembro debe valorar su perfil de riesgo y tamaño de posición.";
 
-const f = (v: number | null, d = 2) => (v === null ? "N/D" : v.toFixed(d));
+/** Aviso añadido en las criptomonedas. */
+export const CRYPTO_DISCLAIMER = "Las criptomonedas son activos de riesgo muy alto: su precio puede caer a la mitad en semanas, cotizan sin pausa y no tienen la protección de los mercados regulados de valores. Invierte solo lo que estés dispuesto a perder.";
+
+const f = (v: number | null, d?: number) => (v === null ? "N/D" : v.toFixed(d ?? priceDecimals(v)));
 const sg = (v: number) => (v > 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
 
 /** Ficha en Markdown con el formato de salida acordado. */
 export function recommendationMarkdown(r: Recommendation): string {
   const lines = [
     `**[${r.ticker}] – ${r.name}** | Precio: ${f(r.price)} ${r.currency} | Fecha datos: ${r.dataDate}`,
-    r.isFund
+    r.isCrypto
+      ? `Criptomoneda | Puesto por capitalización: ${r.cryptoRank === null ? "N/D" : `#${r.cryptoRank}`} | Mercado 24/7`
+      : r.isFund
       ? `Fondo cotizado | Beta: ${r.beta === null ? "N/D" : r.beta.toFixed(2)}`
       : `Sector: ${r.sector ?? "N/D"}${r.industry ? ` (${r.industry})` : ""} | Beta: ${r.beta === null ? "N/D" : r.beta.toFixed(2)} | Próximos resultados: ${r.earningsDate ?? "N/D"}${r.daysToEarnings !== null && r.daysToEarnings >= 0 ? ` (en ${r.daysToEarnings} días)` : ""}`,
     `**RECOMENDACIÓN DEL CLUB DE INVERSIÓN: ${r.action}** (${r.bias}) | Confianza: ${r.confidence} | Horizonte: ${r.horizon}`,
@@ -345,6 +368,7 @@ export function recommendationMarkdown(r: Recommendation): string {
     ...(r.news.length ? ["**Titulares recientes:**", ...r.news.map((n) => `- ${n.title} (${n.publisher}, ${n.publishedAt.toISOString().slice(0, 10)})`)] : []),
     "",
     DISCLAIMER,
+    ...(r.isCrypto ? [CRYPTO_DISCLAIMER] : []),
   ];
   return lines.join("\n");
 }

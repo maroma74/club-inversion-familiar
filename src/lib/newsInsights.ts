@@ -44,12 +44,38 @@ const THEMES: Array<[string, string[]]> = [
   ["Macro y sector", ["bce", "ecb", "fed", "tipos de interés", "interest rates", "inflación", "inflation", "petróleo", "oil", "ibex", "sector", "mercado", "bolsa hoy", "wall street"]],
 ];
 
+// Vocabulario propio de las criptomonedas (se suma al general).
+POS.push(
+  "etf aprobado", "etf approved", "approves bitcoin etf", "adopción", "adoption", "adopts", "halving", "entradas netas", "inflows", "net inflows", "institucional", "institutional", "tesorería", "treasury",
+  "listado", "listing", "lists", "mainnet", "actualización", "network upgrade", "staking", "bullish", "alcista", "breakout", "rompe resistencia", "rebota", "rebounds", "recupera", "recovers",
+  "reserva estratégica", "strategic reserve", "blackrock", "fidelity", "integra", "integrates", "stablecoin law", "ley cripto", "claridad regulatoria", "regulatory clarity",
+);
+NEG.push(
+  "slide", "slides", "dips", "retreats", "pullback", "pulls back", "declines", "bleeds", "capitulación", "capitulation",
+  "hackeo", "hack", "hacked", "exploit", "exploited", "robo", "robados", "stolen", "estafa", "scam", "rug pull", "ransomware", "salidas netas", "outflows", "net outflows", "bearish", "bajista",
+  "liquidaciones", "liquidations", "liquidated", "crash", "colapso", "collapse", "venta masiva", "sell-off", "selloff", "delisting", "exclusión de cotización", "depeg", "pierde la paridad",
+  "demanda de la sec", "sec sues", "sec charges", "prohibición", "crackdown", "quiebra del exchange", "exchange halts", "retiradas suspendidas", "withdrawals halted", "congela", "freezes",
+);
+THEMES.push(
+  ["Seguridad y hackeos", ["hack", "hackeo", "exploit", "robo", "stolen", "estafa", "scam", "ransomware", "vulnerabilidad", "vulnerability", "rug pull"]],
+  ["Adopción institucional", ["etf", "institucional", "institutional", "blackrock", "fidelity", "tesorería", "treasury", "reserva estratégica", "strategic reserve", "adopción", "adoption"]],
+  ["Red y tecnología", ["halving", "mainnet", "upgrade", "actualización", "fork", "layer 2", "l2", "staking", "validador", "validator", "rollup", "protocolo", "protocol"]],
+  ["Mercado cripto", ["liquidaciones", "liquidations", "inflows", "outflows", "entradas", "salidas", "ballenas", "whales", "open interest", "funding", "bitcoin dominance", "dominancia"]],
+);
+
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, (c) => "\\" + c);
 
 export function classifyNews(item: NewsItem): ClassifiedNews {
   const t = ` ${norm(item.title)} `;
-  const pos = POS.filter((k) => t.includes(norm(k)));
-  const neg = NEG.filter((k) => t.includes(norm(k)));
+  // Las claves de hasta 4 letras («ere», «ban», «miss») se buscan como palabra suelta para no coincidir con «here» o «bank».
+  const has = (k: string) => {
+    const nk = norm(k);
+    return nk.length <= 4 ? new RegExp(`(^|[^a-z0-9])${escRe(nk)}([^a-z0-9]|$)`).test(t) : t.includes(nk);
+  };
+  const pos = POS.filter(has);
+  const neg = NEG.filter(has);
   // Negaciones sencillas: "no cae", "sin pérdidas" invierten el signo del término siguiente.
   const negated = /\b(no|sin|evita|frena)\s+\S+/.test(t);
   let score = pos.length - neg.length;

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { fetchCryptoMarket, fetchFearGreed } from "@/lib/crypto";
+import { getWatchlist } from "@/lib/stocks";
+import { followWatchlistAction } from "@/app/actions/watchlist";
+import { MarketList } from "@/components/market/MarketList";
 import { familyLeaderboard } from "@/lib/portfolio";
 import { isCrypto } from "@/lib/prices";
 import { eur, pct } from "@/lib/format";
@@ -14,7 +17,8 @@ const Change = ({ v }: { v: number }) => <span className={`tabular-nums font-med
 
 export default async function CriptoPage() {
   const user = await requireUser();
-  const [market, fg, ranking] = await Promise.all([fetchCryptoMarket(25), fetchFearGreed(), familyLeaderboard(user.familyId)]);
+  const [market, fg, ranking, followedItems] = await Promise.all([fetchCryptoMarket(25), fetchFearGreed(), familyLeaderboard(user.familyId), getWatchlist(user.familyId, "CRYPTO")]);
+  const followed = new Set(followedItems.map((w) => w.symbol));
 
   // Posiciones cripto de toda la familia
   const positions = ranking.flatMap((r) => r.holdings.filter((h) => isCrypto(h.symbol)).map((h) => ({ ...h, owner: r.userName, ownerId: r.userId })));
@@ -33,8 +37,11 @@ export default async function CriptoPage() {
 
   return (
     <>
-      <PageHeader kicker="Invertir" title="Cripto" subtitle="Mercado en euros, sentimiento y la exposición de la familia a criptomonedas.">
-        <AutoRefresh />
+      <PageHeader kicker="Invertir" title="Cripto" subtitle="Lista de seguimiento con Recomendación del Club, análisis técnico, histórico y noticias por moneda; mercado en euros, sentimiento y la exposición de la familia.">
+        <div className="flex items-center gap-2">
+          <Link href="/cripto/ranking" className="btn-secondary">Ranking del Club</Link>
+          <AutoRefresh />
+        </div>
       </PageHeader>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -55,6 +62,10 @@ export default async function CriptoPage() {
             <div className="text-sm text-slate-500 mt-2">No disponible</div>
           )}
         </div>
+      </div>
+
+      <div className="mb-6">
+        <MarketList kind="CRYPTO" embedded />
       </div>
 
       {byMember.length > 0 && (
@@ -79,7 +90,7 @@ export default async function CriptoPage() {
               <tbody>
                 {positions.sort((a, b) => b.value - a.value).map((p) => (
                   <tr key={`${p.ownerId}-${p.symbol}`} className="border-t border-slate-100">
-                    <td className="py-1.5 font-medium">{p.symbol}</td>
+                    <td className="py-1.5 font-medium"><Link href={`/cripto/${encodeURIComponent(p.symbol)}`} className="text-indigo-700 hover:underline">{p.symbol}</Link></td>
                     <td className="py-1.5 text-slate-600">{p.owner}</td>
                     <td className="py-1.5 text-right tabular-nums">{p.quantity.toLocaleString("es-ES", { maximumFractionDigits: 6 })}</td>
                     <td className="py-1.5 text-right tabular-nums">{eur(p.value)}</td>
@@ -123,7 +134,7 @@ export default async function CriptoPage() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={c.image} alt="" width={22} height={22} className="rounded-full" />
                         <div>
-                          <div className="font-medium">{c.name} {heldSymbols.has(c.yahooSymbol) && <span className="badge bg-indigo-100 text-indigo-700">en cartera</span>}</div>
+                          <div className="font-medium"><Link href={`/cripto/${encodeURIComponent(c.yahooSymbol)}`} className="text-indigo-700 hover:underline">{c.name}</Link> {heldSymbols.has(c.yahooSymbol) && <span className="badge bg-indigo-100 text-indigo-700">en cartera</span>}</div>
                           <div className="text-xs text-slate-400 uppercase">{c.symbol}</div>
                         </div>
                       </div>
@@ -134,7 +145,18 @@ export default async function CriptoPage() {
                     <td className="px-2 py-2 hidden md:table-cell"><Sparkline data={c.sparkline} positive={c.change7d >= 0} /></td>
                     <td className="px-2 py-2 text-right tabular-nums text-slate-600 hidden lg:table-cell whitespace-nowrap">{compact(c.marketCap)}</td>
                     <td className="px-2 py-2 text-right tabular-nums text-slate-600 hidden lg:table-cell whitespace-nowrap">{c.athChange.toFixed(0)} %</td>
-                    <td className="px-5 py-2 text-right">
+                    <td className="px-5 py-2 text-right whitespace-nowrap">
+                      <Link href={`/cripto/${encodeURIComponent(c.yahooSymbol)}`} className="btn-primary py-1 text-xs whitespace-nowrap mr-2">Analizar</Link>
+                      {followed.has(c.yahooSymbol) ? (
+                        <span className="text-xs text-slate-500 mr-2">en seguimiento</span>
+                      ) : (
+                        <form action={followWatchlistAction} className="inline mr-2">
+                          <input type="hidden" name="symbol" value={c.yahooSymbol} />
+                          <input type="hidden" name="name" value={c.name} />
+                          <input type="hidden" name="kind" value="CRYPTO" />
+                          <button className="btn-ghost py-1 text-xs">Seguir</button>
+                        </form>
+                      )}
                       <Link href={`/operaciones?activo=${encodeURIComponent(c.yahooSymbol)}#operar`} className="btn-secondary py-1 text-xs whitespace-nowrap">Operar</Link>
                     </td>
                   </tr>

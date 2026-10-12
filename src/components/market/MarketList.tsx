@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { DEFAULT_ETF_WATCHLIST, DEFAULT_WATCHLIST, fetchStockQuotes, getWatchlist, INDICES, type WatchKind } from "@/lib/stocks";
+import { DEFAULT_CRYPTO_WATCHLIST, DEFAULT_ETF_WATCHLIST, DEFAULT_WATCHLIST, fetchStockQuotes, getWatchlist, INDICES, type WatchKind } from "@/lib/stocks";
 import { familyLeaderboard } from "@/lib/portfolio";
 import { isCrypto } from "@/lib/prices";
 import { eur } from "@/lib/format";
@@ -15,8 +15,13 @@ import { ActionBadge } from "@/components/ClubRecommendationCard";
 const Change = ({ v }: { v: number | null }) =>
   v === null ? <span className="text-slate-400">—</span> : <span className={`tabular-nums font-medium ${v >= 0 ? "text-green-600" : "text-red-600"}`}>{v >= 0 ? "+" : ""}{(v * 100).toFixed(2)} %</span>;
 
-const fmtPrice = (n: number, currency: string) =>
-  currency === "EUR" ? eur(n) : `${n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+/** Decimales según la magnitud: una criptomoneda de céntimos necesita más que una acción. */
+const decimals = (n: number) => (n >= 1000 ? 0 : n >= 1 ? 2 : n >= 0.01 ? 4 : 6);
+const fmtPrice = (n: number, currency: string, crypto = false) => {
+  const d = crypto ? decimals(n) : 2;
+  return currency === "EUR" ? eur(n, d) : `${n.toLocaleString("es-ES", { minimumFractionDigits: d, maximumFractionDigits: d })} ${currency}`;
+};
+const shortNum = (n: number) => (n >= 100 ? n.toFixed(0) : n >= 1 ? n.toFixed(2) : n.toFixed(4));
 
 const MARKET_STATE: Record<string, string> = { REGULAR: "Abierto", PRE: "Preapertura", POST: "Cierre ampliado", CLOSED: "Cerrado", PREPRE: "Cerrado", POSTPOST: "Cerrado" };
 
@@ -29,6 +34,14 @@ const COPY: Record<WatchKind, { title: string; subtitle: string; listTitle: stri
     base: "/acciones",
     footer: "Símbolos de Yahoo Finance: bolsa de Madrid termina en .MC (SAN.MC), Ámsterdam en .AS, Xetra en .DE, Milán en .MI, Londres en .L; las acciones de EE. UU. no llevan sufijo.",
   },
+  CRYPTO: {
+    title: "Cripto",
+    subtitle: "Lista de seguimiento de criptomonedas de la familia con Recomendación del Club, análisis técnico, histórico y noticias por moneda. Cotizaciones de Yahoo Finance en euros, mercado 24/7.",
+    listTitle: "Criptomonedas seguidas por la familia",
+    empty: "La lista está vacía. Añade monedas con el buscador o empieza con una selección de las principales: Bitcoin, Ethereum, Solana, XRP, BNB, Cardano y más.",
+    base: "/cripto",
+    footer: "Se usa el par en euros de Yahoo Finance (BTC-EUR, ETH-EUR, SOL-EUR…). Si una moneda no tiene par en euros, escribe el par en dólares (p. ej. NEAR-USD). Las criptomonedas cotizan 24 horas, 7 días a la semana, por eso la variación diaria es de 24 h y la semanal, de 7 velas.",
+  },
   ETF: {
     title: "ETF",
     subtitle: "Fondos cotizados: lista de seguimiento de la familia, análisis técnico, Recomendación del Club y ficha del fondo (gestora, TER, patrimonio, principales posiciones). Cotizaciones de Yahoo Finance.",
@@ -39,30 +52,33 @@ const COPY: Record<WatchKind, { title: string; subtitle: string; listTitle: stri
   },
 };
 
-export async function MarketList({ kind }: { kind: WatchKind }) {
+export async function MarketList({ kind, embedded = false }: { kind: WatchKind; embedded?: boolean }) {
   const user = await requireUser();
   const c = COPY[kind];
   const [watchlist, ranking] = await Promise.all([getWatchlist(user.familyId, kind), familyLeaderboard(user.familyId)]);
 
-  // Valores en cartera (no cripto) que no estén en ninguna lista: en Acciones se muestran siempre.
+  // Valores en cartera (cripto o no, según la sección) que no estén en ninguna lista: en Acciones y Cripto se muestran siempre.
+  const crypto = kind === "CRYPTO";
   const held = new Map<string, string[]>();
-  for (const r of ranking) for (const h of r.holdings) if (!isCrypto(h.symbol)) held.set(h.symbol, [...(held.get(h.symbol) ?? []), r.userName]);
+  for (const r of ranking) for (const h of r.holdings) if (isCrypto(h.symbol) === crypto) held.set(h.symbol, [...(held.get(h.symbol) ?? []), r.userName]);
   const listSymbols = new Set(watchlist.map((w) => w.symbol));
   const allListed = new Set((await getWatchlist(user.familyId)).map((w) => w.symbol));
-  const extra = kind === "STOCK" ? [...held.keys()].filter((s) => !allListed.has(s)) : [];
+  const extra = kind !== "ETF" ? [...held.keys()].filter((s) => !allListed.has(s)) : [];
   const symbols = [...watchlist.map((w) => w.symbol), ...extra];
 
-  const [indices, quotes, club] = await Promise.all([fetchStockQuotes(INDICES.map((i) => i.symbol)), fetchStockQuotes(symbols), getClubRecommendations(symbols)]);
+  const [indices, quotes, club] = await Promise.all([crypto ? Promise.resolve([]) : fetchStockQuotes(INDICES.map((i) => i.symbol)), fetchStockQuotes(symbols), getClubRecommendations(symbols)]);
   const names = new Map(watchlist.map((w) => [w.symbol, w.name]));
-  const defaults = kind === "ETF" ? DEFAULT_ETF_WATCHLIST : DEFAULT_WATCHLIST;
+  const defaults = kind === "ETF" ? DEFAULT_ETF_WATCHLIST : kind === "CRYPTO" ? DEFAULT_CRYPTO_WATCHLIST : DEFAULT_WATCHLIST;
 
   return (
     <>
-      <PageHeader title={c.title} subtitle={c.subtitle}>
-        <AutoRefresh />
-      </PageHeader>
+      {!embedded && (
+        <PageHeader title={c.title} subtitle={c.subtitle}>
+          <AutoRefresh />
+        </PageHeader>
+      )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      {!crypto && <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         {INDICES.map((idx, i) => {
           const q = indices[i];
           return (
@@ -73,7 +89,7 @@ export async function MarketList({ kind }: { kind: WatchKind }) {
             </Link>
           );
         })}
-      </div>
+      </div>}
 
       <div className="card p-0 overflow-hidden mb-4">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-slate-100">
@@ -102,13 +118,13 @@ export async function MarketList({ kind }: { kind: WatchKind }) {
                 <tr>
                   <th className="text-left px-5 py-2 font-medium">Valor</th>
                   <th className="text-right px-2 py-2 font-medium">Precio</th>
-                  <th className="text-right px-2 py-2 font-medium">Hoy</th>
+                  <th className="text-right px-2 py-2 font-medium">{crypto ? "24 h" : "Hoy"}</th>
                   <th className="text-left px-2 py-2 font-medium">Club de inversión</th>
-                  <th className="text-right px-2 py-2 font-medium hidden sm:table-cell">1 sem.</th>
-                  <th className="text-right px-2 py-2 font-medium hidden sm:table-cell">1 mes</th>
-                  <th className="px-2 py-2 font-medium hidden md:table-cell">Último mes</th>
+                  <th className="text-right px-2 py-2 font-medium hidden sm:table-cell">{crypto ? "7 d" : "1 sem."}</th>
+                  <th className="text-right px-2 py-2 font-medium hidden sm:table-cell">{crypto ? "30 d" : "1 mes"}</th>
+                  <th className="px-2 py-2 font-medium hidden md:table-cell">{crypto ? "Últimos 30 días" : "Último mes"}</th>
                   <th className="text-right px-2 py-2 font-medium hidden lg:table-cell">Rango 52 sem.</th>
-                  <th className="text-left px-2 py-2 font-medium hidden lg:table-cell">Mercado</th>
+                  {!crypto && <th className="text-left px-2 py-2 font-medium hidden lg:table-cell">Mercado</th>}
                   <th className="px-5 py-2" />
                 </tr>
               </thead>
@@ -125,8 +141,8 @@ export async function MarketList({ kind }: { kind: WatchKind }) {
                         <div className="text-xs text-slate-400">{q.symbol} · {q.exchange}{q.error ? ` · ${q.error}` : ""}</div>
                       </td>
                       <td className="px-2 py-2 text-right tabular-nums font-medium whitespace-nowrap">
-                        {q.price ? fmtPrice(q.price, q.currency) : "—"}
-                        {q.price && q.currency !== "EUR" ? <div className="text-xs text-slate-400">{eur(q.priceEur)}</div> : null}
+                        {q.price ? fmtPrice(q.price, q.currency, crypto) : "—"}
+                        {q.price && q.currency !== "EUR" ? <div className="text-xs text-slate-400">{eur(q.priceEur, crypto ? decimals(q.priceEur) : 2)}</div> : null}
                       </td>
                       <td className="px-2 py-2 text-right whitespace-nowrap"><Change v={q.price ? q.change1d : null} /></td>
                       <td className="px-2 py-2 whitespace-nowrap">
@@ -147,11 +163,11 @@ export async function MarketList({ kind }: { kind: WatchKind }) {
                         {pos52 !== null ? (
                           <div className="w-28 ml-auto">
                             <div className="h-1.5 bg-slate-100 rounded-full relative"><div className="absolute top-0 h-1.5 w-1.5 rounded-full bg-indigo-600" style={{ left: `calc(${Math.min(Math.max(pos52, 0), 1) * 100}% - 3px)` }} /></div>
-                            <div className="flex justify-between text-[10px] text-slate-400 mt-0.5 tabular-nums"><span>{q.low52!.toFixed(0)}</span><span>{q.high52!.toFixed(0)}</span></div>
+                            <div className="flex justify-between text-[10px] text-slate-400 mt-0.5 tabular-nums"><span>{shortNum(q.low52!)}</span><span>{shortNum(q.high52!)}</span></div>
                           </div>
                         ) : <span className="text-slate-400">—</span>}
                       </td>
-                      <td className="px-2 py-2 text-xs text-slate-500 hidden lg:table-cell">{MARKET_STATE[q.marketState] ?? q.marketState}</td>
+                      {!crypto && <td className="px-2 py-2 text-xs text-slate-500 hidden lg:table-cell">{MARKET_STATE[q.marketState] ?? q.marketState}</td>}
                       <td className="px-5 py-2 text-right whitespace-nowrap">
                         <Link href={`/operaciones?activo=${encodeURIComponent(q.symbol)}#operar`} className="text-xs text-indigo-600 hover:underline mr-3">Operar</Link>
                         {listSymbols.has(q.symbol) && (

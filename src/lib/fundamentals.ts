@@ -67,11 +67,16 @@ async function getSession() {
 type Raw = { raw?: number; fmt?: string } | number | undefined;
 const num = (v: Raw): number | null => (typeof v === "number" ? v : typeof v?.raw === "number" ? v.raw : null);
 
+/** Perfil sin datos (símbolos sin ficha, índices y criptomonedas, que tienen la suya propia). */
+export function emptyProfile(sym: string): Profile {
+  return { symbol: sym.toUpperCase(), sector: null, industry: null, beta: null, earningsDate: null, quoteType: null, description: null, website: null, country: null, employees: null, marketCap: null, trailingPE: null, forwardPE: null, dividendYield: null, isFund: false, fundFamily: null, fundCategory: null, expenseRatio: null, totalAssets: null, topHoldings: [], sectorWeights: [] };
+}
+
 export async function fetchProfile(symbol: string): Promise<Profile> {
   const sym = symbol.toUpperCase();
   const cached = cache.get(sym);
   if (cached && Date.now() - cached.at < TTL_MS) return cached.data;
-  const empty: Profile = { symbol: sym, sector: null, industry: null, beta: null, earningsDate: null, quoteType: null, description: null, website: null, country: null, employees: null, marketCap: null, trailingPE: null, forwardPE: null, dividendYield: null, isFund: false, fundFamily: null, fundCategory: null, expenseRatio: null, totalAssets: null, topHoldings: [], sectorWeights: [] };
+  const empty = emptyProfile(sym);
   if (sym.startsWith("^")) return empty;
   try {
     const s = await getSession();

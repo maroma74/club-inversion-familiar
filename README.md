@@ -93,7 +93,10 @@ Variables de entorno: `DATABASE_URL`, `AUTH_SECRET` (mínimo 32 caracteres; en p
 4. **Liga de inversión.** Ranking por rentabilidad sobre lo aportado, niveles y logros de cada miembro, estadísticas (mejor cartera, mejor valor, mayor posición…), evolución en el tiempo, noticias de los valores de la familia y las carteras de todos.
 5. **Acciones.** Índices, lista de seguimiento compartida y análisis técnico por valor (medias móviles, EMA, Bollinger, RSI, MACD, estocástico, ADX, OBV, ATR, Fibonacci, soportes y resistencias). Cada valor lleva la **Recomendación del Club de inversión** (COMPRAR / MANTENER / VENDER): un motor determinista que puntúa de −2 a +2 los bloques tendencia (30 %), momentum (25 %), volumen (20 %) y volatilidad/estructura (25 %), aplica las reglas de disciplina (no comprar contra la tendencia principal sin giro confirmado, stop por estructura o 1,5–2× ATR, R/B mínimo 1:2, penalización si hay resultados en 10 días, MANTENER por defecto si faltan datos) y produce plan de operación, tesis, riesgos y nivel de confianza. Los datos complementarios (sector, beta, fecha de resultados) salen del perfil de Yahoo Finance y las noticias del buscador de Yahoo; lo que no esté disponible se marca N/D. Se guarda una foto diaria por valor (`ClubRecommendation`) para ver desde cuándo se mantiene cada opinión. `/acciones/ranking` ordena toda la lista y destaca las mejores oportunidades y los valores a reducir. Código en `src/lib/recommend.ts`, `src/lib/club.ts` y `src/lib/fundamentals.ts`.
 6. **ETF.** Misma mecánica que Acciones (lista de seguimiento propia, análisis técnico, Recomendación del Club, ranking y noticias) con la ficha del fondo: gestora, categoría, TER, patrimonio, principales posiciones y pesos por sector (perfil de Yahoo Finance). Al añadir un valor, la app detecta si es acción o ETF y lo coloca en la sección que corresponde. Páginas en `src/app/(app)/etf`, componentes compartidos en `src/components/market`.
-7. **Cripto.** Top 25 por capitalización en euros, índice de miedo y codicia y la exposición cripto de la familia.
+7. **Cripto.** Igual que Acciones y ETF: lista de seguimiento de la familia con la Recomendación del Club por moneda, ficha con histórico (3 meses a 5 años), análisis técnico completo, noticias y ranking del Club (`/cripto/[símbolo]` y `/cripto/ranking`). Además, top 25 por capitalización en euros, índice de miedo y codicia y la exposición cripto de la familia.
+   - El análisis está adaptado al mercado 24/7: el año tiene 365 velas (semana = 7, mes = 30), el volumen de la vela de hoy se proyecta a 24 h y los umbrales de volatilidad son los de una criptomoneda (ATR muy alto a partir del 7 % diario). Los precios de los niveles (entrada, stop, objetivos) usan los decimales que necesite la moneda.
+   - La ficha de la moneda (puesto, capitalización, oferta, máximo histórico, categorías, descripción) viene de CoinGecko. El índice de miedo y codicia se añade como contexto y riesgo, nunca cambia la puntuación.
+   - Se usa el par en euros de Yahoo Finance (BTC-EUR); si no existe se usa el par en dólares y la ficha lo avisa. Al buscar, los pares en euros salen primero y basta escribir «BTC» en el buscador.
 
 ## Invitaciones y entrada al club
 
@@ -106,7 +109,7 @@ El administrador gestiona la entrada desde *Invitaciones*: invitaciones personal
 ## Cotizaciones y datos
 
 - Precios e histórico: endpoint público de Yahoo Finance, sin clave. Cripto y bolsa de EE. UU. en tiempo real; bolsas europeas con ~15 min de retraso. Caché de 60 s y refresco automático cada minuto.
-- Mercado cripto: CoinGecko (sin clave). Sentimiento: alternative.me.
+- Mercado y ficha de cada criptomoneda: CoinGecko (sin clave). Sentimiento: alternative.me. Noticias cripto: RSS públicos de Cointelegraph, CoinDesk, Decrypt, Bitcoin Magazine y CriptoNoticias (en español) filtrados por moneda, más la búsqueda de noticias de Yahoo Finance por nombre.
 - Noticias: buscador de Yahoo Finance por símbolo.
 - Las operaciones en divisa distinta del euro guardan el tipo de cambio de cierre del día (`fxRate`); toda la cartera se valora en euros.
 - Para sustituir la fuente de precios basta con cambiar `fetchQuote` y `searchSymbols` en `src/lib/prices.ts` (y `src/lib/stocks.ts` para histórico e índices).
@@ -115,5 +118,5 @@ El administrador gestiona la entrada desde *Invitaciones*: invitaciones personal
 
 - `prisma/schema.prisma` — familias, usuarios, aportaciones, operaciones (con divisa, cambio y entidad), cotizaciones, fotos de cartera y lista de seguimiento.
 - `src/lib/portfolio.ts` — valoración de carteras y ranking. `src/lib/league.ts` — estadísticas. `src/lib/badges.ts` — logros y niveles. `src/lib/news.ts` — noticias.
-- `src/lib/prices.ts`, `src/lib/stocks.ts`, `src/lib/technical.ts`, `src/lib/crypto.ts` — cotizaciones, histórico, indicadores técnicos y mercado cripto.
+- `src/lib/prices.ts`, `src/lib/stocks.ts`, `src/lib/technical.ts`, `src/lib/crypto.ts` — cotizaciones, histórico, indicadores técnicos y mercado cripto; `src/lib/cryptoProfile.ts` y `src/lib/cryptoNews.ts` — ficha y noticias por moneda; `src/lib/fmtPrice.ts` — decimales de los precios según su magnitud.
 - `src/app/(app)/*` — páginas: inversiones (liga), operaciones, acciones, cripto, familia.

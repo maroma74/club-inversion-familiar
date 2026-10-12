@@ -20,6 +20,10 @@ export type Coin = {
 
 export type FearGreed = { value: number; label: string; labelEs: string };
 
+/** Monedas cuyo par en Yahoo Finance lleva un sufijo numérico propio. */
+const YAHOO_OVERRIDES: Record<string, string> = { UNI: "UNI7083-EUR" };
+export const yahooCryptoSymbol = (symbol: string) => YAHOO_OVERRIDES[symbol.toUpperCase()] ?? `${symbol.toUpperCase()}-EUR`;
+
 const STABLECOINS = new Set(["usdt", "usdc", "dai", "usds", "fdusd", "usde", "tusd", "usd1", "pyusd", "usdd", "busd", "eurc", "eurt", "usdtb", "rlusd"]);
 const WRAPPED = new Set(["wbtc", "steth", "wsteth", "weth", "weeth", "cbbtc", "wbnb", "wtrx", "reth", "jitosol", "lbtc", "bnsol", "rseth", "ezeth", "msol"]);
 const TTL_MS = 60 * 1000;
@@ -82,7 +86,7 @@ export async function fetchCryptoMarket(limit = 25): Promise<{ coins: Coin[]; er
         ath: r.ath,
         athChange: r.ath_change_percentage,
         sparkline: (r.sparkline_in_7d?.price ?? []).filter((p) => Number.isFinite(p)),
-        yahooSymbol: `${r.symbol.toUpperCase()}-EUR`,
+        yahooSymbol: yahooCryptoSymbol(r.symbol),
       }));
     marketCache = { at: Date.now(), data: coins };
     return { coins: coins.slice(0, limit), updatedAt: new Date() };

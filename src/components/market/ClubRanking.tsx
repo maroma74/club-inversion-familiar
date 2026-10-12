@@ -4,8 +4,9 @@ import { getWatchlist, type WatchKind } from "@/lib/stocks";
 import { familyLeaderboard } from "@/lib/portfolio";
 import { isCrypto } from "@/lib/prices";
 import { getClubRecommendations } from "@/lib/club";
-import { DISCLAIMER } from "@/lib/recommend";
+import { CRYPTO_DISCLAIMER, DISCLAIMER } from "@/lib/recommend";
 import { fmtDate } from "@/lib/format";
+import { fp } from "@/lib/fmtPrice";
 import { PageHeader } from "@/components/ui";
 import { ActionBadge } from "@/components/ClubRecommendationCard";
 import { CopyButton } from "@/components/CopyButton";
@@ -14,13 +15,15 @@ const sg = (v: number) => (v > 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
 
 export async function ClubRanking({ kind }: { kind: WatchKind }) {
   const user = await requireUser();
-  const base = kind === "ETF" ? "/etf" : "/acciones";
-  const label = kind === "ETF" ? "ETF" : "acciones";
+  const base = kind === "ETF" ? "/etf" : kind === "CRYPTO" ? "/cripto" : "/acciones";
+  const label = kind === "ETF" ? "ETF" : kind === "CRYPTO" ? "criptomonedas" : "acciones";
+  const title = kind === "ETF" ? "ETF" : kind === "CRYPTO" ? "Cripto" : "Acciones";
+  const crypto = kind === "CRYPTO";
   const [watchlist, ranking] = await Promise.all([getWatchlist(user.familyId, kind), familyLeaderboard(user.familyId)]);
   const held = new Map<string, string[]>();
-  for (const r of ranking) for (const h of r.holdings) if (!isCrypto(h.symbol)) held.set(h.symbol, [...(held.get(h.symbol) ?? []), r.userName]);
+  for (const r of ranking) for (const h of r.holdings) if (isCrypto(h.symbol) === crypto) held.set(h.symbol, [...(held.get(h.symbol) ?? []), r.userName]);
   const allListed = new Set((await getWatchlist(user.familyId)).map((w) => w.symbol));
-  const symbols = [...new Set([...watchlist.map((w) => w.symbol), ...(kind === "STOCK" ? [...held.keys()].filter((s) => !allListed.has(s)) : [])])];
+  const symbols = [...new Set([...watchlist.map((w) => w.symbol), ...(kind !== "ETF" ? [...held.keys()].filter((s) => !allListed.has(s)) : [])])];
   const recs = await getClubRecommendations(symbols);
   const rows = [...recs.values()].sort((a, b) => b.total - a.total);
   const buys = rows.filter((r) => r.action === "COMPRAR").slice(0, 3);
@@ -39,13 +42,14 @@ export async function ClubRanking({ kind }: { kind: WatchKind }) {
     `**Reducir o salir:** ${exits.map((r) => `${r.ticker} (${sg(r.total)})`).join(", ") || "ninguno"}`,
     "",
     DISCLAIMER,
+    ...(crypto ? [CRYPTO_DISCLAIMER] : []),
   ].join("\n");
 
   return (
     <>
-      <PageHeader title={`Ranking del Club de inversión · ${kind === "ETF" ? "ETF" : "Acciones"}`} subtitle={`${rows.length} valores de la lista de seguimiento${kind === "STOCK" ? " y de las carteras" : ""}, ordenados por puntuación ponderada (tendencia 30 %, momentum 25 %, volumen 20 %, estructura 25 %).`}>
+      <PageHeader title={`Ranking del Club de inversión · ${title}`} subtitle={`${rows.length} ${crypto ? "monedas" : "valores"} de la lista de seguimiento${kind !== "ETF" ? " y de las carteras" : ""}, ordenad${crypto ? "as" : "os"} por puntuación ponderada (tendencia 30 %, momentum 25 %, volumen 20 %, estructura 25 %).`}>
         <div className="flex gap-2 items-center">
-          <Link href={base} className="btn-secondary py-1">← {kind === "ETF" ? "ETF" : "Acciones"}</Link>
+          <Link href={base} className="btn-secondary py-1">← {title}</Link>
           <CopyButton text={md} label="Copiar resumen" />
         </div>
       </PageHeader>
@@ -64,7 +68,7 @@ export async function ClubRanking({ kind }: { kind: WatchKind }) {
                   <ActionBadge action={r.action} small />
                   <div>
                     <Link href={`${base}/${encodeURIComponent(r.ticker)}`} className="font-medium text-indigo-700 hover:underline">{r.ticker}</Link> <span className="text-slate-600">{r.name}</span> · {sg(r.total)} · {r.bias}
-                    <div className="text-xs text-slate-500">Entrada {r.plan.entryLow !== null && r.plan.entryHigh !== null ? `${r.plan.entryLow.toFixed(2)}–${r.plan.entryHigh.toFixed(2)}` : "N/D"} · stop {r.plan.stop?.toFixed(2) ?? "N/D"} · objetivo {r.plan.target1?.toFixed(2) ?? "N/D"} · R/B {r.plan.rr === null ? "N/D" : `1:${r.plan.rr.toFixed(1)}`}</div>
+                    <div className="text-xs text-slate-500">Entrada {r.plan.entryLow !== null && r.plan.entryHigh !== null ? `${fp(r.plan.entryLow)}–${fp(r.plan.entryHigh)}` : "N/D"} · stop {r.plan.stop !== null ? fp(r.plan.stop) : "N/D"} · objetivo {r.plan.target1 !== null ? fp(r.plan.target1) : "N/D"} · R/B {r.plan.rr === null ? "N/D" : `1:${r.plan.rr.toFixed(1)}`}</div>
                   </div>
                 </li>
               ))}
@@ -105,7 +109,7 @@ export async function ClubRanking({ kind }: { kind: WatchKind }) {
                 <th className="text-left px-2 py-2 font-medium">Confianza</th>
                 <th className="text-right px-2 py-2 font-medium">R/B</th>
                 <th className="text-left px-2 py-2 font-medium hidden lg:table-cell">Desde</th>
-                <th className="text-left px-5 py-2 font-medium hidden lg:table-cell">{kind === "ETF" ? "TER" : "Resultados"}</th>
+                {!crypto && <th className="text-left px-5 py-2 font-medium hidden lg:table-cell">{kind === "ETF" ? "TER" : "Resultados"}</th>}
               </tr>
             </thead>
             <tbody>
@@ -123,16 +127,18 @@ export async function ClubRanking({ kind }: { kind: WatchKind }) {
                   <td className="px-2 py-2">{r.confidence}</td>
                   <td className="px-2 py-2 text-right tabular-nums">{r.plan.rr === null ? "N/D" : `1:${r.plan.rr.toFixed(1)}`}</td>
                   <td className="px-2 py-2 text-xs text-slate-500 hidden lg:table-cell">{r.since ? fmtDate(r.since) : "—"}{r.previousAction ? ` (antes ${r.previousAction})` : ""}</td>
-                  <td className={`px-5 py-2 text-xs hidden lg:table-cell ${r.daysToEarnings !== null && r.daysToEarnings >= 0 && r.daysToEarnings <= 10 ? "text-amber-700 font-medium" : "text-slate-500"}`}>
-                    {kind === "ETF" ? (r.profile.expenseRatio !== null ? `${(r.profile.expenseRatio * 100).toFixed(2)} %` : "N/D") : r.earningsDate ?? "N/D"}
-                  </td>
+                  {!crypto && (
+                    <td className={`px-5 py-2 text-xs hidden lg:table-cell ${r.daysToEarnings !== null && r.daysToEarnings >= 0 && r.daysToEarnings <= 10 ? "text-amber-700 font-medium" : "text-slate-500"}`}>
+                      {kind === "ETF" ? (r.profile.expenseRatio !== null ? `${(r.profile.expenseRatio * 100).toFixed(2)} %` : "N/D") : r.earningsDate ?? "N/D"}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
-      <p className="text-xs text-slate-500 italic mt-4">{DISCLAIMER}</p>
+      <p className="text-xs text-slate-500 italic mt-4">{DISCLAIMER}{crypto ? ` ${CRYPTO_DISCLAIMER}` : ""}</p>
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { fp } from "./fmtPrice";
 /** Indicadores de análisis técnico calculados sobre velas diarias. Uso educativo: no es asesoramiento financiero. */
 
 export type Candle = { date: string; open: number; high: number; low: number; close: number; volume: number };
@@ -60,6 +61,7 @@ export type Analysis = {
   support: number | null;
   resistance: number | null;
   volume: number;
+  volumeProjected: boolean; // la última vela está en curso y su volumen se ha proyectado a 24 h (cripto)
   volumeAvg20: number | null;
   volatility30: number | null; // anualizada
   maxDrawdown: number; // negativo, sobre el periodo
@@ -244,7 +246,31 @@ function pivots(candles: Candle[], lookback = 120, width = 5) {
 
 const pctChange = (closes: number[], sessions: number) => (closes.length > sessions ? closes[closes.length - 1] / closes[closes.length - 1 - sessions] - 1 : null);
 
-export function analyze(candles: Candle[]): Analysis {
+export type AnalyzeOptions = {
+  /** Mercado 24/7 (criptomonedas): el año tiene 365 sesiones y la vela de hoy está siempre en curso. */
+  crypto?: boolean;
+};
+
+export function analyze(rawCandles: Candle[], opts: AnalyzeOptions = {}): Analysis {
+  const crypto = opts.crypto === true;
+  // Sesiones por periodo: en bolsa 5/21/63/126/252; en cripto cotiza todos los días (7/30/91/182/365).
+  const S = crypto ? { w: 7, m: 30, q: 91, h: 182, y: 365 } : { w: 5, m: 21, q: 63, h: 126, y: 252 };
+  // La vela de hoy está a medias y su volumen sería siempre «bajo»: en cripto se proyecta a 24 h
+  // (con un mínimo de 6 h transcurridas para que las primeras horas del día no disparen el dato).
+  let volumeProjected = false;
+  let candles = rawCandles;
+  if (crypto && rawCandles.length > 1) {
+    const lastC = rawCandles[rawCandles.length - 1];
+    const now = new Date();
+    if (lastC.date === now.toISOString().slice(0, 10)) {
+      const elapsed = (now.getUTCHours() * 3600 + now.getUTCMinutes() * 60 + now.getUTCSeconds()) / 86400;
+      if (elapsed < 0.98) {
+        const frac = Math.max(elapsed, 0.25);
+        candles = [...rawCandles.slice(0, -1), { ...lastC, volume: lastC.volume / frac }];
+        volumeProjected = true;
+      }
+    }
+  }
   const closes = candles.map((c) => c.close);
   const n = closes.length;
   const last = closes[n - 1];
@@ -256,7 +282,7 @@ export function analyze(candles: Candle[]): Analysis {
   const vols = candles.map((c) => c.volume);
   const volAvg = sma(vols, 20);
   const volAvg50 = sma(vols, 50);
-  const year = candles.slice(-252);
+  const year = candles.slice(-S.y);
   const high52 = Math.max(...year.map((c) => c.high));
   const low52 = Math.min(...year.map((c) => c.low));
   const { support, resistance } = pivots(candles);
@@ -284,7 +310,7 @@ export function analyze(candles: Candle[]): Analysis {
     for (let i = n - 30; i < n; i++) rets.push(Math.log(closes[i] / closes[i - 1]));
     const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
     const sd = Math.sqrt(rets.reduce((a, v) => a + (v - mean) ** 2, 0) / (rets.length - 1));
-    volatility30 = sd * Math.sqrt(252);
+    volatility30 = sd * Math.sqrt(S.y);
   }
   // Máxima caída desde máximos en el periodo
   let peak = closes[0], maxDrawdown = 0;
@@ -301,7 +327,7 @@ export function analyze(candles: Candle[]): Analysis {
   // Tendencia de fondo: precio vs SMA200
   if (at(s200) !== null) {
     const d = last / at(s200)! - 1;
-    push("sma200", "Tendencia de largo plazo", d > 0 ? "alcista" : "bajista", `El precio está un ${(Math.abs(d) * 100).toFixed(1)} % ${d > 0 ? "por encima" : "por debajo"} de la media de 200 sesiones (${at(s200)!.toFixed(2)}). ${d > 0 ? "Tendencia de fondo alcista." : "Tendencia de fondo bajista."}`);
+    push("sma200", "Tendencia de largo plazo", d > 0 ? "alcista" : "bajista", `El precio está un ${(Math.abs(d) * 100).toFixed(1)} % ${d > 0 ? "por encima" : "por debajo"} de la media de 200 sesiones (${fp(at(s200)!)}). ${d > 0 ? "Tendencia de fondo alcista." : "Tendencia de fondo bajista."}`);
   }
   // Medio plazo: SMA50 y cruce dorado / de la muerte
   if (at(s50) !== null && at(s200) !== null) {
@@ -348,8 +374,8 @@ export function analyze(candles: Candle[]): Analysis {
   }
   // 52 semanas
   const from52h = last / high52 - 1;
-  if (from52h > -0.03) push("52h", "Cerca de máximos anuales", "alcista", `A un ${(Math.abs(from52h) * 100).toFixed(1)} % del máximo de 52 semanas (${high52.toFixed(2)}). Los valores en máximos suelen seguir fuertes, pero vigila el RSI.`);
-  else if (last / low52 - 1 < 0.05) push("52l", "Cerca de mínimos anuales", "bajista", `A un ${((last / low52 - 1) * 100).toFixed(1)} % del mínimo de 52 semanas (${low52.toFixed(2)}).`);
+  if (from52h > -0.03) push("52h", "Cerca de máximos anuales", "alcista", `A un ${(Math.abs(from52h) * 100).toFixed(1)} % del máximo de 52 semanas (${fp(high52)}). Los valores en máximos suelen seguir fuertes, pero vigila el RSI.`);
+  else if (last / low52 - 1 < 0.05) push("52l", "Cerca de mínimos anuales", "bajista", `A un ${((last / low52 - 1) * 100).toFixed(1)} % del mínimo de 52 semanas (${fp(low52)}).`);
 
   const score = signals.reduce((a, s) => a + (s.verdict === "alcista" ? 1 : s.verdict === "bajista" ? -1 : 0), 0);
   const overall: Verdict = score >= 2 ? "alcista" : score <= -2 ? "bajista" : "neutral";
@@ -374,7 +400,7 @@ export function analyze(candles: Candle[]): Analysis {
     prevClose,
     lastDate: candles[n - 1].date,
     change1d: last / prevClose - 1,
-    returns: { "1w": pctChange(closes, 5), "1m": pctChange(closes, 21), "3m": pctChange(closes, 63), "6m": pctChange(closes, 126), "1y": pctChange(closes, 252), ytd },
+    returns: { "1w": pctChange(closes, S.w), "1m": pctChange(closes, S.m), "3m": pctChange(closes, S.q), "6m": pctChange(closes, S.h), "1y": pctChange(closes, S.y), ytd },
     sma20: at(s20),
     sma50: at(s50),
     sma200: at(s200),
@@ -409,6 +435,7 @@ export function analyze(candles: Candle[]): Analysis {
     support,
     resistance,
     volume,
+    volumeProjected,
     volumeAvg20: at(volAvg),
     volatility30,
     maxDrawdown,

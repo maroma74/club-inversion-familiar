@@ -1,6 +1,6 @@
 /** Cotizaciones e histórico de acciones e índices desde el endpoint público de Yahoo Finance. */
 import { prisma } from "./prisma";
-import { fxToEur } from "./prices";
+import { fxToEur, isCrypto } from "./prices";
 import type { Candle } from "./technical";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
@@ -121,6 +121,7 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote> {
     // Variación a N sesiones, contando desde el último cierre completo.
     const base = lastIsLive ? closes.slice(0, -1) : closes;
     const ref = (sessions: number) => (base.length >= sessions ? price / base[base.length - sessions] - 1 : null);
+    const crypto = isCrypto(sym); // cotiza 24/7: una semana son 7 velas y un mes 30
     const currency = String(meta.currency ?? "EUR");
     // Estado del mercado: abierto si la hora actual cae dentro de la sesión regular de hoy.
     const regular = (meta.currentTradingPeriod as { regular?: { start?: number; end?: number } } | undefined)?.regular;
@@ -139,8 +140,8 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote> {
       currency: currency === "GBp" ? "GBX" : currency,
       priceEur: price * rate,
       change1d: prev > 0 ? price / prev - 1 : 0,
-      change1w: ref(5),
-      change1m: ref(21),
+      change1w: ref(crypto ? 7 : 5),
+      change1m: ref(crypto ? 30 : 21),
       high52: typeof meta.fiftyTwoWeekHigh === "number" ? meta.fiftyTwoWeekHigh : null,
       low52: typeof meta.fiftyTwoWeekLow === "number" ? meta.fiftyTwoWeekLow : null,
       sparkline: closes.slice(-22),
@@ -188,7 +189,44 @@ export const RANGE_SESSIONS: Record<Range, number> = { "3m": 63, "6m": 126, "1y"
 export const RANGE_LABEL: Record<Range, string> = { "3m": "3 meses", "6m": "6 meses", "1y": "1 año", "2y": "2 años", "5y": "5 años" };
 export const isRange = (r: string | undefined): r is Range => !!r && r in RANGE_PARAM;
 
-export type WatchKind = "STOCK" | "ETF";
+export type WatchKind = "STOCK" | "ETF" | "CRYPTO";
+
+/** Sesiones del gráfico para un rango: las criptomonedas cotizan los 365 días. */
+export function rangeSessions(range: Range, crypto: boolean) {
+  return crypto ? Math.round((RANGE_SESSIONS[range] * 365) / 252) : RANGE_SESSIONS[range];
+}
+
+/**
+ * Histórico de una criptomoneda. Si el par en euros no existe en Yahoo se prueba el par en dólares
+ * (la ficha lo avisa); devuelve también el símbolo realmente usado.
+ */
+export async function fetchCryptoHistory(symbol: string, range: Range): Promise<{ hist: History; usedSymbol: string; fallback: boolean } | null> {
+  const sym = symbol.toUpperCase();
+  const first = await fetchHistory(sym, range);
+  if (first) return { hist: first, usedSymbol: sym, fallback: false };
+  if (sym.endsWith("-EUR")) {
+    const usd = `${sym.slice(0, -4)}-USD`;
+    const second = await fetchHistory(usd, range);
+    if (second) return { hist: second, usedSymbol: usd, fallback: true };
+  }
+  return null;
+}
+
+/** Sugerencias de criptomonedas (pares en euros con histórico en Yahoo Finance) cuando la lista está vacía. */
+export const DEFAULT_CRYPTO_WATCHLIST = [
+  { symbol: "BTC-EUR", name: "Bitcoin" },
+  { symbol: "ETH-EUR", name: "Ethereum" },
+  { symbol: "SOL-EUR", name: "Solana" },
+  { symbol: "XRP-EUR", name: "XRP" },
+  { symbol: "BNB-EUR", name: "BNB" },
+  { symbol: "ADA-EUR", name: "Cardano" },
+  { symbol: "DOGE-EUR", name: "Dogecoin" },
+  { symbol: "LINK-EUR", name: "Chainlink" },
+  { symbol: "AVAX-EUR", name: "Avalanche" },
+  { symbol: "DOT-EUR", name: "Polkadot" },
+  { symbol: "LTC-EUR", name: "Litecoin" },
+  { symbol: "TRX-EUR", name: "TRON" },
+];
 
 /** Sugerencias de ETF (UCITS cotizados en Europa) cuando la lista está vacía. */
 export const DEFAULT_ETF_WATCHLIST = [

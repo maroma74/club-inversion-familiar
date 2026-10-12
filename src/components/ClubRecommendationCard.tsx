@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { safeHref } from "@/lib/validation";
 import type { ClubRecommendation } from "@/lib/club";
-import { DISCLAIMER, recommendationMarkdown } from "@/lib/recommend";
+import { CRYPTO_DISCLAIMER, DISCLAIMER, recommendationMarkdown } from "@/lib/recommend";
 import { CopyButton } from "./CopyButton";
 import { fmtDate } from "@/lib/format";
+import { priceDecimals } from "@/lib/fmtPrice";
 
 /** Etiqueta de acción con el estilo del sistema: COMPRAR relleno acento, MANTENER borde acento, VENDER fondo oscuro. */
 export function ActionBadge({ action, small = false }: { action: string; small?: boolean }) {
@@ -27,7 +28,7 @@ const LESSON_BY_BLOCK: Record<string, string> = {
   structure: "/academia/analisis-tecnico/soportes-y-resistencias",
 };
 
-const f = (v: number | null, d = 2) => (v === null ? "N/D" : v.toLocaleString("es-ES", { minimumFractionDigits: d, maximumFractionDigits: d }));
+const f = (v: number | null, d?: number) => (v === null ? "N/D" : v.toLocaleString("es-ES", { minimumFractionDigits: d ?? priceDecimals(v), maximumFractionDigits: d ?? priceDecimals(v) }));
 const sg = (v: number) => (v > 0 ? `+${v.toFixed(2)}` : v < 0 ? `−${Math.abs(v).toFixed(2)}` : "0,00");
 const toneOf = (v: number) => (v > 0 ? "var(--color-accent-700)" : "var(--color-text)");
 
@@ -40,7 +41,12 @@ export function ClubRecommendationCard({ r }: { r: ClubRecommendation }) {
         <div>
           <div className="card-kicker text-[11px] font-medium">Recomendación del Club de inversión</div>
           <div className="text-[14px] mt-1"><b>[{r.ticker}] – {r.name}</b> | Precio: {f(r.price)} {cur} | Fecha datos: {fmtDate(r.dataDate)}</div>
-          {r.profile.isFund ? (
+          {r.isCrypto ? (
+            <div className="text-xs text-neutral-700 mt-0.5">
+              Criptomoneda · {r.cryptoRank !== null ? `puesto #${r.cryptoRank} por capitalización · ` : ""}mercado 24/7
+              {r.fearGreed && <> · Miedo y codicia: <b className="text-ink">{r.fearGreed.value} ({r.fearGreed.labelEs.toLowerCase()})</b></>}
+            </div>
+          ) : r.profile.isFund ? (
             <div className="text-xs text-neutral-700 mt-0.5">Fondo cotizado · Gestora: {r.profile.fundFamily ?? "N/D"} · TER: {r.profile.expenseRatio === null ? "N/D" : `${(r.profile.expenseRatio * 100).toFixed(2)} %`} · Beta: {r.beta === null ? "N/D" : r.beta.toFixed(2)}</div>
           ) : (
             <div className="text-xs text-neutral-700 mt-0.5">
@@ -112,10 +118,40 @@ export function ClubRecommendationCard({ r }: { r: ClubRecommendation }) {
       )}
 
       <div className="flex flex-wrap justify-between gap-3 items-center border-t border-divider pt-3">
-        <p className="m-0 text-xs italic text-neutral-700 max-w-[70ch]">{DISCLAIMER}</p>
+        <p className="m-0 text-xs italic text-neutral-700 max-w-[70ch]">{DISCLAIMER}{r.isCrypto ? ` ${CRYPTO_DISCLAIMER}` : ""}</p>
         <span className="text-xs text-neutral-700">Para entender esta ficha: <Link href="/academia/analisis-tecnico/tendencia-y-medias" className="btn-ghost text-xs">Nivel 5 · Análisis técnico</Link></span>
       </div>
     </section>
+  );
+}
+
+const compactEur = (n: number) => `${new Intl.NumberFormat("es-ES", { notation: "compact", maximumFractionDigits: 1 }).format(n)} €`;
+const compactNum = (n: number) => new Intl.NumberFormat("es-ES", { notation: "compact", maximumFractionDigits: 2 }).format(n);
+const priceEur = (n: number) => `${n.toLocaleString("es-ES", { minimumFractionDigits: n < 1 ? 4 : 2, maximumFractionDigits: n < 1 ? 4 : 2 })} €`;
+const signedPct = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)} %`;
+
+/** Ficha de la criptomoneda: capitalización, oferta, máximo histórico y descripción (CoinGecko). */
+function CryptoBlock({ r }: { r: ClubRecommendation }) {
+  const c = r.crypto!;
+  return (
+    <div>
+      <h5 className="m-0 mb-1.5 text-[18px]">La criptomoneda</h5>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-700 mb-2">
+        {c.rank !== null && <span>Puesto: <b className="text-ink">#{c.rank}</b></span>}
+        {c.marketCap !== null && <span>Capitalización: <b className="text-ink">{compactEur(c.marketCap)}</b></span>}
+        {c.volume24h !== null && <span>Volumen 24 h: <b className="text-ink">{compactEur(c.volume24h)}</b></span>}
+        {c.circulatingSupply !== null && <span>Oferta circulante: <b className="text-ink">{compactNum(c.circulatingSupply)} {c.symbol}</b>{c.maxSupply ? ` de ${compactNum(c.maxSupply)} como máximo` : " (sin máximo fijo)"}</span>}
+        {c.ath !== null && <span>Máximo histórico: <b className="text-ink">{priceEur(c.ath)}</b>{c.athDate ? ` (${fmtDate(c.athDate)})` : ""}{c.athChange !== null ? `, hoy ${signedPct(c.athChange)}` : ""}</span>}
+        {c.change30d !== null && <span>30 días: <b className="text-ink">{signedPct(c.change30d)}</b></span>}
+        {c.change1y !== null && <span>1 año: <b className="text-ink">{signedPct(c.change1y)}</b></span>}
+        {c.hashingAlgorithm && <span>Algoritmo: <b className="text-ink">{c.hashingAlgorithm}</b></span>}
+        {c.genesisDate && <span>Creación: <b className="text-ink">{fmtDate(c.genesisDate)}</b></span>}
+        {safeHref(c.website) && <a href={safeHref(c.website)} target="_blank" rel="noopener noreferrer">Web</a>}
+      </div>
+      {c.categories.length > 0 && <div className="flex flex-wrap gap-1 mb-2">{c.categories.map((t) => <span key={t} className="tag tag-neutral">{t}</span>)}</div>}
+      {c.description && <p className="m-0 text-xs text-neutral-800 leading-relaxed">{c.description.length > 600 ? c.description.slice(0, 600).replace(/\s\S*$/, "") + "…" : c.description}</p>}
+      <p className="m-0 text-[11px] text-neutral-600 mt-2">Datos de CoinGecko; la descripción está en inglés.</p>
+    </div>
   );
 }
 
@@ -127,9 +163,10 @@ function CompanyAndNews({ r }: { r: ClubRecommendation }) {
   const p = r.profile;
   const d = r.newsDigest;
   const hasProfile = p.description || p.marketCap || p.trailingPE || p.dividendYield || p.fundFamily || p.totalAssets;
-  if (!hasProfile && !d) return null;
+  if (!hasProfile && !d && !r.crypto) return null;
   return (
     <div className="grid gap-6 border-t border-divider pt-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))" }}>
+      {r.crypto && <CryptoBlock r={r} />}
       {hasProfile && p.isFund && (
         <div>
           <h5 className="m-0 mb-1.5 text-[18px]">El fondo</h5>
@@ -167,7 +204,7 @@ function CompanyAndNews({ r }: { r: ClubRecommendation }) {
           {p.description && <p className="m-0 text-xs text-neutral-800 leading-relaxed">{p.description.length > 400 ? p.description.slice(0, 400).replace(/\s\S*$/, "") + "…" : p.description}</p>}
         </div>
       )}
-      {hasProfile && !p.isFund && (
+      {hasProfile && !p.isFund && !r.isCrypto && (
         <div>
           <h5 className="m-0 mb-1.5 text-[18px]">La empresa</h5>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-700 mb-2">
@@ -185,6 +222,7 @@ function CompanyAndNews({ r }: { r: ClubRecommendation }) {
         <div>
           <h5 className="m-0 mb-1.5 text-[18px]">Qué dicen las noticias</h5>
           <p className="m-0 mb-2 text-xs text-neutral-700"><span className="tag tag-neutral mr-1">tono {d.tone}</span>{d.summary}</p>
+          {r.newsGeneral && <p className="m-0 mb-2 text-xs text-amber-700">No hay titulares recientes específicos de {r.name.replace(/\s+(EUR|USD)$/i, "")}: se muestran noticias del mercado cripto en general.</p>}
           {d.items.length > 0 && (
             <ul className="text-[14px] flex flex-col gap-1 list-none m-0 p-0">
               {d.items.slice(0, 6).map((n) => (
@@ -198,7 +236,7 @@ function CompanyAndNews({ r }: { r: ClubRecommendation }) {
               ))}
             </ul>
           )}
-          <p className="m-0 text-[11px] text-neutral-600 mt-2">Clasificación automática por palabras clave del titular; el tono de las noticias no altera la puntuación técnica, solo se añade como contexto y riesgo.</p>
+          <p className="m-0 text-[11px] text-neutral-600 mt-2">Clasificación automática por palabras clave del titular; el tono de las noticias no altera la puntuación técnica, solo se añade como contexto y riesgo.{r.isCrypto ? " Fuentes: Cointelegraph, CoinDesk, Decrypt, Bitcoin Magazine, CriptoNoticias y Yahoo Finance." : ""}</p>
         </div>
       )}
     </div>

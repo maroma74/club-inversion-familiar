@@ -5,7 +5,7 @@ import { addWatchlistAction } from "@/app/actions/watchlist";
 
 type Hit = { symbol: string; name: string; exchange: string; type: string };
 
-export function WatchlistForm({ kind = "STOCK" }: { kind?: "STOCK" | "ETF" }) {
+export function WatchlistForm({ kind = "STOCK" }: { kind?: "STOCK" | "ETF" | "CRYPTO" }) {
   const [state, action, pending] = useActionState(addWatchlistAction, undefined);
   const [q, setQ] = useState("");
   const [symbol, setSymbol] = useState("");
@@ -22,7 +22,12 @@ export function WatchlistForm({ kind = "STOCK" }: { kind?: "STOCK" | "ETF" }) {
       try {
         const res = await fetch(`/api/symbols?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
         const all: Hit[] = await res.json();
-        setHits(all.filter((h) => h.type !== "CRYPTOCURRENCY" && (kind === "ETF" ? h.type === "ETF" || h.type === "MUTUALFUND" : h.type !== "ETF")));
+        if (kind === "CRYPTO") {
+          // Primero los pares en euros (que son los que se usan para valorar la cartera)
+          setHits(all.filter((h) => h.type === "CRYPTOCURRENCY").sort((a, b) => Number(b.symbol.endsWith("-EUR")) - Number(a.symbol.endsWith("-EUR"))));
+        } else {
+          setHits(all.filter((h) => h.type !== "CRYPTOCURRENCY" && (kind === "ETF" ? h.type === "ETF" || h.type === "MUTUALFUND" : h.type !== "ETF")));
+        }
       } catch {
         /* cancelado */
       }
@@ -52,7 +57,7 @@ export function WatchlistForm({ kind = "STOCK" }: { kind?: "STOCK" | "ETF" }) {
             setQ(e.target.value);
             setName("");
           }}
-          placeholder={kind === "ETF" ? "Añadir: MSCI World, VWCE.DE, SXR8.DE…" : "Añadir: Inditex, SAN.MC, NVDA…"}
+          placeholder={kind === "ETF" ? "Añadir: MSCI World, VWCE.DE, SXR8.DE…" : kind === "CRYPTO" ? "Añadir: Bitcoin, ETH-EUR, SOL…" : "Añadir: Inditex, SAN.MC, NVDA…"}
           className="input w-64 uppercase"
           autoComplete="off"
           required
