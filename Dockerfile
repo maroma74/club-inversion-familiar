@@ -1,5 +1,5 @@
-# Club de Inversión Familiar — imagen de producción
-# La base de datos SQLite vive en /data (monta un volumen para que persista).
+# Club de Inversión Familiar — imagen de producción (Cloud Run o cualquier host de contenedores)
+# La base de datos es PostgreSQL; la URL llega por la variable DATABASE_URL.
 FROM node:20-bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
@@ -18,9 +18,8 @@ RUN npm run build
 
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV DATABASE_URL="file:/data/club.db"
-VOLUME ["/data"]
 EXPOSE 3000
 
-# Aplica migraciones, carga la Academia (idempotente) y arranca
-CMD ["npm", "run", "start:prod"]
+# Las migraciones y la carga de la Academia se ejecutan aparte (npm run db:deploy);
+# el contenedor solo sirve la app, así los arranques en frío son rápidos.
+CMD ["npm", "start"]

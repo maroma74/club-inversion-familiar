@@ -1,15 +1,25 @@
 services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: clubinversion
+      POSTGRES_USER: club
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-club}
+    volumes:
+      - clubdb:/var/lib/postgresql/data
+    restart: unless-stopped
+
   app:
     build: .
     ports:
       - "3000:3000"
     environment:
-      # Define AUTH_SECRET en un archivo .env junto a este compose (o en el entorno)
       AUTH_SECRET: ${AUTH_SECRET:?Define AUTH_SECRET con una cadena larga y aleatoria}
-      DATABASE_URL: file:/data/club.db
-    volumes:
-      - clubdata:/data
+      DATABASE_URL: postgresql://club:${DB_PASSWORD:-club}@db:5432/clubinversion
+    command: ["npm", "run", "start:prod"]
+    depends_on:
+      - db
     restart: unless-stopped
 
 volumes:
-  clubdata:
+  clubdb:

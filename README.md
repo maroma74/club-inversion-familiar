@@ -36,38 +36,38 @@ Liga de inversión familiar orientada a **aprender a invertir**: cada miembro re
 
 ```bash
 npm install
-npx prisma migrate dev
+cp .env.example .env
+npx prisma dev -n clubinversion -d   # PostgreSQL local sin Docker; copia la URL TCP que muestra en .env
+npm run db:deploy                    # migraciones + Academia
 npm run dev
 ```
 
-Abre http://localhost:3000. La base de datos es un archivo SQLite en `prisma/dev.db` (no necesita Docker ni servidor).
+Abre http://localhost:3000. La base de datos es PostgreSQL: en desarrollo la sirve `prisma dev` (una instancia por proyecto, de ahí el nombre `-n clubinversion`) y en producción Cloud SQL. Con `prisma dev`, añade `&connection_limit=1&pgbouncer=true` a la URL TCP para evitar el error `prepared statement "s0" already exists`.
 
 Antes de usarla en serio, cambia `AUTH_SECRET` en `.env` por una cadena larga y aleatoria.
 
-## Despliegue
+## Despliegue en Google Cloud (producción)
 
-La app necesita un servidor Node con disco persistente para la base de datos SQLite (o cambiar a PostgreSQL). La compilación de producción está verificada (`npm run build`).
+La app corre en **Cloud Run** (proyecto `clubdeinversionfamiliar`, región `europe-southwest1`, escala a cero) y usa **PostgreSQL en la instancia Cloud SQL de AlquilaFacil** (`alquilafacil-510608:europe-southwest1:alquilafacil-db`, base de datos `clubinversion`, usuario `club_app`) para no pagar una segunda instancia. Credenciales en Secret Manager (`club-database-url`, `club-auth-secret`); la cuenta de servicio de Cloud Run tiene `roles/cloudsql.client` en el proyecto de AlquilaFacil.
 
-**Con Docker (recomendado, válido para cualquier VPS, Railway, Render, Fly.io o Coolify):**
-
-```bash
-echo 'AUTH_SECRET=pon-aqui-una-cadena-larga-y-aleatoria' > .env
-docker compose up -d --build
-```
-
-La imagen aplica las migraciones y carga la Academia al arrancar (`npm run start:prod`), expone el puerto 3000 y guarda la base de datos en el volumen `clubdata` (`/data/club.db`). Para actualizar: `git pull && docker compose up -d --build`; los datos se conservan.
-
-**Sin Docker (Node 20+):**
+Publicar una versión nueva (la CLI necesita `CLOUDSDK_PYTHON` apuntando al Python del SDK en Windows):
 
 ```bash
-npm ci
-npm run build
-DATABASE_URL="file:./prod.db" AUTH_SECRET="..." npm run start:prod
+gcloud builds submit --project clubdeinversionfamiliar --region europe-southwest1 --tag europe-southwest1-docker.pkg.dev/clubdeinversionfamiliar/club/app:v2 .
+gcloud run deploy club-inversion --project clubdeinversionfamiliar --region europe-southwest1 --image europe-southwest1-docker.pkg.dev/clubdeinversionfamiliar/club/app:v2
 ```
 
-**Vercel, Netlify y similares:** no tienen disco persistente, así que SQLite no sirve. Para desplegar ahí hay que cambiar el `provider` de `prisma/schema.prisma` a `postgresql`, apuntar `DATABASE_URL` a una base de datos gestionada (Neon, Supabase, Railway…), regenerar las migraciones con `prisma migrate dev` en local y definir `AUTH_SECRET` en el panel. El resto del código no cambia.
+Si la versión trae migraciones nuevas, aplícalas antes con `npm run db:deploy` apuntando `DATABASE_URL` a la base de datos de producción (por ejemplo a través del Cloud SQL Auth Proxy o autorizando temporalmente tu IP en la instancia). El contenedor solo sirve la app, para que los arranques en frío sean rápidos.
 
-Variables de entorno: `DATABASE_URL` y `AUTH_SECRET` (ver `.env.example`). Los precios se obtienen de Yahoo Finance y CoinGecko, así que el servidor necesita salida a internet.
+Ajustes de consumo: `--min-instances 0` (no cuesta nada sin visitas), `--max-instances 2`, 512 MiB y 1 CPU solo durante las peticiones. La imagen vive en Artifact Registry (`club`).
+
+## Despliegue en otro sitio
+
+- **Docker Compose** (VPS, Railway, Render, Fly.io, Coolify): `docker compose up -d --build` levanta PostgreSQL y la app; el arranque aplica migraciones y carga la Academia (`npm run start:prod`). Define `AUTH_SECRET` (y opcionalmente `DB_PASSWORD`) en un `.env`.
+- **Node sin Docker**: `npm ci && npm run build && DATABASE_URL=postgresql://... AUTH_SECRET=... npm run start:prod`.
+- **Vercel / Netlify**: funciona con cualquier PostgreSQL gestionado (Neon, Supabase…) definiendo `DATABASE_URL` y `AUTH_SECRET`; ejecuta `npm run db:deploy` una vez contra esa base de datos.
+
+Variables de entorno: `DATABASE_URL` y `AUTH_SECRET` (ver `.env.example`). Los precios se obtienen de Yahoo Finance y CoinGecko, así que el servidor necesita salida a internet. Para traer datos de una instalación anterior: `npm run db:import ruta/export.json`.
 
 ## Cómo se usa
 

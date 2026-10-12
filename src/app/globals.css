@@ -53,6 +53,9 @@
   --color-amber-500: #e5a016;
   --color-amber-700: #a5700c;
 
+  --font-inter: "Inter Variable";
+  --font-jakarta: "Plus Jakarta Sans Variable";
+  --font-jetbrains: "JetBrains Mono Variable";
   --font-heading: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
   --font-heading-weight: 700;
   --font-body: var(--font-inter), "Inter", system-ui, sans-serif;

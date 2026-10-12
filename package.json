@@ -10,9 +10,14 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
-    "start:prod": "prisma migrate deploy && prisma db seed && next start"
+    "start:prod": "prisma migrate deploy && prisma db seed && next start",
+    "db:deploy": "prisma migrate deploy && prisma db seed",
+    "db:import": "tsx prisma/import-json.ts"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "date-fns": "^4.4.0",
