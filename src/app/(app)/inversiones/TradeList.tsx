@@ -35,7 +35,7 @@ export function TradeList({ trades, usdPerEur = null }: { trades: TradeRow[]; us
   const [editing, setEditing] = useState<string | null>(null);
   if (trades.length === 0) return <p className="text-sm text-slate-500">Aún no has registrado ninguna operación.</p>;
   return (
-    <table className="w-full text-sm">
+    <div className="overflow-x-auto"><table className="w-full text-sm">
       <thead className="text-xs text-slate-500">
         <tr>
           <th className="text-left py-1 font-medium">Fecha</th>
@@ -87,7 +87,7 @@ export function TradeList({ trades, usdPerEur = null }: { trades: TradeRow[]; us
           ),
         )}
       </tbody>
-    </table>
+    </table></div>
   );
 }
 

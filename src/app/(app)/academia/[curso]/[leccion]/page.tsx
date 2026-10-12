@@ -39,14 +39,14 @@ export default async function LessonPage({ params }: { params: Promise<{ curso: 
         {b.intro.map((t, i) => <P key={i}>{t}</P>)}
         {b.table && (
           <figure className="card blueprint" style={{ padding: "8px 16px 14px", margin: "6px 0" }}>
-            <table className="table text-[15px]">
+            <div className="overflow-x-auto"><table className="table text-[15px]">
               <thead><tr>{b.table.headers.map((h, i) => <th key={i} className={i > 0 ? "text-right" : ""}>{h}</th>)}</tr></thead>
               <tbody>
                 {b.table.rows.map((r, i) => (
                   <tr key={i}>{r.map((c, j) => <td key={j} className={j > 0 ? "text-right tabular-nums" : ""}>{c}</td>)}</tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
             <figcaption>{b.table.caption}</figcaption>
           </figure>
         )}

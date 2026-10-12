@@ -53,6 +53,7 @@ export type StockQuote = {
 
 export type History = { symbol: string; name: string; currency: string; exchange: string; candles: Candle[] };
 
+import { boundedSet } from "./cache";
 const quoteCache = new Map<string, { at: number; data: StockQuote }>();
 const historyCache = new Map<string, { at: number; data: History }>();
 
@@ -146,7 +147,7 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote> {
       exchange: String(meta.exchangeName ?? ""),
       marketState,
     };
-    quoteCache.set(sym, { at: Date.now(), data: quote });
+    boundedSet(quoteCache, sym, { at: Date.now(), data: quote });
     return quote;
   } catch (e) {
     if (cached) return { ...cached.data, error: "sin actualizar" };
@@ -174,7 +175,7 @@ export async function fetchHistory(symbol: string, range: Range = "1y"): Promise
       const candles = toCandles(data);
       if (!meta || candles.length < 30) return null;
       hist = { symbol: String(meta.symbol ?? sym), name: String(meta.longName ?? meta.shortName ?? sym), currency: String(meta.currency ?? "EUR"), exchange: String(meta.exchangeName ?? ""), candles };
-      historyCache.set(key, { at: Date.now(), data: hist });
+      boundedSet(historyCache, key, { at: Date.now(), data: hist }, 150);
     } catch {
       return null;
     }

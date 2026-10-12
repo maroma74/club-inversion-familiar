@@ -10,6 +10,7 @@ import { fetchStockQuote } from "@/lib/stocks";
 import { fetchProfile } from "@/lib/fundamentals";
 import { reconcileOwnContributions } from "@/lib/portfolio";
 import { isDeadlinePassed } from "@/lib/monthly";
+import { longText, MAX_MONEY, parseMoney, symbolSchema } from "@/lib/validation";
 import type { FormState } from "./auth";
 
 const refresh = (id?: string) => {
@@ -67,6 +68,7 @@ export async function updatePortfolioAction(_prev: FormState, formData: FormData
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
   if (d.minChoices > d.maxChoices) return { error: "El mínimo de opciones no puede superar el máximo" };
+  if (d.month !== p.month && (await prisma.monthlyPortfolio.findUnique({ where: { familyId_month: { familyId: admin.familyId, month: d.month } } }))) return { error: "Ya existe otra cartera para ese mes" };
   await prisma.monthlyPortfolio.update({ where: { id }, data: { month: d.month, title: d.title, lesson: d.lesson, minChoices: d.minChoices, maxChoices: d.maxChoices, deadline: parseDeadline(d.deadline) } });
   refresh(id);
   return { ok: "Cartera guardada" };
@@ -75,13 +77,14 @@ export async function updatePortfolioAction(_prev: FormState, formData: FormData
 export async function addOptionAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const admin = await requireAdmin();
   const id = String(formData.get("id") ?? "");
-  const symbol = String(formData.get("symbol") ?? "").trim().toUpperCase();
-  let name = String(formData.get("name") ?? "").trim();
-  const note = String(formData.get("note") ?? "").trim() || null;
+  const symParsed = symbolSchema.safeParse(formData.get("symbol") ?? "");
+  if (!symParsed.success) return { error: symParsed.error.issues[0].message };
+  const symbol = symParsed.data;
+  let name = String(formData.get("name") ?? "").trim().slice(0, 120);
+  const note = String(formData.get("note") ?? "").trim().slice(0, 300) || null;
   const p = await prisma.monthlyPortfolio.findFirst({ where: { id, familyId: admin.familyId }, include: { _count: { select: { options: true } } } });
   if (!p) return { error: "Cartera no encontrada" };
   if (p.status === "CLOSED") return { error: "La cartera está cerrada" };
-  if (!symbol) return { error: "Indica un símbolo" };
   if (p._count.options >= 12) return { error: "Máximo 12 opciones por cartera" };
   let kind = "STOCK";
   if (isCrypto(symbol)) {
@@ -129,24 +132,24 @@ export async function setAllocationsAction(_prev: FormState, formData: FormData)
   for (const m of members) {
     const raw = formData.get(`amount_${m.id}`);
     if (raw === null) continue;
-    const amount = Number(String(raw).replace(",", "."));
-    if (!Number.isFinite(amount) || amount < 0) return { error: `Importe no válido para ${m.name}` };
+    const amount = parseMoney(raw, { allowZero: true });
+    if (amount === null) return { error: `Importe no válido para ${m.name} (entre 0 y ${MAX_MONEY.toLocaleString("es-ES")} €)` };
     if (decided.has(m.id)) continue; // ya ha invertido: no se toca
-    const existing = p.allocations.find((a) => a.userId === m.id);
-    const alloc = await prisma.monthlyAllocation.upsert({
-      where: { portfolioId_userId: { portfolioId: id, userId: m.id } },
-      update: { amount },
-      create: { portfolioId: id, userId: m.id, amount },
-    });
-    if (p.status === "PUBLISHED") {
-      if (alloc.contributionId) await prisma.contribution.update({ where: { id: alloc.contributionId }, data: { amount } });
-      else if (amount > 0) {
-        const c = await prisma.contribution.create({ data: { userId: m.id, date: monthDate(p.month), amount, note: `Paga mensual ${p.month} · ${p.title}` } });
-        await prisma.monthlyAllocation.update({ where: { id: alloc.id }, data: { contributionId: c.id } });
+    await prisma.$transaction(async (tx) => {
+      const alloc = await tx.monthlyAllocation.upsert({
+        where: { portfolioId_userId: { portfolioId: id, userId: m.id } },
+        update: { amount },
+        create: { portfolioId: id, userId: m.id, amount },
+      });
+      if (p.status === "PUBLISHED") {
+        if (alloc.contributionId) await tx.contribution.update({ where: { id: alloc.contributionId }, data: { amount } });
+        else if (amount > 0) {
+          const c = await tx.contribution.create({ data: { userId: m.id, date: monthDate(p.month), amount, note: `Paga mensual ${p.month} · ${p.title}` } });
+          await tx.monthlyAllocation.update({ where: { id: alloc.id }, data: { contributionId: c.id } });
+        }
+        touched.push(m.id);
       }
-      touched.push(m.id);
-    }
-    void existing;
+    });
   }
   for (const uid of touched) await reconcileOwnContributions(uid);
   refresh(id);
@@ -168,13 +171,19 @@ export async function publishAction(_prev: FormState, formData: FormData): Promi
   if (p.options.length === 0) return { error: "Añade al menos una opción de inversión" };
   if (p.allocations.every((a) => a.amount <= 0)) return { error: "Asigna un importe a algún miembro" };
   if (p.options.length < p.minChoices) return { error: `Hay menos opciones (${p.options.length}) que el mínimo a elegir (${p.minChoices})` };
-  for (const a of p.allocations) {
-    if (a.amount <= 0 || a.contributionId) continue;
-    const c = await prisma.contribution.create({ data: { userId: a.userId, date: monthDate(p.month), amount: a.amount, note: `Paga mensual ${p.month} · ${p.title}` } });
-    await prisma.monthlyAllocation.update({ where: { id: a.id }, data: { contributionId: c.id } });
-    await reconcileOwnContributions(a.userId);
-  }
-  await prisma.monthlyPortfolio.update({ where: { id }, data: { status: "PUBLISHED", publishedAt: new Date() } });
+  // Cerrojo: solo el primer envío cambia DRAFT → PUBLISHED; las aportaciones se crean en la misma transacción.
+  const published = await prisma.$transaction(async (tx) => {
+    const lock = await tx.monthlyPortfolio.updateMany({ where: { id, familyId: admin.familyId, status: "DRAFT" }, data: { status: "PUBLISHED", publishedAt: new Date() } });
+    if (lock.count !== 1) return false;
+    for (const a of p.allocations) {
+      if (a.amount <= 0 || a.contributionId) continue;
+      const c = await tx.contribution.create({ data: { userId: a.userId, date: monthDate(p.month), amount: a.amount, note: `Paga mensual ${p.month} · ${p.title}` } });
+      await tx.monthlyAllocation.update({ where: { id: a.id }, data: { contributionId: c.id } });
+    }
+    return true;
+  });
+  if (!published) return { error: "La cartera ya se había publicado" };
+  for (const a of p.allocations) if (a.amount > 0) await reconcileOwnContributions(a.userId);
   refresh(id);
   return { ok: "Cartera publicada: los miembros ya pueden decidir" };
 }
@@ -212,16 +221,18 @@ export async function submitDecisionAction(_prev: FormState, formData: FormData)
   if (p.decisions.length > 0) return { error: "Ya has enviado tu decisión" };
   const allocation = p.allocations[0]?.amount ?? 0;
   if (allocation <= 0) return { error: "No tienes importe asignado este mes" };
-  const argument = String(formData.get("argument") ?? "").trim();
+  const argParsed = longText(4000).safeParse(formData.get("argument") ?? "");
+  if (!argParsed.success) return { error: argParsed.error.issues[0].message };
+  const argument = argParsed.data;
   if (argument.length < 20) return { error: "Argumenta tu decisión (al menos 20 caracteres)" };
 
   const picks = p.options
     .filter((o) => formData.get(`pick_${o.id}`) === "on")
     .map((o) => ({
       option: o,
-      amount: Number(String(formData.get(`amount_${o.id}`) ?? "0").replace(",", ".")),
-      why: String(formData.get(`why_${o.id}`) ?? "").trim(),
-      exit: String(formData.get(`exit_${o.id}`) ?? "").trim() || null,
+      amount: parseMoney(formData.get(`amount_${o.id}`) ?? "0") ?? NaN,
+      why: String(formData.get(`why_${o.id}`) ?? "").trim().slice(0, 2000),
+      exit: String(formData.get(`exit_${o.id}`) ?? "").trim().slice(0, 1000) || null,
     }));
   if (picks.length < p.minChoices) return { error: `Elige al menos ${p.minChoices} ${p.minChoices === 1 ? "opción" : "opciones"}` };
   if (picks.length > p.maxChoices) return { error: `Puedes elegir como máximo ${p.maxChoices} ${p.maxChoices === 1 ? "opción" : "opciones"}` };
@@ -242,16 +253,27 @@ export async function submitDecisionAction(_prev: FormState, formData: FormData)
     }
   }
 
-  const decision = await prisma.monthlyDecision.create({ data: { portfolioId: id, userId: user.id, argument } });
-  for (const pk of picks) {
-    const q = quotes[pk.option.symbol];
-    const quantity = pk.amount / q.priceEur;
-    const fxRate = q.price > 0 ? q.priceEur / q.price : 1;
-    const trade = await prisma.trade.create({
-      data: { userId: user.id, date: new Date(), symbol: pk.option.symbol, name: q.name || pk.option.name, side: "BUY", quantity, price: q.price, currency: q.currency === "GBp" ? "GBP" : q.currency, fxRate: q.currency === "GBp" ? fxRate * 100 : fxRate, fees: 0, broker: `Cartera ${p.month}` },
+  // Decisión, compras, diario y elecciones en una sola transacción: o se guarda todo o nada
+  // (el @@unique de la decisión impide dos envíos a la vez del mismo miembro).
+  try {
+    await prisma.$transaction(async (tx) => {
+      const decision = await tx.monthlyDecision.create({ data: { portfolioId: id, userId: user.id, argument } });
+      for (const pk of picks) {
+        const q = quotes[pk.option.symbol];
+        if (!(q.priceEur > 0)) throw new Error("SIN_PRECIO");
+        const quantity = pk.amount / q.priceEur;
+        const fxRate = q.price > 0 ? q.priceEur / q.price : 1;
+        const trade = await tx.trade.create({
+          data: { userId: user.id, date: new Date(), symbol: pk.option.symbol, name: q.name || pk.option.name, side: "BUY", quantity, price: q.price, currency: q.currency === "GBp" ? "GBP" : q.currency, fxRate: q.currency === "GBp" ? fxRate * 100 : fxRate, fees: 0, broker: `Cartera ${p.month}` },
+        });
+        const entry = await tx.journalEntry.create({ data: { userId: user.id, tradeId: trade.id, symbol: pk.option.symbol, side: "BUY", why: pk.why, exitCondition: pk.exit } });
+        await tx.monthlyChoice.create({ data: { decisionId: decision.id, optionId: pk.option.id, amount: pk.amount, why: pk.why, exitCondition: pk.exit, tradeId: trade.id, journalEntryId: entry.id, price: q.priceEur, quantity } });
+      }
     });
-    const entry = await prisma.journalEntry.create({ data: { userId: user.id, tradeId: trade.id, symbol: pk.option.symbol, side: "BUY", why: pk.why, exitCondition: pk.exit } });
-    await prisma.monthlyChoice.create({ data: { decisionId: decision.id, optionId: pk.option.id, amount: pk.amount, why: pk.why, exitCondition: pk.exit, tradeId: trade.id, journalEntryId: entry.id, price: q.priceEur, quantity } });
+  } catch (e) {
+    if (typeof e === "object" && e && "code" in e && (e as { code?: string }).code === "P2002") return { error: "Ya has enviado tu decisión" };
+    if (e instanceof Error && e.message === "SIN_PRECIO") return { error: "No se pudo obtener un precio válido para alguna opción. Inténtalo de nuevo en unos minutos." };
+    throw e;
   }
   await reconcileOwnContributions(user.id);
   refresh(id);

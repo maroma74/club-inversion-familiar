@@ -52,7 +52,7 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
         <div className="card blueprint gap-3" style={{ padding: 24 }}>
           <div className="card-kicker">Opciones de inversión</div>
           {p.options.length === 0 ? <p className="m-0 text-sm text-neutral-700">Todavía no hay opciones.</p> : (
-            <table className="table">
+            <div className="overflow-x-auto"><table className="table">
               <thead><tr><th>Valor</th><th>Tipo</th><th>Qué investigar</th><th /></tr></thead>
               <tbody>
                 {p.options.map((o) => {
@@ -71,7 +71,7 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
           )}
           {!locked && <AddOptionForm portfolioId={p.id} />}
         </div>
@@ -80,7 +80,7 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
           <div className="card-kicker">Importe por miembro</div>
           <p className="m-0 text-[13px] text-neutral-700">{p.status === "DRAFT" ? "Se registrará como paga al publicar." : "Ya repartido como paga; puedes ajustarlo mientras el miembro no haya decidido."}</p>
           {locked ? (
-            <table className="table"><tbody>{p.allocations.map((a) => <tr key={a.id}><td>{a.user.name}</td><td className="text-right tabular-nums">{eur(a.amount)}</td></tr>)}</tbody></table>
+            <div className="overflow-x-auto"><table className="table"><tbody>{p.allocations.map((a) => <tr key={a.id}><td>{a.user.name}</td><td className="text-right tabular-nums">{eur(a.amount)}</td></tr>)}</tbody></table></div>
           ) : (
             <AllocationsForm portfolioId={p.id} decidedIds={decidedIds} members={members.map((m) => ({ id: m.id, name: m.name, amount: p.allocations.find((a) => a.userId === m.id)?.amount ?? 0 }))} />
           )}
@@ -93,7 +93,7 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
           p.decisions.map((d) => (
             <div key={d.id} className="card blueprint gap-2" style={{ padding: 18 }}>
               <div className="flex justify-between items-baseline flex-wrap gap-2"><b>{d.user.name}</b><span className="text-xs text-neutral-700">{fmtDate(d.submittedAt)}</span></div>
-              <table className="table">
+              <div className="overflow-x-auto"><table className="table">
                 <thead><tr><th>Valor</th><th className="text-right">Importe</th><th className="text-right">Precio</th><th>Por qué</th></tr></thead>
                 <tbody>
                   {d.choices.map((c) => (
@@ -105,7 +105,7 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
               <div className="text-[14px] [text-wrap:pretty]">“{d.argument}”</div>
             </div>
           ))

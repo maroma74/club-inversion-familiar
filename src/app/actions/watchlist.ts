@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { DEFAULT_ETF_WATCHLIST, DEFAULT_WATCHLIST, fetchStockQuote, type WatchKind } from "@/lib/stocks";
 import { fetchProfile } from "@/lib/fundamentals";
+import { symbolSchema } from "@/lib/validation";
 import type { FormState } from "./auth";
 
 const asKind = (v: unknown): WatchKind => (v === "ETF" ? "ETF" : "STOCK");
@@ -12,10 +13,11 @@ const pathFor = (kind: WatchKind) => (kind === "ETF" ? "/etf" : "/acciones");
 
 export async function addWatchlistAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
-  const symbol = String(formData.get("symbol") ?? "").trim().toUpperCase();
-  let name = String(formData.get("name") ?? "").trim();
+  const symParsed = symbolSchema.safeParse(formData.get("symbol") ?? "");
+  if (!symParsed.success) return { error: symParsed.error.issues[0].message };
+  const symbol = symParsed.data;
+  let name = String(formData.get("name") ?? "").trim().slice(0, 120);
   const pageKind = asKind(formData.get("kind"));
-  if (!symbol) return { error: "Indica un símbolo" };
   const q = await fetchStockQuote(symbol);
   if (q.error && q.price === 0) return { error: `No se encontró cotización para ${symbol}. Prueba con el sufijo de bolsa (SAN.MC, ASML.AS, VWCE.DE…)` };
   if (!name) name = q.name;
@@ -37,7 +39,7 @@ export async function addWatchlistAction(_prev: FormState, formData: FormData): 
 
 export async function removeWatchlistAction(formData: FormData) {
   const user = await requireUser();
-  await prisma.watchlistItem.deleteMany({ where: { familyId: user.familyId, symbol: String(formData.get("symbol") ?? "") } });
+  await prisma.watchlistItem.deleteMany({ where: { familyId: user.familyId, symbol: String(formData.get("symbol") ?? "").slice(0, 20) } });
   revalidatePath("/acciones");
   revalidatePath("/etf");
 }

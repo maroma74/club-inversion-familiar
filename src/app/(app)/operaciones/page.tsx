@@ -107,11 +107,13 @@ export default async function OperacionesPage({ searchParams }: { searchParams: 
             <p className="text-xs text-slate-500 mb-2">Las compras que superan el efectivo generan una «aportación propia» automática. Se recalculan solas al registrar, editar o borrar operaciones; si algo no cuadra, fuérzalo aquí.</p>
             <ReconcileForm />
           </div>
-          <div className="mt-4 pt-4 border-t border-slate-100">
-            <h3 className="text-sm font-semibold mb-1">Precio manual</h3>
-            <p className="text-xs text-slate-500 mb-2">Para fondos o activos sin cotización automática, fija el valor liquidativo en euros.</p>
-            <ManualPriceForm />
-          </div>
+          {user.role === "ADMIN" && (
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <h3 className="text-sm font-semibold mb-1">Precio manual</h3>
+              <p className="text-xs text-slate-500 mb-2">Solo el presidente: para fondos o activos sin cotización automática, fija el valor liquidativo en euros. Vale para toda la familia.</p>
+              <ManualPriceForm />
+            </div>
+          )}
         </div>
       </div>
     </>

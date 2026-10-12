@@ -3,6 +3,7 @@
 export type NewsItem = { id: string; title: string; publisher: string; link: string; publishedAt: Date; symbols: string[]; thumbnail: string | null };
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+import { boundedSet } from "./cache";
 const cache = new Map<string, { at: number; items: NewsItem[] }>();
 const TTL_MS = 5 * 60 * 1000;
 
@@ -32,7 +33,7 @@ async function newsFor(query: string, label: string): Promise<NewsItem[]> {
         symbols: [label],
         thumbnail: n.thumbnail?.resolutions?.slice().sort((a, b) => a.width - b.width)[0]?.url ?? null,
       }));
-    cache.set(query, { at: Date.now(), items });
+    boundedSet(cache, query, { at: Date.now(), items });
     return items;
   } catch {
     return cached?.items ?? [];

@@ -16,7 +16,7 @@ services:
     environment:
       AUTH_SECRET: ${AUTH_SECRET:?Define AUTH_SECRET con una cadena larga y aleatoria}
       DATABASE_URL: postgresql://club:${DB_PASSWORD:-club}@db:5432/clubinversion
-    command: ["npm", "run", "start:prod"]
+    # Antes del primer arranque (y tras cada versión con migraciones): docker compose run --rm --entrypoint sh app -c "npx prisma migrate deploy && npx prisma db seed"
     depends_on:
       - db
     restart: unless-stopped

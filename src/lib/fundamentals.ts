@@ -45,6 +45,7 @@ const SECTOR_ES: Record<string, string> = {
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 const TTL_MS = 6 * 60 * 60 * 1000; // el perfil cambia poco: 6 h
 let session: { cookie: string; crumb: string; at: number } | null = null;
+import { boundedSet } from "./cache";
 const cache = new Map<string, { at: number; data: Profile }>();
 
 async function getSession() {
@@ -114,7 +115,7 @@ export async function fetchProfile(symbol: string): Promise<Profile> {
         .filter((s) => s.weight > 0)
         .sort((a, b) => b.weight - a.weight),
     };
-    cache.set(sym, { at: Date.now(), data: profile });
+    boundedSet(cache, sym, { at: Date.now(), data: profile });
     return profile;
   } catch {
     return cached?.data ?? empty;

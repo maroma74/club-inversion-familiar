@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { safeHref } from "@/lib/validation";
 import type { ClubRecommendation } from "@/lib/club";
 import { DISCLAIMER, recommendationMarkdown } from "@/lib/recommend";
 import { CopyButton } from "./CopyButton";
@@ -175,7 +176,7 @@ function CompanyAndNews({ r }: { r: ClubRecommendation }) {
             {p.dividendYield !== null && <span>Dividendo: <b className="text-ink">{(p.dividendYield * (p.dividendYield > 1 ? 1 : 100)).toFixed(2)} %</b></span>}
             {p.employees !== null && <span>Empleados: <b className="text-ink">{p.employees.toLocaleString("es-ES")}</b></span>}
             {p.country && <span>País: <b className="text-ink">{p.country}</b></span>}
-            {p.website && <a href={p.website} target="_blank" rel="noopener noreferrer">Web</a>}
+            {safeHref(p.website) && <a href={safeHref(p.website)} target="_blank" rel="noopener noreferrer">Web</a>}
           </div>
           {p.description && <p className="m-0 text-xs text-neutral-800 leading-relaxed">{p.description.length > 600 ? p.description.slice(0, 600).replace(/\s\S*$/, "") + "…" : p.description}</p>}
         </div>
@@ -190,7 +191,7 @@ function CompanyAndNews({ r }: { r: ClubRecommendation }) {
                 <li key={n.id} className="flex items-start gap-2">
                   <span className="shrink-0 w-4 text-accent-700" title={n.matched.length ? `claves: ${n.matched.join(", ")}` : "sin palabras clave"}>{IMPACT_MARK[n.impact]}</span>
                   <div>
-                    <a href={n.link} target="_blank" rel="noopener noreferrer" className="text-ink no-underline leading-snug hover:text-accent-700">{n.title}</a>
+                    <a href={safeHref(n.link)} target="_blank" rel="noopener noreferrer" className="text-ink no-underline leading-snug hover:text-accent-700">{n.title}</a>
                     <div className="text-[11px] text-neutral-600">{n.publisher} · {fmtDate(n.publishedAt)}{n.themes.length ? ` · ${n.themes.join(", ")}` : ""}</div>
                   </div>
                 </li>

@@ -35,7 +35,7 @@ export type PortfolioSummary = {
 
 export async function computePortfolio(userId: string, opts: { excludeTradeId?: string } = {}): Promise<PortfolioSummary> {
   const [user, contributions, trades] = await Promise.all([
-    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true } }),
+    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true, familyId: true } }),
     prisma.contribution.findMany({ where: { userId }, orderBy: { date: "asc" } }),
     prisma.trade.findMany({
       where: { userId, ...(opts.excludeTradeId ? { id: { not: opts.excludeTradeId } } : {}) },
@@ -71,7 +71,7 @@ export async function computePortfolio(userId: string, opts: { excludeTradeId?: 
   }
 
   const open = [...pos.values()].filter((p) => p.qty > 1e-9);
-  const prices = await getPrices(open.map((p) => p.symbol));
+  const prices = await getPrices(open.map((p) => p.symbol), user.familyId);
   const missingPrices: string[] = [];
   const holdings: Holding[] = open.map((p) => {
     const q = prices.get(p.symbol);
@@ -174,6 +174,11 @@ export async function reconcileOwnContributions(userId: string): Promise<{ creat
 export async function snapshotPortfolio(summary: PortfolioSummary) {
   const today = new Date();
   const day = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
+  // La foto diaria se escribe como mucho una vez cada 10 minutos por usuario (cada visita de la liga la recalcula).
+  const stamp = snapshotWritten.get(summary.userId);
+  if (stamp && stamp.day === day.getTime() && Date.now() - stamp.at < 10 * 60 * 1000) return;
+  snapshotWritten.set(summary.userId, { day: day.getTime(), at: Date.now() });
+  if (snapshotWritten.size > 2000) snapshotWritten.clear();
   await prisma.portfolioSnapshot.upsert({
     where: { userId_date: { userId: summary.userId, date: day } },
     update: { value: summary.totalValue, invested: summary.contributed },
@@ -181,8 +186,11 @@ export async function snapshotPortfolio(summary: PortfolioSummary) {
   });
 }
 
+const snapshotWritten = new Map<string, { day: number; at: number }>();
+
+/** Ranking de los miembros activos (los pendientes de aprobación no participan). */
 export async function familyLeaderboard(familyId: string) {
-  const members = await prisma.user.findMany({ where: { familyId }, orderBy: { createdAt: "asc" }, select: { id: true } });
+  const members = await prisma.user.findMany({ where: { familyId, status: "ACTIVE" }, orderBy: { createdAt: "asc" }, select: { id: true } });
   const summaries = await Promise.all(members.map((m) => computePortfolio(m.id)));
   await Promise.all(summaries.map((s) => snapshotPortfolio(s)));
   const ranked = [...summaries].sort((a, b) => b.returnPct - a.returnPct || b.pnl - a.pnl);

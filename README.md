@@ -46,6 +46,16 @@ Abre http://localhost:3000. La base de datos es PostgreSQL: en desarrollo la sir
 
 Antes de usarla en serio, cambia `AUTH_SECRET` en `.env` por una cadena larga y aleatoria.
 
+## Seguridad
+
+- Sesión en cookie `__session` (httpOnly, Secure, SameSite=Lax, JWT HS256 firmado con `AUTH_SECRET`, 30 días). El modo «ver como miembro» del presidente viaja dentro de la misma sesión.
+- Límite de intentos de login y registro por conexión y por email (tabla `AuthAttempt`), contraseñas de 8 a 128 caracteres, comparación de hash también cuando el email no existe.
+- Cabeceras de seguridad (HSTS, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy) en `next.config.ts` y Content-Security-Policy con nonce por petición en `src/middleware.ts`.
+- Todas las acciones de servidor validan con zod (`src/lib/validation.ts`): símbolos, cotas de importes, longitudes y fechas. Las operaciones con dinero (publicar cartera, paga mensual, decisión del miembro) van en transacciones con cerrojo para evitar duplicados.
+- Los precios manuales son por familia y solo los fija el presidente. Los miembros pendientes de aprobación no participan en la liga ni reciben paga.
+- Los enlaces de invitación se construyen con `APP_URL`, nunca con cabeceras de la petición. Los códigos se generan con un generador criptográfico.
+- La imagen Docker es «standalone», sin código fuente ni dependencias de desarrollo, y corre como usuario `node`.
+
 ## Despliegue en Google Cloud (producción)
 
 URL pública: https://clubdeinversionfamiliar.com (www redirige al dominio raíz). URL directa del servicio: https://club-inversion-790874739436.europe-southwest1.run.app
@@ -63,6 +73,8 @@ Si la versión trae migraciones nuevas, aplícalas antes con `npm run db:deploy`
 
 **Dominio propio.** Cloud Run no admite dominios personalizados en `europe-southwest1`, así que el dominio está en **Firebase Hosting** (sitio `clubdeinversionfamiliar`, mismo proyecto, gratis) con una regla que reenvía todas las rutas al servicio de Cloud Run. El DNS está en Cloudflare apuntando a Firebase. La configuración de Hosting no tiene archivos, solo esta regla y cabeceras de caché (`private, no-store` para las páginas e `immutable` para `/_next/static/**`), y se publica por la API de Hosting (versión → FINALIZED → release). Firebase Hosting solo reenvía a Cloud Run la cookie llamada `__session`, por eso la sesión (y el modo «ver como miembro») van en esa única cookie; no hace falta tocarla al publicar versiones nuevas de la app, basta con `gcloud run deploy`.
 
+Variables en Cloud Run: `APP_URL=https://clubdeinversionfamiliar.com`, `ALLOW_FAMILY_SIGNUP=false` (el club es privado: solo se entra con código o invitación), `EMAIL_FROM`; secretos `DATABASE_URL`, `AUTH_SECRET` y `RESEND_API_KEY`.
+
 Ajustes de consumo: `--min-instances 0` (no cuesta nada sin visitas), `--max-instances 2`, 512 MiB y 1 CPU solo durante las peticiones. La imagen vive en Artifact Registry (`club`).
 
 ## Despliegue en otro sitio
@@ -71,7 +83,7 @@ Ajustes de consumo: `--min-instances 0` (no cuesta nada sin visitas), `--max-ins
 - **Node sin Docker**: `npm ci && npm run build && DATABASE_URL=postgresql://... AUTH_SECRET=... npm run start:prod`.
 - **Vercel / Netlify**: funciona con cualquier PostgreSQL gestionado (Neon, Supabase…) definiendo `DATABASE_URL` y `AUTH_SECRET`; ejecuta `npm run db:deploy` una vez contra esa base de datos.
 
-Variables de entorno: `DATABASE_URL`, `AUTH_SECRET` y, para enviar invitaciones por correo, `RESEND_API_KEY` y `EMAIL_FROM` (ver `.env.example`). El correo sale por la API de [Resend](https://resend.com) desde un dominio verificado allí (`clubdeinversionfamiliar.com`); sin clave, en desarrollo el correo se imprime en la consola del servidor y en producción el botón avisa de que no está configurado. Los precios se obtienen de Yahoo Finance y CoinGecko, así que el servidor necesita salida a internet. Para traer datos de una instalación anterior: `npm run db:import ruta/export.json`.
+Variables de entorno: `DATABASE_URL`, `AUTH_SECRET` (mínimo 32 caracteres; en producción la app no arranca sin él), `APP_URL` (URL pública para los enlaces de invitación), `ALLOW_FAMILY_SIGNUP` (`false` desactiva la creación de familias nuevas desde el registro; solo se entra con código) y, para enviar invitaciones por correo, `RESEND_API_KEY` y `EMAIL_FROM` (ver `.env.example`). El correo sale por la API de [Resend](https://resend.com) desde un dominio verificado allí (`clubdeinversionfamiliar.com`); sin clave, en desarrollo el correo se imprime en la consola del servidor y en producción el botón avisa de que no está configurado. Los precios se obtienen de Yahoo Finance y CoinGecko, así que el servidor necesita salida a internet. Para traer datos de una instalación anterior: `npm run db:import ruta/export.json`.
 
 ## Cómo se usa
 

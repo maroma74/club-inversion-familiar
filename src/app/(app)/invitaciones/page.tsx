@@ -1,6 +1,6 @@
-import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { appUrl } from "@/lib/appUrl";
 import { fmtDate } from "@/lib/format";
 import { PageHeader } from "@/components/ui";
 import { approveMemberAction, deleteInvitationAction, removeMemberAction, renewInvitationAction, revokeInvitationAction, setMemberRoleAction } from "@/app/actions/invitations";
@@ -13,8 +13,7 @@ const STATUS_STYLE: Record<Status, string> = { pendiente: "bg-amber-100 text-amb
 
 export default async function InvitacionesPage() {
   const admin = await requireAdmin();
-  const h = await headers();
-  const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000"}`;
+  const origin = appUrl();
   const [family, invitations, members] = await Promise.all([
     prisma.family.findUniqueOrThrow({ where: { id: admin.familyId } }),
     prisma.invitation.findMany({ where: { familyId: admin.familyId }, orderBy: { createdAt: "desc" }, include: { usedBy: { select: { name: true } }, createdBy: { select: { name: true } } } }),
@@ -134,7 +133,7 @@ export default async function InvitacionesPage() {
 
       <div className="card p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 font-semibold">Miembros del club ({activeMembers.length})</div>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead className="text-xs text-slate-500 bg-slate-50">
             <tr><th className="text-left px-5 py-2 font-medium">Nombre</th><th className="text-left px-2 py-2 font-medium">Rol</th><th className="text-right px-2 py-2 font-medium hidden md:table-cell">Operaciones</th><th className="text-left px-2 py-2 font-medium hidden md:table-cell">Alta</th><th className="px-5 py-2" /></tr>
           </thead>
@@ -167,7 +166,7 @@ export default async function InvitacionesPage() {
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       </div>
     </>
   );

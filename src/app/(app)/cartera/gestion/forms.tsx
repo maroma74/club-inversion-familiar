@@ -147,7 +147,7 @@ export function AllocationsForm({ portfolioId, members, decidedIds }: { portfoli
   return (
     <form action={action} className="flex flex-col gap-3">
       <input type="hidden" name="id" value={portfolioId} />
-      <table className="table">
+      <div className="overflow-x-auto"><table className="table">
         <thead><tr><th>Miembro</th><th className="text-right">Importe este mes (€)</th></tr></thead>
         <tbody>
           {members.map((m) => (
@@ -157,7 +157,7 @@ export function AllocationsForm({ portfolioId, members, decidedIds }: { portfoli
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
       <div className="flex items-center gap-3">
         <button className="btn-secondary" disabled={pending}>{pending ? "Guardando…" : "Guardar importes"}</button>
         <Msg state={state} />

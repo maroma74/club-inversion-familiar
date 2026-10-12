@@ -61,7 +61,7 @@ export default async function CriptoPage() {
         <div className="card mb-6">
           <h2 className="font-semibold mb-3">Posiciones cripto de la familia</h2>
           <div className="grid lg:grid-cols-2 gap-6">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="text-xs text-slate-500"><tr><th className="text-left py-1">Miembro</th><th className="text-right py-1">Valor</th><th className="text-right py-1">Resultado</th><th className="text-right py-1">% de su cartera</th></tr></thead>
               <tbody>
                 {byMember.map((m) => (
@@ -73,8 +73,8 @@ export default async function CriptoPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-            <table className="w-full text-sm">
+            </table></div>
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead className="text-xs text-slate-500"><tr><th className="text-left py-1">Activo</th><th className="text-left py-1">De</th><th className="text-right py-1">Uds.</th><th className="text-right py-1">Valor</th><th className="text-right py-1">Rent.</th></tr></thead>
               <tbody>
                 {positions.sort((a, b) => b.value - a.value).map((p) => (
@@ -87,7 +87,7 @@ export default async function CriptoPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         </div>
       )}

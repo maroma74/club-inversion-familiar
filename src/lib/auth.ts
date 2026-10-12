@@ -2,14 +2,20 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
+import { randomInt } from "crypto";
 import { prisma } from "./prisma";
 
 // Firebase Hosting solo deja pasar la cookie llamada __session hacia Cloud Run, así que la sesión
 // (y el modo «ver como miembro» del presidente) viajan juntos en esa única cookie.
 const COOKIE = "__session";
 export type ViewAs = "member" | null;
-const secret = () =>
-  new TextEncoder().encode(process.env.AUTH_SECRET ?? "dev-secret-change-me");
+// En producción la app no arranca sin un secreto propio y suficientemente largo: con el valor por defecto
+// cualquiera podría firmar sesiones de cualquier usuario.
+const rawSecret = process.env.AUTH_SECRET?.trim();
+if (process.env.NODE_ENV === "production" && (!rawSecret || rawSecret.length < 32)) {
+  throw new Error("AUTH_SECRET no definido o demasiado corto (mínimo 32 caracteres)");
+}
+const secret = () => new TextEncoder().encode(rawSecret || "dev-secret-change-me");
 
 export async function hashPassword(pw: string) {
   return bcrypt.hash(pw, 10);
@@ -45,7 +51,7 @@ export async function getSession(): Promise<{ userId: string; viewAs: ViewAs } |
   const token = store.get(COOKIE)?.value;
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secret());
+    const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
     if (typeof payload.sub !== "string") return null;
     return { userId: payload.sub, viewAs: payload.viewAs === "member" ? "member" : null };
   } catch {
@@ -125,6 +131,6 @@ export async function checkJoinCode(raw: string): Promise<InvitationCheck> {
 export function generateInviteCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let out = "";
-  for (let i = 0; i < 8; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  for (let i = 0; i < 8; i++) out += alphabet[randomInt(alphabet.length)]; // CSPRNG: los códigos dan acceso a la familia
   return out;
 }

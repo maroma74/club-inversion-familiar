@@ -377,3 +377,35 @@ table thead th { font-size: 11px; letter-spacing: 0.08em; text-transform: upperc
 .md-symbol:hover { background: var(--color-accent-200); color: var(--color-accent-900); }
 .md-quote .md-symbol { background: rgba(248,250,252,0.14); color: #f8fafc; }
 .md > .md-p:first-child { font-size: 17px; color: var(--color-text); }
+
+/* ---------- Móvil: cabecera, menú desplegable y escalado de tipografía ---------- */
+.app-main { padding: 20px clamp(16px, 4vw, 48px) 64px; }
+.mobile-menu-btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px;
+  border-radius: 10px; border: 1px solid rgba(248, 250, 252, 0.22); color: #ffffff; background: transparent;
+}
+.mobile-menu-btn:active { background: rgba(248, 250, 252, 0.12); }
+.mobile-menu-icon { position: relative; display: block; width: 18px; height: 2px; background: currentColor; border-radius: 2px; }
+.mobile-menu-icon::before, .mobile-menu-icon::after { content: ""; position: absolute; left: 0; width: 18px; height: 2px; background: currentColor; border-radius: 2px; }
+.mobile-menu-icon::before { top: -6px; }
+.mobile-menu-icon::after { top: 6px; }
+.mobile-drawer { width: min(86vw, 340px); box-shadow: -12px 0 40px rgba(14, 33, 56, 0.35); animation: drawer-in 0.18s ease-out; }
+@keyframes drawer-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (max-width: 767px) {
+  .app-main { padding: 16px 16px 48px; }
+  h1 { font-size: clamp(26px, 7.5vw, 34px); }
+  h2 { font-size: clamp(20px, 5.5vw, 24px); }
+  .card { padding: 16px; }
+  .figure { font-size: clamp(24px, 8vw, 36px); }
+  /* Las tablas desplazan dentro de su contenedor, nunca la página entera */
+  .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+  .table th, .table td { padding-left: 8px; padding-right: 8px; }
+  /* Botones y campos con altura táctil cómoda */
+  .btn-primary, .btn-secondary, .btn-danger { min-height: 42px; }
+  .input { min-height: 44px; font-size: 16px; } /* 16px evita el zoom automático de iOS al enfocar */
+}
+
+/* Los hijos de rejillas y las tarjetas no pueden crecer más que su columna: así las tablas desplazan dentro de su contenedor */
+.grid > *, .card, .app-main > * { min-width: 0; }
+.overflow-x-auto { max-width: 100%; }

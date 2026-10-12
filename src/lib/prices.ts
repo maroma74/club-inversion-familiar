@@ -87,10 +87,20 @@ export async function searchSymbols(q: string): Promise<SearchHit[]> {
 }
 
 /** Devuelve precios en EUR para los símbolos, usando caché en BD y refrescando los caducados. */
-export async function getPrices(symbols: string[]): Promise<Map<string, { priceEur: number; name: string; updatedAt: Date; stale: boolean }>> {
+/**
+ * Precios en euros de una lista de símbolos: primero los fijados a mano por la familia (si se indica),
+ * después la caché compartida de cotizaciones (60 s) y, si está caducada, Yahoo/CoinGecko.
+ */
+export async function getPrices(symbols: string[], familyId?: string): Promise<Map<string, { priceEur: number; name: string; updatedAt: Date; stale: boolean }>> {
   const out = new Map<string, { priceEur: number; name: string; updatedAt: Date; stale: boolean }>();
-  const unique = [...new Set(symbols.map((s) => s.toUpperCase()))];
+  let unique = [...new Set(symbols.map((s) => s.toUpperCase()))];
   if (unique.length === 0) return out;
+  if (familyId) {
+    const manual = await prisma.manualPrice.findMany({ where: { familyId, symbol: { in: unique } } });
+    for (const m of manual) out.set(m.symbol, { priceEur: m.price, name: m.name, updatedAt: m.updatedAt, stale: false });
+    unique = unique.filter((s) => !out.has(s));
+    if (unique.length === 0) return out;
+  }
   const cached = await prisma.priceQuote.findMany({ where: { symbol: { in: unique } } });
   const cachedMap = new Map(cached.map((c) => [c.symbol, c]));
   const now = Date.now();
@@ -118,12 +128,13 @@ export async function getPrices(symbols: string[]): Promise<Map<string, { priceE
   return out;
 }
 
-export async function setManualPrice(symbol: string, name: string, priceEur: number) {
+/** Precio manual de un valor para una familia concreta (no afecta a la caché compartida ni a otras familias). */
+export async function setManualPrice(familyId: string, symbol: string, name: string, priceEur: number) {
   const sym = symbol.toUpperCase();
-  return prisma.priceQuote.upsert({
-    where: { symbol: sym },
+  return prisma.manualPrice.upsert({
+    where: { familyId_symbol: { familyId, symbol: sym } },
     update: { price: priceEur, name, updatedAt: new Date() },
-    create: { symbol: sym, price: priceEur, name, currency: "EUR" },
+    create: { familyId, symbol: sym, price: priceEur, name },
   });
 }
 

@@ -8,7 +8,7 @@ export type Preview =
   | { error: string }
   | { familyName: string; name: string | null; email: string | null; role: string; personal: boolean; approval?: boolean };
 
-export function RegisterForm({ initialCode, preview }: { initialCode: string; preview: Preview | null }) {
+export function RegisterForm({ initialCode, preview, allowCreate = true }: { initialCode: string; preview: Preview | null; allowCreate?: boolean }) {
   const [state, action, pending] = useActionState(registerAction, undefined);
   const [mode, setMode] = useState<"create" | "join">(initialCode ? "join" : "join");
   const ok = preview && !("error" in preview) ? preview : null;
@@ -37,7 +37,7 @@ export function RegisterForm({ initialCode, preview }: { initialCode: string; pr
         )}
         {preview && "error" in preview && <p className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{preview.error}</p>}
 
-        {!ok && (
+        {!ok && allowCreate && (
           <div className="grid grid-cols-2 gap-2 mb-6">
             <button type="button" onClick={() => setMode("join")} className={mode === "join" ? "btn-primary" : "btn-secondary"}>
               Tengo un código

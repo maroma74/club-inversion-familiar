@@ -10,7 +10,7 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
-    "start:prod": "prisma migrate deploy && prisma db seed && next start",
+    "start:prod": "prisma migrate deploy && prisma db seed && node server.js",
     "db:deploy": "prisma migrate deploy && prisma db seed",
     "db:import": "tsx prisma/import-json.ts"
   },
@@ -44,5 +44,9 @@
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  },
+  "overrides": {
+    "postcss": "^8.5.23",
+    "deepmerge-ts": "^8.0.0"
   }
 }

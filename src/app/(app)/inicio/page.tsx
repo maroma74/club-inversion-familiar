@@ -142,7 +142,7 @@ export default async function InicioPage() {
             <Link href="/inversiones" className="btn-ghost">Ver la liga</Link>
           </div>
           <div className="card blueprint" style={{ padding: "6px 12px 12px" }}>
-            <table className="table">
+            <div className="overflow-x-auto"><table className="table">
               <thead><tr><th>#</th><th>Miembro</th><th className="text-right">Rent.</th><th className="text-right">Lecciones</th></tr></thead>
               <tbody>
                 {overview.ranking.map((r, i) => {
@@ -157,7 +157,7 @@ export default async function InicioPage() {
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
           </div>
           <p className="text-xs text-neutral-700 m-0">Gana quien consiga más rentabilidad sobre lo aportado. Las lecciones suman puntos de nivel, no de ranking.</p>
         </div>

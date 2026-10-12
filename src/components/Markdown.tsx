@@ -224,14 +224,14 @@ export function Markdown({ text, className = "", auto = true, symbols }: { text:
           case "table":
             return (
               <div key={key} className="md-table-wrap">
-                <table className="table md-table">
+                <div className="overflow-x-auto"><table className="table md-table">
                   <thead><tr>{b.headers.map((h, j) => <th key={j} className={j > 0 ? "text-right" : ""}>{inline(h, `${key}-h${j}`, symMap)}</th>)}</tr></thead>
                   <tbody>
                     {b.rows.map((r, ri) => (
                       <tr key={ri}>{r.map((c, j) => <td key={j} className={j > 0 ? "text-right tabular-nums" : ""}>{inline(c, `${key}-${ri}-${j}`, symMap)}</td>)}</tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </div>
             );
         }

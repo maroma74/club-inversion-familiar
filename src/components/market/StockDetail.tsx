@@ -94,7 +94,7 @@ export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind }: 
         </div>
         <div className="card lg:col-span-2">
           <h2 className="font-semibold mb-3">Niveles e indicadores</h2>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <tbody>
               <Row k="Resistencia (pivote)" v={fmt(a.resistance)} extra={<Pct v={distance(a.resistance)} />} />
               <Row k="Soporte (pivote)" v={fmt(a.support)} extra={<Pct v={distance(a.support)} />} />
@@ -117,7 +117,7 @@ export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind }: 
               <Row k="Fibonacci (52 sem.)" v="" extra={<span className="text-xs text-slate-500">{a.fib.map((x) => `${x.level} ${x.price.toFixed(2)}`).join(" · ")}</span>} />
               <Row k="Rentabilidad 3 m / 6 m" v="" extra={<><Pct v={a.returns["3m"]} /> / <Pct v={a.returns["6m"]} /></>} />
             </tbody>
-          </table>
+          </table></div>
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { safeHref } from "@/lib/validation";
 import { requireUser } from "@/lib/auth";
 import { familyOverview } from "@/lib/league";
 import { fetchNews } from "@/lib/news";
@@ -99,7 +100,7 @@ export default async function InversionesPage() {
           ) : (
             news.map((n) => (
               <div key={n.id} className="pt-2 border-t border-divider">
-                <a href={n.link} target="_blank" rel="noopener noreferrer" className="text-ink no-underline font-medium text-[14px] leading-[1.35] block hover:text-accent-700">{n.title}</a>
+                <a href={safeHref(n.link)} target="_blank" rel="noopener noreferrer" className="text-ink no-underline font-medium text-[14px] leading-[1.35] block hover:text-accent-700">{n.title}</a>
                 <div className="text-xs text-neutral-700 mt-0.5">{n.publisher} · {timeAgo(n.publishedAt)} · {n.symbols.join(", ")}</div>
               </div>
             ))
@@ -135,7 +136,7 @@ export default async function InversionesPage() {
             {r.holdings.length === 0 ? (
               <p className="m-0 text-sm text-neutral-700">Sin posiciones abiertas. Efectivo disponible: {eur(r.cash)}.</p>
             ) : (
-              <table className="table">
+              <div className="overflow-x-auto"><table className="table">
                 <thead><tr><th>Activo</th><th className="text-right">Uds.</th><th className="text-right">Precio</th><th className="text-right">Valor</th><th className="text-right">Rent.</th></tr></thead>
                 <tbody>
                   {r.holdings.map((h) => (
@@ -152,7 +153,7 @@ export default async function InversionesPage() {
                   ))}
                   <tr className="text-xs text-neutral-700"><td colSpan={3}>Efectivo</td><td className="text-right tabular-nums">{eur(r.cash)}</td><td /></tr>
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
         ))}

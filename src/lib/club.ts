@@ -10,6 +10,7 @@ import { fetchProfile, type Profile } from "./fundamentals";
 import { fetchSymbolNews } from "./news";
 import { digestNews, type NewsDigest } from "./newsInsights";
 import { recommend, type Recommendation } from "./recommend";
+import { boundedSet } from "./cache";
 
 export type ClubRecommendation = Recommendation & {
   since: string | null; // fecha desde la que se mantiene la acción actual
@@ -47,11 +48,15 @@ export async function getClubRecommendation(symbol: string, opts: { withNews?: b
     },
   );
 
-  // Foto diaria
+  // Foto diaria, solo de valores que alguna familia sigue, tiene en cartera o propone (evita llenar la tabla con símbolos sueltos)
   const today = new Date();
   const day = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
+  const followed =
+    (await prisma.watchlistItem.findFirst({ where: { symbol: sym }, select: { id: true } })) ??
+    (await prisma.trade.findFirst({ where: { symbol: sym }, select: { id: true } })) ??
+    (await prisma.monthlyOption.findFirst({ where: { symbol: sym }, select: { id: true } }));
   try {
-    await prisma.clubRecommendation.upsert({
+    if (followed) await prisma.clubRecommendation.upsert({
       where: { symbol_date: { symbol: sym, date: day } },
       update: { action: rec.action, bias: rec.bias, score: rec.total, confidence: rec.confidence, rr: rec.plan.rr },
       create: { symbol: sym, date: day, action: rec.action, bias: rec.bias, score: rec.total, confidence: rec.confidence, rr: rec.plan.rr },
@@ -77,7 +82,7 @@ export async function getClubRecommendation(symbol: string, opts: { withNews?: b
     profile,
     newsDigest: digest,
   };
-  memo.set(sym, { at: Date.now(), data });
+  boundedSet(memo, sym, { at: Date.now(), data });
   return data;
 }
 

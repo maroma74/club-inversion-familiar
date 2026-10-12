@@ -17,6 +17,7 @@ model Family {
   createdAt        DateTime     @default(now())
   users            User[]
   invitations      Invitation[]
+  manualPrices     ManualPrice[]
 }
 
 model User {
@@ -101,6 +102,28 @@ model PriceQuote {
   price     Float
   currency  String   @default("EUR")
   updatedAt DateTime @default(now())
+}
+
+/// Precio fijado a mano por el presidente para un valor sin cotización automática. Solo afecta a su familia.
+model ManualPrice {
+  id        String   @id @default(cuid())
+  familyId  String
+  family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  symbol    String
+  name      String
+  price     Float // en euros
+  updatedAt DateTime @default(now())
+
+  @@unique([familyId, symbol])
+}
+
+/// Intentos de login/registro por clave (ip, email) para limitar la fuerza bruta.
+model AuthAttempt {
+  id  String   @id @default(cuid())
+  key String
+  at  DateTime @default(now())
+
+  @@index([key, at])
 }
 
 model PortfolioSnapshot {

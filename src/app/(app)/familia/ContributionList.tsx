@@ -10,7 +10,7 @@ export function ContributionList({ rows, isAdmin }: { rows: ContributionRow[]; i
   const [editing, setEditing] = useState<string | null>(null);
   if (rows.length === 0) return <p className="text-sm text-slate-500">Todavía no hay aportaciones registradas.</p>;
   return (
-    <table className="w-full text-sm">
+    <div className="overflow-x-auto"><table className="w-full text-sm">
       <tbody>
         {rows.map((c) =>
           editing === c.id ? (
@@ -38,7 +38,7 @@ export function ContributionList({ rows, isAdmin }: { rows: ContributionRow[]; i
           ),
         )}
       </tbody>
-    </table>
+    </table></div>
   );
 }
 

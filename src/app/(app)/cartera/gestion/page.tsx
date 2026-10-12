@@ -31,7 +31,7 @@ export default async function GestionPage() {
         {portfolios.length === 0 ? (
           <p className="m-0 text-sm text-neutral-700">Todavía no hay ninguna. Crea el borrador del primer mes abajo.</p>
         ) : (
-          <table className="table">
+          <div className="overflow-x-auto"><table className="table">
             <thead><tr><th>Mes</th><th>Título</th><th>Estado</th><th className="text-right">Opciones</th><th className="text-right">Decisiones</th><th>Plazo</th><th /></tr></thead>
             <tbody>
               {portfolios.map((p) => (
@@ -46,7 +46,7 @@ export default async function GestionPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
 

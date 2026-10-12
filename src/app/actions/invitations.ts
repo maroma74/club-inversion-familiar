@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { headers } from "next/headers";
 import { destroySession, requireAdmin, uniqueInviteCode } from "@/lib/auth";
 import { invitationEmail, sendEmail } from "@/lib/email";
+import { appUrl } from "@/lib/appUrl";
 import type { FormState } from "./auth";
 
 const refresh = () => {
@@ -62,8 +62,12 @@ export async function sendInvitationAction(_prev: FormState, formData: FormData)
   if (inv.expiresAt && inv.expiresAt.getTime() < Date.now()) return { error: "Esta invitación ha caducado; reactívala antes de enviarla" };
   const to = inv.email ?? parsed.data.email ?? "";
   if (!to) return { error: "Indica a qué email enviarla" };
-  const h = await headers();
-  const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000"}`;
+  // Límites de envío: 10 minutos entre reenvíos de la misma invitación y 30 correos al día por familia.
+  if (inv.sentAt && Date.now() - inv.sentAt.getTime() < 10 * 60 * 1000) return { error: "Esta invitación se envió hace menos de 10 minutos. Espera un poco antes de reenviarla." };
+  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+  const sentToday = await prisma.invitation.count({ where: { familyId: admin.familyId, sentAt: { gte: dayStart } } });
+  if (sentToday >= 30) return { error: "Se ha alcanzado el límite de 30 correos de invitación al día" };
+  const origin = appUrl();
   const message = invitationEmail({
     to,
     inviteeName: inv.name,
@@ -88,7 +92,8 @@ export async function revokeInvitationAction(formData: FormData) {
 
 export async function deleteInvitationAction(formData: FormData) {
   const admin = await requireAdmin();
-  await prisma.invitation.deleteMany({ where: { id: String(formData.get("id")), familyId: admin.familyId } });
+  // Las invitaciones usadas se conservan: son el rastro de quién entró con cuál.
+  await prisma.invitation.deleteMany({ where: { id: String(formData.get("id")), familyId: admin.familyId, usedAt: null } });
   refresh();
 }
 

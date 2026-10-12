@@ -57,7 +57,7 @@ export default async function AcademiaPage() {
 
       <section className="flex flex-col gap-2.5 max-w-[760px]">
         <h3 className="m-0">Progreso de la familia</h3>
-        <table className="table">
+        <div className="overflow-x-auto"><table className="table">
           <thead><tr><th>Miembro</th><th>Nivel</th><th className="text-right">Lecciones</th><th className="text-right">Acierto en quiz</th><th className="text-right">Entradas de diario</th></tr></thead>
           <tbody>
             {members.map((m) => {
@@ -74,7 +74,7 @@ export default async function AcademiaPage() {
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       </section>
     </div>
   );

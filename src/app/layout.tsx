@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 // Tipografías de la marca servidas desde la propia app (sin depender de Google Fonts al compilar ni al navegar).
 import "@fontsource-variable/inter";
 import "@fontsource-variable/plus-jakarta-sans";
@@ -13,11 +14,13 @@ export const metadata: Metadata = {
 // Aplica el tema guardado antes de pintar para evitar parpadeos; sin preferencia, sigue al sistema.
 const themeScript = `(function(){try{var t=localStorage.getItem("theme");if(t==="dark"||t==="light"){document.documentElement.dataset.theme=t;}else if(window.matchMedia("(prefers-color-scheme: dark)").matches){document.documentElement.dataset.theme="dark";}}catch(e){}})();`;
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // Nonce de la Content-Security-Policy generado en middleware.ts para este único script inline
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="antialiased min-h-screen">{children}</body>
     </html>

@@ -30,7 +30,7 @@ export default async function CarteraPage() {
   }
 
   const [prices, recs, history] = await Promise.all([
-    getPrices(p.options.map((o) => o.symbol)),
+    getPrices(p.options.map((o) => o.symbol), p.familyId),
     getClubRecommendations(p.options.filter((o) => o.kind !== "CRYPTO").map((o) => o.symbol)),
     prisma.monthlyPortfolio.findMany({ where: { familyId: user.familyId, status: "CLOSED", id: { not: p.id } }, orderBy: { month: "desc" }, take: 6, include: { decisions: { where: { userId: user.id }, include: { choices: { include: { option: true } } } } } }),
   ]);
@@ -131,7 +131,7 @@ export default async function CarteraPage() {
       {history.length > 0 && (
         <section className="flex flex-col gap-2">
           <h3 className="m-0">Meses anteriores</h3>
-          <table className="table">
+          <div className="overflow-x-auto"><table className="table">
             <thead><tr><th>Mes</th><th>Cartera</th><th>Tu elección</th></tr></thead>
             <tbody>
               {history.map((h) => (
@@ -142,7 +142,7 @@ export default async function CarteraPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </section>
       )}
     </div>
@@ -151,7 +151,7 @@ export default async function CarteraPage() {
 
 function ChoicesTable({ choices }: { choices: { id: string; amount: number; why: string; exitCondition: string | null; price: number | null; quantity: number | null; option: { symbol: string; name: string } }[] }) {
   return (
-    <table className="table">
+    <div className="overflow-x-auto"><table className="table">
       <thead><tr><th>Valor</th><th className="text-right">Importe</th><th className="text-right">Precio</th><th className="text-right">Uds.</th><th>Por qué</th></tr></thead>
       <tbody>
         {choices.map((c) => (
@@ -164,6 +164,6 @@ function ChoicesTable({ choices }: { choices: { id: string; amount: number; why:
           </tr>
         ))}
       </tbody>
-    </table>
+    </table></div>
   );
 }
