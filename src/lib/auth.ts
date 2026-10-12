@@ -9,13 +9,16 @@ import { prisma } from "./prisma";
 // (y el modo «ver como miembro» del presidente) viajan juntos en esa única cookie.
 const COOKIE = "__session";
 export type ViewAs = "member" | null;
-// En producción la app no arranca sin un secreto propio y suficientemente largo: con el valor por defecto
-// cualquiera podría firmar sesiones de cualquier usuario.
-const rawSecret = process.env.AUTH_SECRET?.trim();
-if (process.env.NODE_ENV === "production" && (!rawSecret || rawSecret.length < 32)) {
-  throw new Error("AUTH_SECRET no definido o demasiado corto (mínimo 32 caracteres)");
+// En producción no se firma ni se verifica ninguna sesión sin un secreto propio y suficientemente largo:
+// con el valor por defecto cualquiera podría firmar sesiones de cualquier usuario. La comprobación se hace
+// en el primer uso (no al cargar el módulo) para que `next build` pueda ejecutarse sin el secreto.
+function secret() {
+  const raw = process.env.AUTH_SECRET?.trim();
+  if (process.env.NODE_ENV === "production" && (!raw || raw.length < 32)) {
+    throw new Error("AUTH_SECRET no definido o demasiado corto (mínimo 32 caracteres)");
+  }
+  return new TextEncoder().encode(raw || "dev-secret-change-me");
 }
-const secret = () => new TextEncoder().encode(rawSecret || "dev-secret-change-me");
 
 export async function hashPassword(pw: string) {
   return bcrypt.hash(pw, 10);
