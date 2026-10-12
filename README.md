@@ -48,7 +48,7 @@ Antes de usarla en serio, cambia `AUTH_SECRET` en `.env` por una cadena larga y 
 
 ## Despliegue en Google Cloud (producción)
 
-URL pública: https://club-inversion-790874739436.europe-southwest1.run.app
+URL pública: https://clubdeinversionfamiliar.com (www redirige al dominio raíz). URL directa del servicio: https://club-inversion-790874739436.europe-southwest1.run.app
 
 La app corre en **Cloud Run** (proyecto `clubdeinversionfamiliar`, región `europe-southwest1`, escala a cero) y usa **PostgreSQL en la instancia Cloud SQL de AlquilaFacil** (`alquilafacil-510608:europe-southwest1:alquilafacil-db`, base de datos `clubinversion`, usuario `club_app`) para no pagar una segunda instancia. Credenciales en Secret Manager (`club-database-url`, `club-auth-secret`); la cuenta de servicio de Cloud Run tiene `roles/cloudsql.client` en el proyecto de AlquilaFacil.
 
@@ -60,6 +60,8 @@ gcloud run deploy club-inversion --project clubdeinversionfamiliar --region euro
 ```
 
 Si la versión trae migraciones nuevas, aplícalas antes con `npm run db:deploy` apuntando `DATABASE_URL` a la base de datos de producción (por ejemplo a través del Cloud SQL Auth Proxy o autorizando temporalmente tu IP en la instancia). El contenedor solo sirve la app, para que los arranques en frío sean rápidos.
+
+**Dominio propio.** Cloud Run no admite dominios personalizados en `europe-southwest1`, así que el dominio está en **Firebase Hosting** (sitio `clubdeinversionfamiliar`, mismo proyecto, gratis) con una regla que reenvía todas las rutas al servicio de Cloud Run. El DNS está en Cloudflare apuntando a Firebase. La configuración de Hosting no tiene archivos, solo esta regla y cabeceras de caché (`private, no-store` para las páginas e `immutable` para `/_next/static/**`), y se publica por la API de Hosting (versión → FINALIZED → release); no hace falta tocarla al publicar versiones nuevas de la app, basta con `gcloud run deploy`.
 
 Ajustes de consumo: `--min-instances 0` (no cuesta nada sin visitas), `--max-instances 2`, 512 MiB y 1 CPU solo durante las peticiones. La imagen vive en Artifact Registry (`club`).
 
