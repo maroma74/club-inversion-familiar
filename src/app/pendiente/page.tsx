@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { firstName } from "@/lib/names";
 import { logoutAction } from "@/app/actions/auth";
 import { withdrawRequestAction } from "@/app/actions/invitations";
 
@@ -13,7 +14,7 @@ export default async function PendientePage() {
         
         <h1 className="text-xl font-bold mb-1">Solicitud pendiente</h1>
         <p className="text-sm text-slate-600 mb-4">
-          Hola, {user.name}. Tu solicitud para entrar en <b>{user.family.name}</b> está esperando la aprobación del presidente del club. Cuando la acepte, podrás entrar con tu email y contraseña.
+          Hola, {firstName(user.name)}. Tu solicitud para entrar en <b>{user.family.name}</b> está esperando la aprobación del presidente del club. Cuando la acepte, podrás entrar con tu email y contraseña.
         </p>
         <div className="flex justify-center gap-2">
           <form action={logoutAction}><button className="btn-secondary">Salir</button></form>

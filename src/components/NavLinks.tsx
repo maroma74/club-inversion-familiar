@@ -18,9 +18,10 @@ const GROUPS: Group[] = [
       { num: "06", label: "Acciones", href: "/acciones" },
       { num: "07", label: "ETF", href: "/etf" },
       { num: "08", label: "Cripto", href: "/cripto" },
+      { num: "09", label: "Materias primas", href: "/materias-primas" },
     ],
   },
-  { header: "Club", items: [{ num: "09", label: "Familia", href: "/familia" }, { num: "10", label: "Invitaciones", href: "/invitaciones", note: "presidente", admin: true }] },
+  { header: "Club", items: [{ num: "10", label: "Familia", href: "/familia" }, { num: "11", label: "Invitaciones", href: "/invitaciones", note: "presidente", admin: true }] },
 ];
 
 function isActive(path: string, href: string) {

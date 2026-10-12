@@ -61,9 +61,10 @@ export async function fxToEurAt(currency: string, date: Date): Promise<number> {
 export async function fetchQuote(symbol: string): Promise<Quote> {
   const data = await fetchJson(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d`);
   const meta = data?.chart?.result?.[0]?.meta;
-  const price = Number(meta?.regularMarketPrice);
+  const cents = meta?.currency === "USX"; // futuros agrícolas: Yahoo los da en centavos de dólar
+  const price = Number(meta?.regularMarketPrice) / (cents ? 100 : 1);
   if (!meta || !Number.isFinite(price)) throw new Error(`No se encontró cotización para ${symbol}`);
-  const currency: string = meta.currency ?? "EUR";
+  const currency: string = cents ? "USD" : (meta.currency ?? "EUR");
   const rate = await fxToEur(currency);
   return {
     symbol: meta.symbol ?? symbol,

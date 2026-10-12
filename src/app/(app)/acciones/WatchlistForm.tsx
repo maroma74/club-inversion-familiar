@@ -5,7 +5,7 @@ import { addWatchlistAction } from "@/app/actions/watchlist";
 
 type Hit = { symbol: string; name: string; exchange: string; type: string };
 
-export function WatchlistForm({ kind = "STOCK" }: { kind?: "STOCK" | "ETF" | "CRYPTO" }) {
+export function WatchlistForm({ kind = "STOCK" }: { kind?: "STOCK" | "ETF" | "CRYPTO" | "COMMODITY" }) {
   const [state, action, pending] = useActionState(addWatchlistAction, undefined);
   const [q, setQ] = useState("");
   const [symbol, setSymbol] = useState("");
@@ -20,13 +20,15 @@ export function WatchlistForm({ kind = "STOCK" }: { kind?: "STOCK" | "ETF" | "CR
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/symbols?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
+        const res = await fetch(`/api/symbols?q=${encodeURIComponent(q)}${kind === "COMMODITY" ? "&kind=COMMODITY" : ""}`, { signal: ctrl.signal });
         const all: Hit[] = await res.json();
-        if (kind === "CRYPTO") {
+        if (kind === "COMMODITY") {
+          setHits(all.filter((h) => h.type === "FUTURE"));
+        } else if (kind === "CRYPTO") {
           // Primero los pares en euros (que son los que se usan para valorar la cartera)
           setHits(all.filter((h) => h.type === "CRYPTOCURRENCY").sort((a, b) => Number(b.symbol.endsWith("-EUR")) - Number(a.symbol.endsWith("-EUR"))));
         } else {
-          setHits(all.filter((h) => h.type !== "CRYPTOCURRENCY" && (kind === "ETF" ? h.type === "ETF" || h.type === "MUTUALFUND" : h.type !== "ETF")));
+          setHits(all.filter((h) => h.type !== "CRYPTOCURRENCY" && h.type !== "FUTURE" && (kind === "ETF" ? h.type === "ETF" || h.type === "MUTUALFUND" : h.type !== "ETF")));
         }
       } catch {
         /* cancelado */
@@ -57,7 +59,7 @@ export function WatchlistForm({ kind = "STOCK" }: { kind?: "STOCK" | "ETF" | "CR
             setQ(e.target.value);
             setName("");
           }}
-          placeholder={kind === "ETF" ? "Añadir: MSCI World, VWCE.DE, SXR8.DE…" : kind === "CRYPTO" ? "Añadir: Bitcoin, ETH-EUR, SOL…" : "Añadir: Inditex, SAN.MC, NVDA…"}
+          placeholder={kind === "ETF" ? "Añadir: MSCI World, VWCE.DE, SXR8.DE…" : kind === "CRYPTO" ? "Añadir: Bitcoin, ETH-EUR, SOL…" : kind === "COMMODITY" ? "Añadir: oro, petróleo, café, GC=F…" : "Añadir: Inditex, SAN.MC, NVDA…"}
           className="input w-64 uppercase"
           autoComplete="off"
           required

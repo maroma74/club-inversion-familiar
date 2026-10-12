@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { firstName } from "@/lib/names";
 import { getPortfolioFull, isDeadlinePassed, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
 import { eur, fmtDate } from "@/lib/format";
 import { closeAction, deletePortfolioAction, removeOptionAction, reopenAction } from "@/app/actions/monthly";
@@ -60,7 +61,7 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
                   return (
                     <tr key={o.id}>
                       <td><b>{o.symbol}</b><div className="text-xs text-neutral-600">{o.name}</div></td>
-                      <td><span className="tag tag-neutral">{o.kind === "ETF" ? "ETF" : o.kind === "CRYPTO" ? "cripto" : "acción"}</span></td>
+                      <td><span className="tag tag-neutral">{o.kind === "ETF" ? "ETF" : o.kind === "CRYPTO" ? "cripto" : o.kind === "COMMODITY" ? "materia prima" : "acción"}</span></td>
                       <td className="text-[13px]">{o.note ?? ""}</td>
                       <td className="text-right">
                         {!locked && !chosen && (
@@ -80,9 +81,9 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
           <div className="card-kicker">Importe por miembro</div>
           <p className="m-0 text-[13px] text-neutral-700">{p.status === "DRAFT" ? "Se registrará como paga al publicar." : "Ya repartido como paga; puedes ajustarlo mientras el miembro no haya decidido."}</p>
           {locked ? (
-            <div className="overflow-x-auto"><table className="table"><tbody>{p.allocations.map((a) => <tr key={a.id}><td>{a.user.name}</td><td className="text-right tabular-nums">{eur(a.amount)}</td></tr>)}</tbody></table></div>
+            <div className="overflow-x-auto"><table className="table"><tbody>{p.allocations.map((a) => <tr key={a.id}><td>{firstName(a.user.name)}</td><td className="text-right tabular-nums">{eur(a.amount)}</td></tr>)}</tbody></table></div>
           ) : (
-            <AllocationsForm portfolioId={p.id} decidedIds={decidedIds} members={members.map((m) => ({ id: m.id, name: m.name, amount: p.allocations.find((a) => a.userId === m.id)?.amount ?? 0 }))} />
+            <AllocationsForm portfolioId={p.id} decidedIds={decidedIds} members={members.map((m) => ({ id: m.id, name: firstName(m.name), amount: p.allocations.find((a) => a.userId === m.id)?.amount ?? 0 }))} />
           )}
         </div>
       </section>
@@ -92,7 +93,7 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
         {p.decisions.length === 0 ? <p className="m-0 text-sm text-neutral-700">Nadie ha decidido todavía.</p> : (
           p.decisions.map((d) => (
             <div key={d.id} className="card blueprint gap-2" style={{ padding: 18 }}>
-              <div className="flex justify-between items-baseline flex-wrap gap-2"><b>{d.user.name}</b><span className="text-xs text-neutral-700">{fmtDate(d.submittedAt)}</span></div>
+              <div className="flex justify-between items-baseline flex-wrap gap-2"><b>{firstName(d.user.name)}</b><span className="text-xs text-neutral-700">{fmtDate(d.submittedAt)}</span></div>
               <div className="overflow-x-auto"><table className="table">
                 <thead><tr><th>Valor</th><th className="text-right">Importe</th><th className="text-right">Precio</th><th>Por qué</th></tr></thead>
                 <tbody>
@@ -111,7 +112,7 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
           ))
         )}
         {p.allocations.filter((a) => a.amount > 0 && !decidedIds.includes(a.userId)).length > 0 && (
-          <p className="m-0 text-xs text-neutral-700">Pendientes: {p.allocations.filter((a) => a.amount > 0 && !decidedIds.includes(a.userId)).map((a) => a.user.name).join(", ")}</p>
+          <p className="m-0 text-xs text-neutral-700">Pendientes: {p.allocations.filter((a) => a.amount > 0 && !decidedIds.includes(a.userId)).map((a) => firstName(a.user.name)).join(", ")}</p>
         )}
       </section>
     </div>

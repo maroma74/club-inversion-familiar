@@ -2,9 +2,9 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getWatchlist, type WatchKind } from "@/lib/stocks";
 import { familyLeaderboard } from "@/lib/portfolio";
-import { isCrypto } from "@/lib/prices";
+import { symbolKind } from "@/lib/kinds";
 import { getClubRecommendations } from "@/lib/club";
-import { CRYPTO_DISCLAIMER, DISCLAIMER } from "@/lib/recommend";
+import { COMMODITY_DISCLAIMER, CRYPTO_DISCLAIMER, DISCLAIMER } from "@/lib/recommend";
 import { fmtDate } from "@/lib/format";
 import { fp } from "@/lib/fmtPrice";
 import { PageHeader } from "@/components/ui";
@@ -15,13 +15,15 @@ const sg = (v: number) => (v > 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
 
 export async function ClubRanking({ kind }: { kind: WatchKind }) {
   const user = await requireUser();
-  const base = kind === "ETF" ? "/etf" : kind === "CRYPTO" ? "/cripto" : "/acciones";
-  const label = kind === "ETF" ? "ETF" : kind === "CRYPTO" ? "criptomonedas" : "acciones";
-  const title = kind === "ETF" ? "ETF" : kind === "CRYPTO" ? "Cripto" : "Acciones";
+  const base = kind === "ETF" ? "/etf" : kind === "CRYPTO" ? "/cripto" : kind === "COMMODITY" ? "/materias-primas" : "/acciones";
+  const label = kind === "ETF" ? "ETF" : kind === "CRYPTO" ? "criptomonedas" : kind === "COMMODITY" ? "materias primas" : "acciones";
+  const title = kind === "ETF" ? "ETF" : kind === "CRYPTO" ? "Cripto" : kind === "COMMODITY" ? "Materias primas" : "Acciones";
   const crypto = kind === "CRYPTO";
+  const commodity = kind === "COMMODITY";
+  const heldKind = kind === "ETF" ? "STOCK" : kind;
   const [watchlist, ranking] = await Promise.all([getWatchlist(user.familyId, kind), familyLeaderboard(user.familyId)]);
   const held = new Map<string, string[]>();
-  for (const r of ranking) for (const h of r.holdings) if (isCrypto(h.symbol) === crypto) held.set(h.symbol, [...(held.get(h.symbol) ?? []), r.userName]);
+  for (const r of ranking) for (const h of r.holdings) if (symbolKind(h.symbol) === heldKind) held.set(h.symbol, [...(held.get(h.symbol) ?? []), r.userName]);
   const allListed = new Set((await getWatchlist(user.familyId)).map((w) => w.symbol));
   const symbols = [...new Set([...watchlist.map((w) => w.symbol), ...(kind !== "ETF" ? [...held.keys()].filter((s) => !allListed.has(s)) : [])])];
   const recs = await getClubRecommendations(symbols);
@@ -43,11 +45,12 @@ export async function ClubRanking({ kind }: { kind: WatchKind }) {
     "",
     DISCLAIMER,
     ...(crypto ? [CRYPTO_DISCLAIMER] : []),
+    ...(commodity ? [COMMODITY_DISCLAIMER] : []),
   ].join("\n");
 
   return (
     <>
-      <PageHeader title={`Ranking del Club de inversión · ${title}`} subtitle={`${rows.length} ${crypto ? "monedas" : "valores"} de la lista de seguimiento${kind !== "ETF" ? " y de las carteras" : ""}, ordenad${crypto ? "as" : "os"} por puntuación ponderada (tendencia 30 %, momentum 25 %, volumen 20 %, estructura 25 %).`}>
+      <PageHeader title={`Ranking del Club de inversión · ${title}`} subtitle={`${rows.length} ${crypto ? "monedas" : commodity ? "materias primas" : "valores"} de la lista de seguimiento${kind !== "ETF" ? " y de las carteras" : ""}, ordenad${crypto || commodity ? "as" : "os"} por puntuación ponderada (tendencia 30 %, momentum 25 %, volumen 20 %, estructura 25 %).`}>
         <div className="flex gap-2 items-center">
           <Link href={base} className="btn-secondary py-1">← {title}</Link>
           <CopyButton text={md} label="Copiar resumen" />
@@ -109,7 +112,7 @@ export async function ClubRanking({ kind }: { kind: WatchKind }) {
                 <th className="text-left px-2 py-2 font-medium">Confianza</th>
                 <th className="text-right px-2 py-2 font-medium">R/B</th>
                 <th className="text-left px-2 py-2 font-medium hidden lg:table-cell">Desde</th>
-                {!crypto && <th className="text-left px-5 py-2 font-medium hidden lg:table-cell">{kind === "ETF" ? "TER" : "Resultados"}</th>}
+                {!crypto && !commodity && <th className="text-left px-5 py-2 font-medium hidden lg:table-cell">{kind === "ETF" ? "TER" : "Resultados"}</th>}
               </tr>
             </thead>
             <tbody>
@@ -127,7 +130,7 @@ export async function ClubRanking({ kind }: { kind: WatchKind }) {
                   <td className="px-2 py-2">{r.confidence}</td>
                   <td className="px-2 py-2 text-right tabular-nums">{r.plan.rr === null ? "N/D" : `1:${r.plan.rr.toFixed(1)}`}</td>
                   <td className="px-2 py-2 text-xs text-slate-500 hidden lg:table-cell">{r.since ? fmtDate(r.since) : "—"}{r.previousAction ? ` (antes ${r.previousAction})` : ""}</td>
-                  {!crypto && (
+                  {!crypto && !commodity && (
                     <td className={`px-5 py-2 text-xs hidden lg:table-cell ${r.daysToEarnings !== null && r.daysToEarnings >= 0 && r.daysToEarnings <= 10 ? "text-amber-700 font-medium" : "text-slate-500"}`}>
                       {kind === "ETF" ? (r.profile.expenseRatio !== null ? `${(r.profile.expenseRatio * 100).toFixed(2)} %` : "N/D") : r.earningsDate ?? "N/D"}
                     </td>
@@ -138,7 +141,7 @@ export async function ClubRanking({ kind }: { kind: WatchKind }) {
           </table>
         </div>
       </div>
-      <p className="text-xs text-slate-500 italic mt-4">{DISCLAIMER}{crypto ? ` ${CRYPTO_DISCLAIMER}` : ""}</p>
+      <p className="text-xs text-slate-500 italic mt-4">{DISCLAIMER}{crypto ? ` ${CRYPTO_DISCLAIMER}` : ""}{commodity ? ` ${COMMODITY_DISCLAIMER}` : ""}</p>
     </>
   );
 }

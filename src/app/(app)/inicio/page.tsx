@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { firstName } from "@/lib/names";
 import { getCoursesWithProgress, LEVELS } from "@/lib/academy";
 import { familyOverview } from "@/lib/league";
 import { eur, fmtDate, pct } from "@/lib/format";
@@ -36,7 +37,7 @@ export default async function InicioPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="card-kicker text-[11px] capitalize">{today}</div>
-          <h1 className="mt-1 mb-1">Hola, {user.name}</h1>
+          <h1 className="mt-1 mb-1">Hola, {firstName(user.name)}</h1>
           <p className="m-0 text-neutral-700 max-w-[60ch] [text-wrap:pretty]">Aquí se aprende invirtiendo de verdad: con la paga mensual, una cartera propia y un diario donde explicas cada decisión.</p>
         </div>
         <div className="flex gap-2">
@@ -129,7 +130,7 @@ export default async function InicioPage() {
           {diary.length === 0 && pendingTrades.length === 0 && <p className="m-0 text-sm text-neutral-700">Todavía no hay entradas. La primera: por qué compraste lo que tienes.</p>}
           {diary.map((d) => (
             <div key={d.id} className="card blueprint gap-1.5" style={{ padding: "16px 18px" }}>
-              <div className="card-meta justify-between"><span>{d.user.name} · {fmtDate(d.createdAt)}</span><span className="tag tag-accent">{SIDE[d.side] ?? d.side} {d.symbol !== "—" ? d.symbol : ""}</span></div>
+              <div className="card-meta justify-between"><span>{firstName(d.user.name)} · {fmtDate(d.createdAt)}</span><span className="tag tag-accent">{SIDE[d.side] ?? d.side} {d.symbol !== "—" ? d.symbol : ""}</span></div>
               <div className="text-[15px] [text-wrap:pretty]">“{d.why}”</div>
               {d.exitCondition && <div className="text-xs text-neutral-700">Vendería si: {d.exitCondition}</div>}
             </div>

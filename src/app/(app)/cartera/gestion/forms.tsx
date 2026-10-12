@@ -1,5 +1,7 @@
 "use client";
 
+import { firstName } from "@/lib/names";
+
 import { useActionState, useEffect, useState } from "react";
 import { addOptionAction, createPortfolioAction, publishAction, setAllocationsAction, updatePortfolioAction } from "@/app/actions/monthly";
 import { autoFormat, LESSON_TEMPLATE, Markdown } from "@/components/Markdown";
@@ -152,7 +154,7 @@ export function AllocationsForm({ portfolioId, members, decidedIds }: { portfoli
         <tbody>
           {members.map((m) => (
             <tr key={m.id}>
-              <td>{m.name}{decidedIds.includes(m.id) && <span className="tag tag-accent ml-2">ya ha decidido</span>}</td>
+              <td>{firstName(m.name)}{decidedIds.includes(m.id) && <span className="tag tag-accent ml-2">ya ha decidido</span>}</td>
               <td className="text-right"><input name={`amount_${m.id}`} type="number" step="0.01" min="0" defaultValue={m.amount} className="input w-32 ml-auto text-right" disabled={decidedIds.includes(m.id)} /></td>
             </tr>
           ))}

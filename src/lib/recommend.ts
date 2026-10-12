@@ -20,6 +20,8 @@ export type Extras = {
   newsSummary?: string | null;
   isFund?: boolean; // ETF o fondo: no publica resultados
   isCrypto?: boolean; // criptomoneda: sin resultados ni beta; umbrales de volatilidad propios de su mercado
+  isCommodity?: boolean; // materia prima (futuro continuo): sin resultados ni beta
+  commodityGroup?: string | null; // metales preciosos, energía, agrícolas…
   cryptoRank?: number | null; // puesto por capitalización
   fearGreed?: { value: number; labelEs: string } | null; // índice de miedo y codicia (solo contexto)
 };
@@ -39,6 +41,8 @@ export type Recommendation = {
   newsSummary: string | null;
   isFund: boolean;
   isCrypto: boolean;
+  isCommodity: boolean;
+  commodityGroup: string | null;
   cryptoRank: number | null;
   action: Action;
   bias: string; // "sesgo alcista / vigilar entrada", "neutral", "sesgo bajista / proteger beneficios"
@@ -175,7 +179,7 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
     sAvail++;
     const atrPct = a.atr14 / p;
     // Una criptomoneda se mueve de forma normal entre un 2 y un 5 % al día: el listón de «muy volátil» es más alto.
-    if (atrPct > (extras.isCrypto ? 0.07 : 0.045)) { str -= 0.5; sNotes.push(`ATR ${(atrPct * 100).toFixed(1)} % diario (muy volátil)`); }
+    if (atrPct > (extras.isCrypto ? 0.07 : extras.isCommodity ? 0.05 : 0.045)) { str -= 0.5; sNotes.push(`ATR ${(atrPct * 100).toFixed(1)} % diario (muy volátil)`); }
     else sNotes.push(`ATR ${(atrPct * 100).toFixed(1) } % diario`);
   } else missing.push("ATR");
   const distRes = a.resistance !== null ? a.resistance / p - 1 : null;
@@ -282,7 +286,7 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
     else if (extras.fearGreed.value <= 25 && action !== "VENDER") risks.push(`Miedo extremo en el mercado cripto (índice ${extras.fearGreed.value}): puede ser zona de oportunidad, pero la caída puede continuar.`);
   }
   if (earningsSoon) risks.push(`Publica resultados el ${earningsDate} (en ${daysToEarnings} días): el gap posterior puede saltarse el stop.`);
-  if (a.volatility30 !== null && a.volatility30 > (extras.isCrypto ? 0.9 : 0.4)) risks.push(`Volatilidad anualizada alta (${(a.volatility30 * 100).toFixed(0)} %): dimensionar la posición con el ATR.`);
+  if (a.volatility30 !== null && a.volatility30 > (extras.isCrypto ? 0.9 : extras.isCommodity ? 0.55 : 0.4)) risks.push(`Volatilidad anualizada alta (${(a.volatility30 * 100).toFixed(0)} %): dimensionar la posición con el ATR.`);
   if (distRes !== null && distRes < 0.04) risks.push(`Resistencia muy cercana en ${fp(a.resistance!)}: posible rechazo.`);
   if (a.rsi !== null && a.rsi > 70) risks.push("RSI en sobrecompra: riesgo de recorte a corto plazo.");
   if (a.rsi !== null && a.rsi < 30 && action !== "COMPRAR") risks.push("RSI en sobreventa: puede rebotar bruscamente contra una posición corta o vendida.");
@@ -292,7 +296,8 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
   if (extras.beta !== null && extras.beta !== undefined && extras.beta > 1.3) risks.push(`Beta ${extras.beta.toFixed(2)}: amplifica los movimientos del mercado.`);
   if (extras.newsTone === "desfavorable" && action !== "VENDER") risks.push("Flujo de noticias desfavorable: la lectura técnica puede deteriorarse si se confirman los titulares.");
   if (extras.newsTone === "favorable" && action === "VENDER") risks.push("Flujo de noticias favorable: un rebote por titulares podría invalidar la señal de venta.");
-  if (!earningsDate && !extras.isFund && !extras.isCrypto) risks.push("Fecha de resultados: N/D; comprobar el calendario antes de operar.");
+  if (!earningsDate && !extras.isFund && !extras.isCrypto && !extras.isCommodity) risks.push("Fecha de resultados: N/D; comprobar el calendario antes de operar.");
+  if (extras.isCommodity) risks.push("Futuro continuo: el precio puede dar un salto al cambiar de contrato y el stop no cubre ese salto; el oro, el petróleo o el café reales también dependen del dólar.");
   if (extras.isCrypto) risks.push("Activo de riesgo muy alto: cotiza 24/7, puede perder gran parte de su valor y el stop puede ejecutarse con deslizamiento.");
   if (missing.length) risks.push(`Indicadores no disponibles: ${missing.join(", ")}.`);
 
@@ -316,6 +321,8 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
     newsSummary: extras.newsSummary ?? null,
     isFund: extras.isFund ?? false,
     isCrypto: extras.isCrypto ?? false,
+    isCommodity: extras.isCommodity ?? false,
+    commodityGroup: extras.commodityGroup ?? null,
     cryptoRank: extras.cryptoRank ?? null,
     action,
     bias,
@@ -334,6 +341,9 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
 export const DISCLAIMER = "Análisis técnico generado a partir de los datos proporcionados. No constituye asesoramiento financiero personalizado. Cada miembro debe valorar su perfil de riesgo y tamaño de posición.";
 
 /** Aviso añadido en las criptomonedas. */
+/** Aviso añadido en las materias primas. */
+export const COMMODITY_DISCLAIMER = "Las materias primas dependen de la oferta, la demanda, el clima, la geopolítica y el dólar. Los futuros que sirven de referencia tienen apalancamiento y no son aptos para principiantes: para invertir de forma sencilla se usan ETC o ETF de materias primas.";
+
 export const CRYPTO_DISCLAIMER = "Las criptomonedas son activos de riesgo muy alto: su precio puede caer a la mitad en semanas, cotizan sin pausa y no tienen la protección de los mercados regulados de valores. Invierte solo lo que estés dispuesto a perder.";
 
 const f = (v: number | null, d?: number) => (v === null ? "N/D" : v.toFixed(d ?? priceDecimals(v)));
@@ -343,7 +353,9 @@ const sg = (v: number) => (v > 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
 export function recommendationMarkdown(r: Recommendation): string {
   const lines = [
     `**[${r.ticker}] – ${r.name}** | Precio: ${f(r.price)} ${r.currency} | Fecha datos: ${r.dataDate}`,
-    r.isCrypto
+    r.isCommodity
+      ? `Materia prima | ${r.commodityGroup ?? "N/D"} | Futuro continuo`
+      : r.isCrypto
       ? `Criptomoneda | Puesto por capitalización: ${r.cryptoRank === null ? "N/D" : `#${r.cryptoRank}`} | Mercado 24/7`
       : r.isFund
       ? `Fondo cotizado | Beta: ${r.beta === null ? "N/D" : r.beta.toFixed(2)}`
@@ -369,6 +381,7 @@ export function recommendationMarkdown(r: Recommendation): string {
     "",
     DISCLAIMER,
     ...(r.isCrypto ? [CRYPTO_DISCLAIMER] : []),
+    ...(r.isCommodity ? [COMMODITY_DISCLAIMER] : []),
   ];
   return lines.join("\n");
 }

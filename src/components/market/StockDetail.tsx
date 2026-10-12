@@ -6,6 +6,7 @@ import { analyze, type Verdict } from "@/lib/technical";
 import { getClubRecommendation } from "@/lib/club";
 import { eur } from "@/lib/format";
 import { fp, priceDecimals } from "@/lib/fmtPrice";
+import { findCommodity } from "@/lib/commodities";
 import { ClubRecommendationCard } from "@/components/ClubRecommendationCard";
 import { DiaryDialog } from "@/components/DiaryDialog";
 import { StockChart } from "@/app/(app)/acciones/[symbol]/StockChart";
@@ -19,11 +20,14 @@ const Pct = ({ v, d = 1 }: { v: number | null; d?: number }) => (v === null ? <s
 export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind }: { symbol: string; range?: string; kind: WatchKind }) {
   await requireUser();
   const crypto = kind === "CRYPTO";
-  const base = kind === "ETF" ? "/etf" : crypto ? "/cripto" : "/acciones";
-  const title = kind === "ETF" ? "ETF" : crypto ? "Cripto" : "Acciones";
+  const commodity = kind === "COMMODITY";
+  const base = kind === "ETF" ? "/etf" : crypto ? "/cripto" : commodity ? "/materias-primas" : "/acciones";
+  const title = kind === "ETF" ? "ETF" : crypto ? "Cripto" : commodity ? "Materias primas" : "Acciones";
   const unit = crypto ? "días" : "sesiones"; // una criptomoneda cotiza todos los días
   const symbol = decodeURIComponent(rawSymbol).toUpperCase();
   const range: Range = isRange(rawRange) ? rawRange : "1y";
+  const info = commodity ? findCommodity(symbol) : null;
+  if (commodity && !info) notFound(); // solo las materias primas del catálogo del club
   const [cryptoRes, stockHist, club] = await Promise.all([
     crypto ? fetchCryptoHistory(symbol, range) : Promise.resolve(null),
     crypto ? Promise.resolve(null) : fetchHistory(symbol, range),
@@ -47,7 +51,7 @@ export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind }: 
   const cur = hist.currency === "GBp" ? "GBX" : hist.currency;
   const fmt = (n: number | null, d = 2) => {
     if (n === null) return "—";
-    const dd = crypto ? priceDecimals(n) : d; // monedas de céntimos: más decimales
+    const dd = crypto || commodity ? priceDecimals(n) : d; // monedas de céntimos: más decimales
     return cur === "EUR" ? eur(n, dd) : `${n.toLocaleString("es-ES", { minimumFractionDigits: dd, maximumFractionDigits: dd })} ${cur}`;
   };
   const isIndex = symbol.startsWith("^");
@@ -57,12 +61,12 @@ export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind }: 
     <>
       <header className="flex flex-wrap items-end justify-between gap-4 mb-7">
         <div>
-          <div className="card-kicker text-[11px]">{title} · {crypto ? "mercado 24/7" : hist.exchange}</div>
-          <h1 className="mt-1 mb-0.5">{crypto ? hist.name.replace(/\s+(EUR|USD)$/i, "") : hist.name} <span className="text-neutral-600 font-normal">{hist.symbol}</span></h1>
+          <div className="card-kicker text-[11px]">{title} · {crypto ? "mercado 24/7" : commodity ? `${info?.group ?? ""} · futuro continuo` : hist.exchange}</div>
+          <h1 className="mt-1 mb-0.5">{crypto ? hist.name.replace(/\s+(EUR|USD)$/i, "") : commodity ? (info?.name ?? hist.name) : hist.name} <span className="text-neutral-600 font-normal">{hist.symbol}</span></h1>
           <div className="flex items-baseline gap-3 flex-wrap">
             <span className="figure text-[36px]">{fmt(a.last)}</span>
             <span className="text-[15px]" style={{ color: a.change1d >= 0 ? "var(--color-accent-700)" : "var(--color-text)" }}>{a.change1d >= 0 ? "▲" : "▼"} {a.change1d >= 0 ? "+" : "−"}{Math.abs(a.last - a.prevClose).toLocaleString("es-ES", { maximumFractionDigits: 2 })} ({a.change1d >= 0 ? "+" : "−"}{(Math.abs(a.change1d) * 100).toFixed(2)} %)</span>
-            <span className="text-xs text-neutral-700">cierre anterior {fmt(a.prevClose)} · {crypto ? "mercado 24/7, datos casi en tiempo real" : "datos con hasta 15 min de retraso"}</span>
+            <span className="text-xs text-neutral-700">cierre anterior {fmt(a.prevClose)} · {crypto ? "mercado 24/7, datos casi en tiempo real" : commodity ? `${info?.unit ?? "USD"} · datos con retraso` : "datos con hasta 15 min de retraso"}</span>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
@@ -137,7 +141,7 @@ export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind }: 
               <Row k="ADX (+DI / −DI)" v={a.adx === null ? "—" : a.adx.toFixed(0)} extra={<span className="text-xs text-slate-500">{a.plusDI !== null && a.minusDI !== null ? `${a.plusDI.toFixed(0)} / ${a.minusDI.toFixed(0)}` : ""}</span>} />
               <Row k="Bollinger (20, 2σ)" v={`${fmt(a.bbLower)} – ${fmt(a.bbUpper)}`} extra={<span className="text-xs text-slate-500">{a.bbPosition === null ? "" : `${(a.bbPosition * 100).toFixed(0)} % del canal${a.bbSqueeze ? " · squeeze" : ""}`}</span>} />
               <Row k="ATR (14)" v={fmt(a.atr14)} extra={<span className="text-xs text-slate-500">{a.atr14 ? `${((a.atr14 / a.last) * 100).toFixed(1)} % diario` : ""}</span>} />
-              <Row k="Volatilidad 30 d (anual.)" v={a.volatility30 === null ? "—" : `${(a.volatility30 * 100).toFixed(0)} %`} extra={<span className="text-xs text-slate-500">{a.volatility30 === null ? "" : a.volatility30 > (crypto ? 0.9 : 0.4) ? "alta" : a.volatility30 > (crypto ? 0.5 : 0.2) ? "media" : "baja"}</span>} />
+              <Row k="Volatilidad 30 d (anual.)" v={a.volatility30 === null ? "—" : `${(a.volatility30 * 100).toFixed(0)} %`} extra={<span className="text-xs text-slate-500">{a.volatility30 === null ? "" : a.volatility30 > (crypto ? 0.9 : commodity ? 0.55 : 0.4) ? "alta" : a.volatility30 > (crypto ? 0.5 : commodity ? 0.3 : 0.2) ? "media" : "baja"}</span>} />
               <Row k="Máxima caída (periodo)" v={`${(a.maxDrawdown * 100).toFixed(1)} %`} />
               <Row k="Volumen" v={a.volume.toLocaleString("es-ES", { notation: a.volume > 1e9 ? "compact" : "standard", maximumFractionDigits: 1 })} extra={<span className="text-xs text-slate-500">{a.volumeAvg20 ? `${(a.volume / a.volumeAvg20).toFixed(1)}× media 20 d` : ""}{a.volumeProjected ? " · proyectado a 24 h" : ""}</span>} />
               <Row k={`OBV (20 ${unit})`} v={a.obvSlope === null ? "—" : a.obvSlope > 0.02 ? "subiendo" : a.obvSlope < -0.02 ? "bajando" : "plano"} />
@@ -150,6 +154,7 @@ export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind }: 
 
       <div className="card text-xs text-slate-500 space-y-1">
         <p><b>Cómo leerlo.</b> Las <b>medias móviles</b> suavizan el precio: cuando el precio y las medias cortas están por encima de las largas, la tendencia es alcista. El <b>RSI</b> mide la velocidad de las subidas y bajadas (por encima de 70, sobrecompra; por debajo de 30, sobreventa). El <b>MACD</b> compara dos medias exponenciales: sus cruces con la línea de señal anticipan cambios de impulso. El <b>estocástico</b> sitúa el cierre dentro del rango reciente. El <b>ADX</b> mide la fuerza de la tendencia (más de 25, fuerte; menos de 20, lateral). Las <b>bandas de Bollinger</b> marcan hasta dónde suele moverse el precio alrededor de su media. El <b>OBV</b> acumula volumen según el precio suba o baje. Los <b>soportes y resistencias</b> son niveles donde el precio ha rebotado o se ha frenado recientemente.</p>
+        {commodity && <p><b>En materias primas.</b> El precio es el del futuro continuo: el contrato más próximo, que se sustituye por el siguiente cuando vence, y en ese cambio puede haber un salto de precio que no es una subida o bajada real. Las materias primas se mueven por oferta, demanda, clima y geopolítica, y casi todas se cotizan en dólares, por lo que el tipo de cambio euro-dólar también cuenta. Los agrícolas y el gas natural tienen estacionalidad (cosechas, invierno), así que conviene mirar varios años.</p>}
         {crypto && <p><b>En criptomonedas.</b> El mercado no cierra nunca: cada vela diaria va de 00:00 a 24:00 UTC y la de hoy está siempre en curso (su volumen se proyecta a 24 h). Los movimientos del 5 al 10 % en un día son normales, por eso los umbrales de volatilidad son más amplios que en bolsa y los stops se calculan con el ATR. El análisis técnico funciona peor en monedas pequeñas, con poco volumen y muy ligadas a noticias o a la dirección de Bitcoin.</p>}
         <p>Este análisis es automático y educativo. No es una recomendación de inversión personalizada: combina siempre la lectura técnica con los fundamentales y tu horizonte temporal.</p>
       </div>

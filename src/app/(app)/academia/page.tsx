@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { firstName } from "@/lib/names";
 import { getCoursesWithProgress, getLearningStats, levelFromPoints, POINTS_PER_BADGE } from "@/lib/academy";
 
 export default async function AcademiaPage() {
@@ -65,7 +66,7 @@ export default async function AcademiaPage() {
               const lv = levelFromPoints(m.badgeCount * POINTS_PER_BADGE + (l?.points ?? 0));
               return (
                 <tr key={m.id}>
-                  <td>{m.name}{m.id === user.id ? " (tú)" : ""}</td>
+                  <td>{firstName(m.name)}{m.id === user.id ? " (tú)" : ""}</td>
                   <td>{lv.level} · {lv.name}</td>
                   <td className="text-right tabular-nums">{l?.lessonsPassed ?? 0} / {total}</td>
                   <td className="text-right tabular-nums">{l?.quizAccuracy === null || l?.quizAccuracy === undefined ? "—" : `${Math.round(l.quizAccuracy * 100)} %`}</td>

@@ -47,6 +47,7 @@ Abre http://localhost:3000. La base de datos es PostgreSQL: en desarrollo la sir
 Antes de usarla en serio, cambia `AUTH_SECRET` en `.env` por una cadena larga y aleatoria.
 
 ## Seguridad
+- En los rankings y en toda la aplicación se muestra solo el **nombre de pila**, sin apellidos (`src/lib/names.ts`). Si dos miembros de una familia se llaman igual, se distinguen con la inicial del último apellido («Miguel R.»).
 
 - Sesión en cookie `__session` (httpOnly, Secure, SameSite=Lax, JWT HS256 firmado con `AUTH_SECRET`, 30 días). El modo «ver como miembro» del presidente viaja dentro de la misma sesión.
 - Límite de intentos de login y registro por conexión y por email (tabla `AuthAttempt`), contraseñas de 8 a 128 caracteres, comparación de hash también cuando el email no existe.
@@ -97,6 +98,11 @@ Variables de entorno: `DATABASE_URL`, `AUTH_SECRET` (mínimo 32 caracteres; en p
    - El análisis está adaptado al mercado 24/7: el año tiene 365 velas (semana = 7, mes = 30), el volumen de la vela de hoy se proyecta a 24 h y los umbrales de volatilidad son los de una criptomoneda (ATR muy alto a partir del 7 % diario). Los precios de los niveles (entrada, stop, objetivos) usan los decimales que necesite la moneda.
    - La ficha de la moneda (puesto, capitalización, oferta, máximo histórico, categorías, descripción) viene de CoinGecko. El índice de miedo y codicia se añade como contexto y riesgo, nunca cambia la puntuación.
    - Se usa el par en euros de Yahoo Finance (BTC-EUR); si no existe se usa el par en dólares y la ficha lo avisa. Al buscar, los pares en euros salen primero y basta escribir «BTC» en el buscador.
+
+8. **Materias primas.** Misma mecánica que Acciones, ETF y Cripto, sobre un catálogo del club de 19 materias primas agrupadas en metales preciosos, metales industriales, energía, agrícolas y ganadería (`src/lib/commodities.ts`). Lista de seguimiento propia, ficha con histórico, análisis técnico, Recomendación del Club, noticias y ranking (`/materias-primas`, `/materias-primas/[símbolo]`, `/materias-primas/ranking`).
+   - Los precios son los de los futuros continuos de Yahoo Finance (`GC=F`, `CL=F`…), en dólares con su equivalente en euros. Yahoo da los agrícolas en centavos y la app los pasa a dólares para que cuadren con las operaciones.
+   - Cada ficha explica qué es la materia prima, qué mueve su precio, quién la produce y el tamaño del contrato. Se avisa del salto de precio al cambiar de contrato y de que los futuros no son un producto para empezar (para eso están los ETC y ETF).
+   - Noticias: RSS de Investing.com, Expansión (español), OilPrice, Mining.com, Natural Gas Intelligence y CNBC filtrados por materia prima, más Yahoo por nombre. El buscador de la lista acepta el nombre («oro», «petróleo») o el símbolo.
 
 ## Invitaciones y entrada al club
 

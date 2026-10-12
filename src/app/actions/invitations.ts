@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { destroySession, requireAdmin, uniqueInviteCode } from "@/lib/auth";
 import { invitationEmail, sendEmail } from "@/lib/email";
 import { appUrl } from "@/lib/appUrl";
+import { firstName } from "@/lib/names";
 import type { FormState } from "./auth";
 
 const refresh = () => {
@@ -70,9 +71,9 @@ export async function sendInvitationAction(_prev: FormState, formData: FormData)
   const origin = appUrl();
   const message = invitationEmail({
     to,
-    inviteeName: inv.name,
+    inviteeName: inv.name ? firstName(inv.name) : null,
     familyName: inv.family.name,
-    presidentName: admin.name,
+    presidentName: firstName(admin.name),
     code: inv.code,
     link: `${origin}/registro?codigo=${inv.code}`,
     expiresAt: inv.expiresAt,

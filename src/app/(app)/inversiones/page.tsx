@@ -6,7 +6,7 @@ import { fetchNews } from "@/lib/news";
 import { eur, pct } from "@/lib/format";
 import { LeagueChart } from "@/components/charts";
 import { AutoRefresh } from "./AutoRefresh";
-import { isCrypto } from "@/lib/prices";
+import { analysisPath, symbolKind } from "@/lib/kinds";
 
 const timeAgo = (d: Date) => {
   const h = Math.floor((Date.now() - d.getTime()) / 3600000);
@@ -142,7 +142,7 @@ export default async function InversionesPage() {
                   {r.holdings.map((h) => (
                     <tr key={h.symbol}>
                       <td>
-                        <div className="font-medium">{isCrypto(h.symbol) ? h.symbol : <Link href={`/acciones/${encodeURIComponent(h.symbol)}`} className="text-ink">{h.symbol}</Link>} {isCrypto(h.symbol) && <span className="tag tag-neutral ml-1">cripto</span>}</div>
+                        <div className="font-medium"><Link href={analysisPath(h.symbol)} className="text-ink">{h.symbol}</Link> {symbolKind(h.symbol) === "CRYPTO" && <span className="tag tag-neutral ml-1">cripto</span>}{symbolKind(h.symbol) === "COMMODITY" && <span className="tag tag-neutral ml-1">materia prima</span>}</div>
                         <div className="text-xs text-neutral-600 truncate max-w-[180px]">{h.name}</div>
                       </td>
                       <td className="text-right tabular-nums">{h.quantity.toLocaleString("es-ES", { maximumFractionDigits: 4 })}</td>

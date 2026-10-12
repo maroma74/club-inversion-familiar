@@ -2,7 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { computePortfolio } from "@/lib/portfolio";
-import { fxToEur, isCrypto } from "@/lib/prices";
+import { fxToEur } from "@/lib/prices";
+import { analysisPath, symbolKind } from "@/lib/kinds";
 import { eur, pct } from "@/lib/format";
 import { Kpi, PageHeader } from "@/components/ui";
 import { TradeList } from "../inversiones/TradeList";
@@ -55,7 +56,7 @@ export default async function OperacionesPage({ searchParams }: { searchParams: 
                 {me.holdings.map((h) => (
                   <tr key={h.symbol} className="border-t border-slate-100">
                     <td className="py-1.5">
-                      <div className="font-medium">{h.symbol} {isCrypto(h.symbol) && <span className="badge bg-orange-100 text-orange-700">cripto</span>}{h.stale && <span className="badge bg-slate-100 text-slate-500 ml-1" title="Cotización sin actualizar">sin actualizar</span>}</div>
+                      <div className="font-medium">{h.symbol} {symbolKind(h.symbol) === "CRYPTO" && <span className="badge bg-orange-100 text-orange-700">cripto</span>}{symbolKind(h.symbol) === "COMMODITY" && <span className="badge bg-amber-100 text-amber-700">materia prima</span>}{h.stale && <span className="badge bg-slate-100 text-slate-500 ml-1" title="Cotización sin actualizar">sin actualizar</span>}</div>
                       <div className="text-xs text-slate-400 truncate max-w-[200px]">{h.name}{h.brokers.length ? ` · ${h.brokers.join(", ")}` : ""}</div>
                     </td>
                     <td className="py-1.5 text-right tabular-nums">{h.quantity.toLocaleString("es-ES", { maximumFractionDigits: 6 })}</td>
@@ -65,7 +66,7 @@ export default async function OperacionesPage({ searchParams }: { searchParams: 
                     <td className="py-1.5 text-right tabular-nums whitespace-nowrap font-medium">{eur(h.value)}</td>
                     <td className={`py-1.5 text-right tabular-nums whitespace-nowrap font-medium ${h.pnl >= 0 ? "text-green-600" : "text-red-600"}`}>{eur(h.pnl)}<div className="text-xs">{pct(h.pnlPct)}</div></td>
                     <td className="py-1.5 text-right whitespace-nowrap">
-                      {!isCrypto(h.symbol) && <Link href={`/acciones/${encodeURIComponent(h.symbol)}`} className="text-xs text-indigo-600 hover:underline mr-3">Análisis</Link>}
+                      <Link href={analysisPath(h.symbol)} className="text-xs text-indigo-600 hover:underline mr-3">Análisis</Link>
                       <Link href={`/operaciones?activo=${encodeURIComponent(h.symbol)}#operar`} className="text-xs text-indigo-600 hover:underline">Operar</Link>
                     </td>
                   </tr>

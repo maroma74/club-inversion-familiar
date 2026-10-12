@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { firstName } from "@/lib/names";
 import { getCurrentPortfolio, isDeadlinePassed, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
 import { Markdown } from "@/components/Markdown";
 import { getPrices } from "@/lib/prices";
@@ -9,7 +10,7 @@ import { eur, fmtDate } from "@/lib/format";
 import { ActionBadge } from "@/components/ClubRecommendationCard";
 import { DecisionForm } from "./DecisionForm";
 
-const analysisHref = (kind: string, symbol: string) => (kind === "CRYPTO" ? `/cripto/${encodeURIComponent(symbol)}` : kind === "ETF" ? `/etf/${encodeURIComponent(symbol)}` : `/acciones/${encodeURIComponent(symbol)}`);
+const analysisHref = (kind: string, symbol: string) => (kind === "COMMODITY" ? `/materias-primas/${encodeURIComponent(symbol)}` : kind === "CRYPTO" ? `/cripto/${encodeURIComponent(symbol)}` : kind === "ETF" ? `/etf/${encodeURIComponent(symbol)}` : `/acciones/${encodeURIComponent(symbol)}`);
 
 export default async function CarteraPage() {
   const user = await requireUser();
@@ -39,8 +40,8 @@ export default async function CarteraPage() {
   const open = p.status === "PUBLISHED" && !isDeadlinePassed(p);
   const canDecide = open && !myDecision && myAllocation > 0;
   const others = p.decisions.filter((d) => d.userId !== user.id);
-  const memberNames = new Map(p.allocations.map((a) => [a.userId, a.user.name]));
-  const pendingMembers = p.allocations.filter((a) => a.amount > 0 && !p.decisions.some((d) => d.userId === a.userId)).map((a) => a.user.name);
+  const memberNames = new Map(p.allocations.map((a) => [a.userId, firstName(a.user.name)]));
+  const pendingMembers = p.allocations.filter((a) => a.amount > 0 && !p.decisions.some((d) => d.userId === a.userId)).map((a) => firstName(a.user.name));
 
   return (
     <div className="flex flex-col gap-7">
@@ -72,7 +73,7 @@ export default async function CarteraPage() {
                 return (
                   <tr key={o.id}>
                     <td><div className="font-medium">{o.symbol}</div><div className="text-xs text-neutral-600">{o.name}</div></td>
-                    <td><span className="tag tag-neutral">{o.kind === "ETF" ? "ETF" : o.kind === "CRYPTO" ? "cripto" : "acción"}</span></td>
+                    <td><span className="tag tag-neutral">{o.kind === "ETF" ? "ETF" : o.kind === "CRYPTO" ? "cripto" : o.kind === "COMMODITY" ? "materia prima" : "acción"}</span></td>
                     <td className="text-right tabular-nums whitespace-nowrap">{q ? eur(q.priceEur) : "—"}</td>
                     <td className="whitespace-nowrap">{r ? <><ActionBadge action={r.action} small /> <span className="text-xs text-neutral-700">{r.total > 0 ? "+" : ""}{r.total.toFixed(2)}</span></> : <span className="text-xs text-neutral-600">—</span>}</td>
                     <td className="text-[13px] text-neutral-800 max-w-[360px]">{o.note ?? ""}</td>
@@ -121,7 +122,7 @@ export default async function CarteraPage() {
         {(myDecision || isAdmin || p.status === "CLOSED") &&
           others.map((d) => (
             <div key={d.id} className="card blueprint gap-2" style={{ padding: 18 }}>
-              <div className="flex justify-between items-baseline flex-wrap gap-2"><b>{memberNames.get(d.userId) ?? d.user.name}</b><span className="text-xs text-neutral-700">{fmtDate(d.submittedAt)}</span></div>
+              <div className="flex justify-between items-baseline flex-wrap gap-2"><b>{memberNames.get(d.userId) ?? firstName(d.user.name)}</b><span className="text-xs text-neutral-700">{fmtDate(d.submittedAt)}</span></div>
               <ChoicesTable choices={d.choices} />
               <div className="text-[14px] [text-wrap:pretty]">“{d.argument}”</div>
             </div>

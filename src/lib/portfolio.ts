@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { firstName, uniqueFirstNames } from "./names";
 import { getPrices } from "./prices";
 
 export type Holding = {
@@ -102,7 +103,7 @@ export async function computePortfolio(userId: string, opts: { excludeTradeId?: 
 
   return {
     userId,
-    userName: user.name,
+    userName: firstName(user.name),
     contributed,
     cash,
     invested,
@@ -190,16 +191,21 @@ const snapshotWritten = new Map<string, { day: number; at: number }>();
 
 /** Ranking de los miembros activos (los pendientes de aprobación no participan). */
 export async function familyLeaderboard(familyId: string) {
-  const members = await prisma.user.findMany({ where: { familyId, status: "ACTIVE" }, orderBy: { createdAt: "asc" }, select: { id: true } });
+  const members = await prisma.user.findMany({ where: { familyId, status: "ACTIVE" }, orderBy: { createdAt: "asc" }, select: { id: true, name: true } });
   const summaries = await Promise.all(members.map((m) => computePortfolio(m.id)));
+  // Solo el nombre de pila; si dos miembros se llaman igual se distinguen con la inicial del apellido.
+  const names = uniqueFirstNames(members);
+  for (const s of summaries) s.userName = names.get(s.userId) ?? s.userName;
   await Promise.all(summaries.map((s) => snapshotPortfolio(s)));
   const ranked = [...summaries].sort((a, b) => b.returnPct - a.returnPct || b.pnl - a.pnl);
   return ranked;
 }
 
 export async function familyHistory(familyId: string) {
+  const active = await prisma.user.findMany({ where: { familyId, status: "ACTIVE" }, select: { id: true, name: true } });
+  const names = uniqueFirstNames(active);
   const snaps = await prisma.portfolioSnapshot.findMany({
-    where: { user: { familyId } },
+    where: { user: { familyId, status: "ACTIVE" } },
     orderBy: { date: "asc" },
     include: { user: { select: { name: true, id: true } } },
   });
@@ -208,8 +214,9 @@ export async function familyHistory(familyId: string) {
   for (const s of snaps) {
     const key = s.date.toISOString().slice(0, 10);
     const row = byDate.get(key) ?? { date: key };
-    row[s.user.name] = s.invested > 0 ? (s.value - s.invested) / s.invested : 0;
-    row[`${s.user.name}__valor`] = s.value;
+    const who = names.get(s.user.id) ?? firstName(s.user.name);
+    row[who] = s.invested > 0 ? (s.value - s.invested) / s.invested : 0;
+    row[`${who}__valor`] = s.value;
     byDate.set(key, row);
   }
   return [...byDate.values()];

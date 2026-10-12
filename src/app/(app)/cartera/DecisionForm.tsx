@@ -48,7 +48,7 @@ export function DecisionForm({ portfolioId, options, allocation, minChoices, max
               <label className="flex items-start gap-3 cursor-pointer">
                 <input type={single ? "radio" : "checkbox"} name={`pick_${o.id}`} checked={on} onChange={() => toggle(o.id)} className="mt-1" />
                 <span>
-                  <span className="font-heading text-[18px]">{o.symbol}</span> <span className="tag tag-neutral ml-1">{o.kind === "ETF" ? "ETF" : o.kind === "CRYPTO" ? "cripto" : "acción"}</span>
+                  <span className="font-heading text-[18px]">{o.symbol}</span> <span className="tag tag-neutral ml-1">{o.kind === "ETF" ? "ETF" : o.kind === "CRYPTO" ? "cripto" : o.kind === "COMMODITY" ? "materia prima" : "acción"}</span>
                   <span className="block text-[13px] text-neutral-700">{o.name}{o.price !== null ? ` · ${eur(o.price)}` : ""}</span>
                 </span>
               </label>

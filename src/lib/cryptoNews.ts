@@ -18,7 +18,7 @@ const FEEDS: { name: string; url: string }[] = [
   { name: "CriptoNoticias", url: "https://www.criptonoticias.com/feed/" },
 ];
 
-type FeedItem = NewsItem & { text: string };
+export type FeedItem = NewsItem & { text: string };
 const feedCache = new Map<string, { at: number; items: FeedItem[] }>();
 
 const decode = (s: string) =>
@@ -37,7 +37,7 @@ const decode = (s: string) =>
 
 const tag = (block: string, name: string) => block.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, "i"))?.[1] ?? "";
 
-async function readFeed(feed: { name: string; url: string }): Promise<FeedItem[]> {
+export async function readFeed(feed: { name: string; url: string }): Promise<FeedItem[]> {
   const cached = feedCache.get(feed.url);
   if (cached && Date.now() - cached.at < TTL_MS) return cached.items;
   const ctrl = new AbortController();
@@ -65,7 +65,7 @@ async function readFeed(feed: { name: string; url: string }): Promise<FeedItem[]
   }
 }
 
-async function yahooNews(query: string): Promise<NewsItem[]> {
+export async function yahooNews(query: string): Promise<NewsItem[]> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 6000);
   try {

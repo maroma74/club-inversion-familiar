@@ -4,21 +4,29 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { isCrypto } from "@/lib/prices";
+import { DEFAULT_COMMODITY_WATCHLIST, findCommodity, isCommodity, matchCommodity } from "@/lib/commodities";
 import { DEFAULT_CRYPTO_WATCHLIST, DEFAULT_ETF_WATCHLIST, DEFAULT_WATCHLIST, fetchStockQuote, type WatchKind } from "@/lib/stocks";
 import { fetchProfile } from "@/lib/fundamentals";
 import { symbolSchema } from "@/lib/validation";
 import type { FormState } from "./auth";
 
-const asKind = (v: unknown): WatchKind => (v === "ETF" ? "ETF" : v === "CRYPTO" ? "CRYPTO" : "STOCK");
-const pathFor = (kind: WatchKind) => (kind === "ETF" ? "/etf" : kind === "CRYPTO" ? "/cripto" : "/acciones");
+const asKind = (v: unknown): WatchKind => (v === "ETF" ? "ETF" : v === "CRYPTO" ? "CRYPTO" : v === "COMMODITY" ? "COMMODITY" : "STOCK");
+const pathFor = (kind: WatchKind) => (kind === "ETF" ? "/etf" : kind === "CRYPTO" ? "/cripto" : kind === "COMMODITY" ? "/materias-primas" : "/acciones");
 const revalidateLists = () => {
-  for (const p of ["/acciones", "/etf", "/cripto"]) revalidatePath(p);
+  for (const p of ["/acciones", "/etf", "/cripto", "/materias-primas"]) revalidatePath(p);
 };
 
 /** Alta de un valor en la lista de la familia; el tipo real (acción, ETF o cripto) lo decide el símbolo. */
 async function addToWatchlist(rawSymbol: unknown, rawName: unknown, pageKind: WatchKind): Promise<FormState> {
   const user = await requireUser();
-  const symParsed = symbolSchema.safeParse(rawSymbol ?? "");
+  // En la sección de materias primas se acepta el nombre («oro», «petróleo») o el símbolo del catálogo del club.
+  let input: unknown = rawSymbol;
+  if (pageKind === "COMMODITY") {
+    const m = matchCommodity(String(rawSymbol ?? ""));
+    if (!m) return { error: "No hay ninguna materia prima con ese nombre. Prueba con: oro, plata, petróleo, gas natural, cobre, trigo, café…" };
+    input = m.symbol;
+  }
+  const symParsed = symbolSchema.safeParse(input ?? "");
   if (!symParsed.success) return { error: symParsed.error.issues[0].message };
   let symbol = symParsed.data;
   // En la página de cripto basta con escribir «BTC»: se usa el par en euros.
@@ -39,9 +47,11 @@ async function addToWatchlist(rawSymbol: unknown, rawName: unknown, pageKind: Wa
     };
   }
   if (!name) name = q.name.replace(/\s+(EUR|USD)$/i, "");
+  if (isCommodity(q.symbol)) name = findCommodity(q.symbol)!.name; // nombre en español del catálogo
 
   let kind: WatchKind;
   if (isCrypto(q.symbol)) kind = "CRYPTO";
+  else if (isCommodity(q.symbol)) kind = "COMMODITY";
   else if (pageKind === "CRYPTO") return { error: `${q.symbol} no es una criptomoneda. Escribe su par de Yahoo Finance, p. ej. BTC-EUR, ETH-EUR o SOL-EUR.` };
   else {
     // El tipo real lo dice Yahoo (ETF / acción); si no responde, se usa el de la página desde la que se añade.
@@ -56,7 +66,7 @@ async function addToWatchlist(rawSymbol: unknown, rawName: unknown, pageKind: Wa
     create: { familyId: user.familyId, symbol: q.symbol, name, kind },
   });
   revalidateLists();
-  const where = (k: WatchKind) => (k === "ETF" ? "un ETF: lo encontrarás en la sección ETF" : k === "CRYPTO" ? "una criptomoneda: la encontrarás en Cripto" : "una acción: la encontrarás en Acciones");
+  const where = (k: WatchKind) => (k === "ETF" ? "un ETF: lo encontrarás en la sección ETF" : k === "CRYPTO" ? "una criptomoneda: la encontrarás en Cripto" : k === "COMMODITY" ? "una materia prima: la encontrarás en Materias primas" : "una acción: la encontrarás en Acciones");
   const moved = kind !== pageKind ? ` (es ${where(kind)})` : "";
   return { ok: `${q.symbol} añadido a la lista${moved}` };
 }
@@ -79,7 +89,7 @@ export async function removeWatchlistAction(formData: FormData) {
 export async function addDefaultWatchlistAction(formData: FormData) {
   const user = await requireUser();
   const kind = asKind(formData.get("kind"));
-  const list = kind === "ETF" ? DEFAULT_ETF_WATCHLIST : kind === "CRYPTO" ? DEFAULT_CRYPTO_WATCHLIST : DEFAULT_WATCHLIST;
+  const list = kind === "ETF" ? DEFAULT_ETF_WATCHLIST : kind === "CRYPTO" ? DEFAULT_CRYPTO_WATCHLIST : kind === "COMMODITY" ? DEFAULT_COMMODITY_WATCHLIST : DEFAULT_WATCHLIST;
   for (const d of list) {
     await prisma.watchlistItem.upsert({
       where: { familyId_symbol: { familyId: user.familyId, symbol: d.symbol } },

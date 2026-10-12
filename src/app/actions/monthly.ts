@@ -5,7 +5,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireUser } from "@/lib/auth";
+import { firstName } from "@/lib/names";
 import { fetchQuote, isCrypto } from "@/lib/prices";
+import { findCommodity, isCommodity } from "@/lib/commodities";
 import { fetchStockQuote } from "@/lib/stocks";
 import { fetchProfile } from "@/lib/fundamentals";
 import { reconcileOwnContributions } from "@/lib/portfolio";
@@ -95,6 +97,11 @@ export async function addOptionAction(_prev: FormState, formData: FormData): Pro
     } catch {
       return { error: `No se encontró cotización para ${symbol}` };
     }
+  } else if (isCommodity(symbol)) {
+    kind = "COMMODITY";
+    const q = await fetchStockQuote(symbol);
+    if (q.error && q.price === 0) return { error: `No se encontró cotización para ${symbol}` };
+    if (!name) name = findCommodity(symbol)!.name;
   } else {
     const q = await fetchStockQuote(symbol);
     if (q.error && q.price === 0) return { error: `No se encontró cotización para ${symbol}` };
@@ -133,7 +140,7 @@ export async function setAllocationsAction(_prev: FormState, formData: FormData)
     const raw = formData.get(`amount_${m.id}`);
     if (raw === null) continue;
     const amount = parseMoney(raw, { allowZero: true });
-    if (amount === null) return { error: `Importe no válido para ${m.name} (entre 0 y ${MAX_MONEY.toLocaleString("es-ES")} €)` };
+    if (amount === null) return { error: `Importe no válido para ${firstName(m.name)} (entre 0 y ${MAX_MONEY.toLocaleString("es-ES")} €)` };
     if (decided.has(m.id)) continue; // ya ha invertido: no se toca
     await prisma.$transaction(async (tx) => {
       const alloc = await tx.monthlyAllocation.upsert({

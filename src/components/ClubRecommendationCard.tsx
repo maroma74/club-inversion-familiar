@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { safeHref } from "@/lib/validation";
 import type { ClubRecommendation } from "@/lib/club";
-import { CRYPTO_DISCLAIMER, DISCLAIMER, recommendationMarkdown } from "@/lib/recommend";
+import { COMMODITY_DISCLAIMER, CRYPTO_DISCLAIMER, DISCLAIMER, recommendationMarkdown } from "@/lib/recommend";
 import { CopyButton } from "./CopyButton";
 import { fmtDate } from "@/lib/format";
 import { priceDecimals } from "@/lib/fmtPrice";
@@ -41,7 +41,9 @@ export function ClubRecommendationCard({ r }: { r: ClubRecommendation }) {
         <div>
           <div className="card-kicker text-[11px] font-medium">Recomendación del Club de inversión</div>
           <div className="text-[14px] mt-1"><b>[{r.ticker}] – {r.name}</b> | Precio: {f(r.price)} {cur} | Fecha datos: {fmtDate(r.dataDate)}</div>
-          {r.isCrypto ? (
+          {r.isCommodity && r.commodity ? (
+            <div className="text-xs text-neutral-700 mt-0.5">Materia prima · {r.commodity.group} · futuro continuo en {r.commodity.exchange} · {r.commodity.unit}</div>
+          ) : r.isCrypto ? (
             <div className="text-xs text-neutral-700 mt-0.5">
               Criptomoneda · {r.cryptoRank !== null ? `puesto #${r.cryptoRank} por capitalización · ` : ""}mercado 24/7
               {r.fearGreed && <> · Miedo y codicia: <b className="text-ink">{r.fearGreed.value} ({r.fearGreed.labelEs.toLowerCase()})</b></>}
@@ -118,10 +120,30 @@ export function ClubRecommendationCard({ r }: { r: ClubRecommendation }) {
       )}
 
       <div className="flex flex-wrap justify-between gap-3 items-center border-t border-divider pt-3">
-        <p className="m-0 text-xs italic text-neutral-700 max-w-[70ch]">{DISCLAIMER}{r.isCrypto ? ` ${CRYPTO_DISCLAIMER}` : ""}</p>
+        <p className="m-0 text-xs italic text-neutral-700 max-w-[70ch]">{DISCLAIMER}{r.isCrypto ? ` ${CRYPTO_DISCLAIMER}` : ""}{r.isCommodity ? ` ${COMMODITY_DISCLAIMER}` : ""}</p>
         <span className="text-xs text-neutral-700">Para entender esta ficha: <Link href="/academia/analisis-tecnico/tendencia-y-medias" className="btn-ghost text-xs">Nivel 5 · Análisis técnico</Link></span>
       </div>
     </section>
+  );
+}
+
+/** Ficha de la materia prima: qué es, qué mueve su precio, quién la produce y cómo cotiza el futuro. */
+function CommodityBlock({ c }: { c: NonNullable<ClubRecommendation["commodity"]> }) {
+  return (
+    <div>
+      <h5 className="m-0 mb-1.5 text-[18px]">La materia prima</h5>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-700 mb-2">
+        <span>Grupo: <b className="text-ink">{c.group}</b></span>
+        <span>Cotiza en: <b className="text-ink">{c.unit}</b></span>
+        <span>Mercado: <b className="text-ink">{c.exchange}</b></span>
+        <span>Contrato: <b className="text-ink">{c.contract}</b></span>
+      </div>
+      <p className="m-0 mb-2 text-xs text-neutral-800 leading-relaxed">{c.description}</p>
+      <div className="text-[11px] tracking-[0.08em] uppercase text-neutral-700 mb-1">Qué mueve el precio</div>
+      <ul className="m-0 mb-2 pl-5 text-xs text-neutral-800 flex flex-col gap-0.5">{c.drivers.map((d) => <li key={d}>{d}</li>)}</ul>
+      <p className="m-0 text-xs text-neutral-800"><b>Principales productores:</b> {c.producers}</p>
+      <p className="m-0 text-[11px] text-neutral-600 mt-2">Ficha del club. El precio es el del futuro continuo de Yahoo Finance; para invertir sin apalancamiento se usan ETC o ETF de materias primas.</p>
+    </div>
   );
 }
 
@@ -163,10 +185,11 @@ function CompanyAndNews({ r }: { r: ClubRecommendation }) {
   const p = r.profile;
   const d = r.newsDigest;
   const hasProfile = p.description || p.marketCap || p.trailingPE || p.dividendYield || p.fundFamily || p.totalAssets;
-  if (!hasProfile && !d && !r.crypto) return null;
+  if (!hasProfile && !d && !r.crypto && !r.commodity) return null;
   return (
     <div className="grid gap-6 border-t border-divider pt-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))" }}>
       {r.crypto && <CryptoBlock r={r} />}
+      {r.commodity && <CommodityBlock c={r.commodity} />}
       {hasProfile && p.isFund && (
         <div>
           <h5 className="m-0 mb-1.5 text-[18px]">El fondo</h5>
@@ -204,7 +227,7 @@ function CompanyAndNews({ r }: { r: ClubRecommendation }) {
           {p.description && <p className="m-0 text-xs text-neutral-800 leading-relaxed">{p.description.length > 400 ? p.description.slice(0, 400).replace(/\s\S*$/, "") + "…" : p.description}</p>}
         </div>
       )}
-      {hasProfile && !p.isFund && !r.isCrypto && (
+      {hasProfile && !p.isFund && !r.isCrypto && !r.isCommodity && (
         <div>
           <h5 className="m-0 mb-1.5 text-[18px]">La empresa</h5>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-700 mb-2">
@@ -222,7 +245,7 @@ function CompanyAndNews({ r }: { r: ClubRecommendation }) {
         <div>
           <h5 className="m-0 mb-1.5 text-[18px]">Qué dicen las noticias</h5>
           <p className="m-0 mb-2 text-xs text-neutral-700"><span className="tag tag-neutral mr-1">tono {d.tone}</span>{d.summary}</p>
-          {r.newsGeneral && <p className="m-0 mb-2 text-xs text-amber-700">No hay titulares recientes específicos de {r.name.replace(/\s+(EUR|USD)$/i, "")}: se muestran noticias del mercado cripto en general.</p>}
+          {r.newsGeneral && <p className="m-0 mb-2 text-xs text-amber-700">No hay titulares recientes específicos de {r.name.replace(/\s+(EUR|USD)$/i, "")}: se muestran noticias {r.isCommodity ? "de mercados de materias primas" : "del mercado cripto"} en general.</p>}
           {d.items.length > 0 && (
             <ul className="text-[14px] flex flex-col gap-1 list-none m-0 p-0">
               {d.items.slice(0, 6).map((n) => (
@@ -236,7 +259,7 @@ function CompanyAndNews({ r }: { r: ClubRecommendation }) {
               ))}
             </ul>
           )}
-          <p className="m-0 text-[11px] text-neutral-600 mt-2">Clasificación automática por palabras clave del titular; el tono de las noticias no altera la puntuación técnica, solo se añade como contexto y riesgo.{r.isCrypto ? " Fuentes: Cointelegraph, CoinDesk, Decrypt, Bitcoin Magazine, CriptoNoticias y Yahoo Finance." : ""}</p>
+          <p className="m-0 text-[11px] text-neutral-600 mt-2">Clasificación automática por palabras clave del titular; el tono de las noticias no altera la puntuación técnica, solo se añade como contexto y riesgo.{r.isCrypto ? " Fuentes: Cointelegraph, CoinDesk, Decrypt, Bitcoin Magazine, CriptoNoticias y Yahoo Finance." : ""}{r.isCommodity ? " Fuentes: Investing.com, Expansión, OilPrice, Mining.com, Natural Gas Intelligence, CNBC y Yahoo Finance." : ""}</p>
         </div>
       )}
     </div>

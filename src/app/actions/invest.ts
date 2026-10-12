@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireUser } from "@/lib/auth";
+import { firstName } from "@/lib/names";
 import { computePortfolio, OWN_CONTRIBUTION_PREFIX, reconcileOwnContributions } from "@/lib/portfolio";
 import { fetchQuote, fxToEurAt, setManualPrice, SUPPORTED_CURRENCIES } from "@/lib/prices";
 import { dateSchema, MAX_PRICE, MAX_QUANTITY, num, parseMoney, parsePastDay, shortText, symbolSchema } from "@/lib/validation";
@@ -198,7 +199,7 @@ export async function addContributionAction(_prev: FormState, formData: FormData
   await prisma.contribution.create({ data: { userId, amount: f.amount, date: f.date, note: f.note } });
   await reconcileOwnContributions(userId);
   revalidatePaths();
-  return { ok: `Aportación de ${f.amount.toFixed(2)} € registrada a ${member.name}` };
+  return { ok: `Aportación de ${f.amount.toFixed(2)} € registrada a ${firstName(member.name)}` };
 }
 
 export async function deleteContributionAction(formData: FormData) {

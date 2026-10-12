@@ -8,6 +8,8 @@ import { fetchCryptoHistory, fetchHistory } from "./stocks";
 import { analyze } from "./technical";
 import { emptyProfile, fetchProfile, type Profile } from "./fundamentals";
 import { isCrypto } from "./prices";
+import { findCommodity, type Commodity } from "./commodities";
+import { fetchCommodityNews } from "./commodityNews";
 import { fetchFearGreed, type FearGreed } from "./crypto";
 import { baseSymbol, fetchCryptoProfile, type CryptoProfile } from "./cryptoProfile";
 import { fetchCryptoNews } from "./cryptoNews";
@@ -25,6 +27,7 @@ export type ClubRecommendation = Recommendation & {
   crypto: CryptoProfile | null; // ficha de la moneda (CoinGecko), solo en criptomonedas y en la vista de detalle
   fearGreed: FearGreed | null; // índice de miedo y codicia, solo en criptomonedas
   newsGeneral: boolean; // las noticias son del mercado cripto en general, no de la moneda
+  commodity: Commodity | null; // ficha de la materia prima (catálogo del club)
   usdFallback: boolean; // no hay par en euros en Yahoo y el análisis es sobre el par en dólares
 };
 
@@ -37,23 +40,25 @@ export async function getClubRecommendation(symbol: string, opts: { withNews?: b
   if (cached && Date.now() - cached.at < TTL_MS && (!opts.withNews || cached.data.newsDigest !== null)) return cached.data;
 
   const crypto = isCrypto(sym);
+  const commodity = crypto ? null : findCommodity(sym);
   const resolved = crypto ? await fetchCryptoHistory(sym, "2y") : null;
   const hist = crypto ? (resolved?.hist ?? null) : await fetchHistory(sym, "2y");
   if (!hist) return null;
   const coinName = hist.name.replace(/\s+(EUR|USD)$/i, "");
   const ticker = baseSymbol(hist.symbol);
-  const [profile, newsItems, cryptoProfile, fearGreed, cryptoNews] = await Promise.all([
-    crypto ? Promise.resolve(emptyProfile(sym)) : fetchProfile(sym),
-    !crypto && opts.withNews ? fetchSymbolNews(sym, hist.name).catch(() => []) : Promise.resolve(null),
+  const [profile, newsItems, cryptoProfile, fearGreed, cryptoNews, commodityNews] = await Promise.all([
+    crypto || commodity ? Promise.resolve(emptyProfile(sym)) : fetchProfile(sym),
+    !crypto && !commodity && opts.withNews ? fetchSymbolNews(sym, hist.name).catch(() => []) : Promise.resolve(null),
     crypto && opts.withNews ? fetchCryptoProfile(hist.symbol, coinName).catch(() => null) : Promise.resolve(null),
     crypto ? fetchFearGreed().catch(() => null) : Promise.resolve(null),
     crypto && opts.withNews ? fetchCryptoNews(coinName, ticker).catch(() => ({ items: [], general: false })) : Promise.resolve(null),
+    commodity && opts.withNews ? fetchCommodityNews(commodity).catch(() => ({ items: [], general: false })) : Promise.resolve(null),
   ]);
-  const digest = cryptoNews ? digestNews(cryptoNews.items, coinName) : newsItems ? digestNews(newsItems, sym) : null;
+  const digest = commodityNews ? digestNews(commodityNews.items, commodity!.name) : cryptoNews ? digestNews(cryptoNews.items, coinName) : newsItems ? digestNews(newsItems, sym) : null;
   const analysis = analyze(hist.candles, { crypto });
   const rec = recommend(
     analysis,
-    { ticker: hist.symbol, name: crypto ? coinName : hist.name, currency: hist.currency === "GBp" ? "GBX" : hist.currency },
+    { ticker: hist.symbol, name: crypto ? coinName : commodity ? commodity.name : hist.name, currency: hist.currency === "GBp" ? "GBX" : hist.currency },
     {
       sector: profile.sector,
       industry: profile.industry,
@@ -64,6 +69,8 @@ export async function getClubRecommendation(symbol: string, opts: { withNews?: b
       newsSummary: digest?.summary ?? null,
       isFund: profile.isFund,
       isCrypto: crypto,
+      isCommodity: !!commodity,
+      commodityGroup: commodity?.group ?? null,
       cryptoRank: cryptoProfile?.rank ?? null,
       fearGreed: fearGreed ? { value: fearGreed.value, labelEs: fearGreed.labelEs } : null,
     },
@@ -104,7 +111,8 @@ export async function getClubRecommendation(symbol: string, opts: { withNews?: b
     newsDigest: digest,
     crypto: cryptoProfile,
     fearGreed,
-    newsGeneral: cryptoNews?.general ?? false,
+    commodity,
+    newsGeneral: commodityNews?.general ?? cryptoNews?.general ?? false,
     usdFallback: resolved?.fallback ?? false,
   };
   boundedSet(memo, sym, { at: Date.now(), data });

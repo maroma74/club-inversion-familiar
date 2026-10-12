@@ -2,7 +2,8 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { DEFAULT_CRYPTO_WATCHLIST, DEFAULT_ETF_WATCHLIST, DEFAULT_WATCHLIST, fetchStockQuotes, getWatchlist, INDICES, type WatchKind } from "@/lib/stocks";
 import { familyLeaderboard } from "@/lib/portfolio";
-import { isCrypto } from "@/lib/prices";
+import { symbolKind } from "@/lib/kinds";
+import { DEFAULT_COMMODITY_WATCHLIST, findCommodity } from "@/lib/commodities";
 import { eur } from "@/lib/format";
 import { Sparkline } from "@/components/Sparkline";
 import { PageHeader } from "@/components/ui";
@@ -34,6 +35,14 @@ const COPY: Record<WatchKind, { title: string; subtitle: string; listTitle: stri
     base: "/acciones",
     footer: "Símbolos de Yahoo Finance: bolsa de Madrid termina en .MC (SAN.MC), Ámsterdam en .AS, Xetra en .DE, Milán en .MI, Londres en .L; las acciones de EE. UU. no llevan sufijo.",
   },
+  COMMODITY: {
+    title: "Materias primas",
+    subtitle: "Lista de seguimiento de materias primas de la familia: metales, energía, agrícolas y ganadería, con Recomendación del Club, análisis técnico, histórico y noticias por materia prima. Precios de los futuros continuos de Yahoo Finance, en dólares.",
+    listTitle: "Materias primas seguidas por la familia",
+    empty: "La lista está vacía. Añade materias primas con el buscador o empieza con una selección: oro, plata, platino, cobre, petróleo, gas natural, trigo, maíz, soja, café y cacao.",
+    base: "/materias-primas",
+    footer: "Los precios son los del futuro continuo de cada materia prima (contrato más próximo): al cambiar de contrato puede haber un salto de precio. Se muestran en dólares y su equivalente en euros. Para invertir de forma sencilla se usan ETC o ETF de materias primas (por ejemplo, oro físico), que se siguen en la sección ETF.",
+  },
   CRYPTO: {
     title: "Cripto",
     subtitle: "Lista de seguimiento de criptomonedas de la familia con Recomendación del Club, análisis técnico, histórico y noticias por moneda. Cotizaciones de Yahoo Finance en euros, mercado 24/7.",
@@ -59,16 +68,19 @@ export async function MarketList({ kind, embedded = false }: { kind: WatchKind; 
 
   // Valores en cartera (cripto o no, según la sección) que no estén en ninguna lista: en Acciones y Cripto se muestran siempre.
   const crypto = kind === "CRYPTO";
+  const commodity = kind === "COMMODITY";
+  const fine = crypto || commodity; // más decimales según la magnitud del precio
+  const heldKind = kind === "ETF" ? "STOCK" : kind;
   const held = new Map<string, string[]>();
-  for (const r of ranking) for (const h of r.holdings) if (isCrypto(h.symbol) === crypto) held.set(h.symbol, [...(held.get(h.symbol) ?? []), r.userName]);
+  for (const r of ranking) for (const h of r.holdings) if (symbolKind(h.symbol) === heldKind) held.set(h.symbol, [...(held.get(h.symbol) ?? []), r.userName]);
   const listSymbols = new Set(watchlist.map((w) => w.symbol));
   const allListed = new Set((await getWatchlist(user.familyId)).map((w) => w.symbol));
   const extra = kind !== "ETF" ? [...held.keys()].filter((s) => !allListed.has(s)) : [];
   const symbols = [...watchlist.map((w) => w.symbol), ...extra];
 
-  const [indices, quotes, club] = await Promise.all([crypto ? Promise.resolve([]) : fetchStockQuotes(INDICES.map((i) => i.symbol)), fetchStockQuotes(symbols), getClubRecommendations(symbols)]);
+  const [indices, quotes, club] = await Promise.all([fine ? Promise.resolve([]) : fetchStockQuotes(INDICES.map((i) => i.symbol)), fetchStockQuotes(symbols), getClubRecommendations(symbols)]);
   const names = new Map(watchlist.map((w) => [w.symbol, w.name]));
-  const defaults = kind === "ETF" ? DEFAULT_ETF_WATCHLIST : kind === "CRYPTO" ? DEFAULT_CRYPTO_WATCHLIST : DEFAULT_WATCHLIST;
+  const defaults = kind === "ETF" ? DEFAULT_ETF_WATCHLIST : kind === "CRYPTO" ? DEFAULT_CRYPTO_WATCHLIST : kind === "COMMODITY" ? DEFAULT_COMMODITY_WATCHLIST : DEFAULT_WATCHLIST;
 
   return (
     <>
@@ -78,7 +90,7 @@ export async function MarketList({ kind, embedded = false }: { kind: WatchKind; 
         </PageHeader>
       )}
 
-      {!crypto && <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      {!fine && <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         {INDICES.map((idx, i) => {
           const q = indices[i];
           return (
@@ -138,11 +150,11 @@ export async function MarketList({ kind, embedded = false }: { kind: WatchKind; 
                       <td className="px-5 py-2">
                         <Link href={`${c.base}/${encodeURIComponent(q.symbol)}`} className="font-medium text-indigo-700 hover:underline">{names.get(q.symbol) ?? q.name}</Link>
                         {owners && <span className="badge bg-indigo-100 text-indigo-700 ml-2" title={owners.join(", ")}>en cartera</span>}
-                        <div className="text-xs text-slate-400">{q.symbol} · {q.exchange}{q.error ? ` · ${q.error}` : ""}</div>
+                        <div className="text-xs text-slate-400">{q.symbol} · {findCommodity(q.symbol)?.group ?? q.exchange}{q.error ? ` · ${q.error}` : ""}</div>
                       </td>
                       <td className="px-2 py-2 text-right tabular-nums font-medium whitespace-nowrap">
-                        {q.price ? fmtPrice(q.price, q.currency, crypto) : "—"}
-                        {q.price && q.currency !== "EUR" ? <div className="text-xs text-slate-400">{eur(q.priceEur, crypto ? decimals(q.priceEur) : 2)}</div> : null}
+                        {q.price ? fmtPrice(q.price, q.currency, fine) : "—"}
+                        {q.price && q.currency !== "EUR" ? <div className="text-xs text-slate-400">{eur(q.priceEur, fine ? decimals(q.priceEur) : 2)}</div> : null}
                       </td>
                       <td className="px-2 py-2 text-right whitespace-nowrap"><Change v={q.price ? q.change1d : null} /></td>
                       <td className="px-2 py-2 whitespace-nowrap">

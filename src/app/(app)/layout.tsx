@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
+import { firstName } from "@/lib/names";
 import { prisma } from "@/lib/prisma";
 import { levelFromPoints, POINTS_PER_BADGE, POINTS_PER_LESSON } from "@/lib/academy";
 import { isDeadlinePassed, roleLabel } from "@/lib/monthly";
@@ -36,7 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         isAdmin={user.role === "ADMIN"}
         alertHref={alertHref}
         familyName={user.family.name}
-        userName={user.name}
+        userName={firstName(user.name)}
         userMeta={userMeta}
         footer={
           <>
@@ -57,7 +58,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <NavLinks isAdmin={user.role === "ADMIN"} alertHref={alertHref} />
         <div className="flex items-center justify-between gap-2 border-t border-[rgba(248,250,252,0.12)]" style={{ padding: "14px 20px" }}>
           <div className="min-w-0">
-            <div className="text-[14px] font-medium truncate">{user.name}</div>
+            <div className="text-[14px] font-medium truncate">{firstName(user.name)}</div>
             <div className="text-[11px] opacity-70">{userMeta}</div>
           </div>
           <div className="flex items-center gap-1">

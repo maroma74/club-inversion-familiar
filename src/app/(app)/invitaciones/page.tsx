@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { firstName } from "@/lib/names";
 import { appUrl } from "@/lib/appUrl";
 import { fmtDate } from "@/lib/format";
 import { PageHeader } from "@/components/ui";
@@ -36,10 +37,10 @@ export default async function InvitacionesPage() {
           <ul className="divide-y divide-amber-100">
             {pendingMembers.map((m) => (
               <li key={m.id} className="py-2 flex flex-wrap items-center justify-between gap-2 text-sm">
-                <div><b>{m.name}</b> <span className="text-slate-500">{m.email}</span> <span className="text-xs text-slate-400">· solicitó el {fmtDate(m.createdAt)}</span></div>
+                <div><b>{firstName(m.name)}</b> <span className="text-slate-500">{m.email}</span> <span className="text-xs text-slate-400">· solicitó el {fmtDate(m.createdAt)}</span></div>
                 <div className="flex gap-2">
                   <form action={approveMemberAction}><input type="hidden" name="userId" value={m.id} /><button className="btn-primary py-1 text-xs">Aprobar</button></form>
-                  <form action={removeMemberAction}><input type="hidden" name="userId" value={m.id} /><ConfirmButton className="btn-danger py-1 text-xs" message={`¿Rechazar la solicitud de ${m.name}? Se borrará su cuenta.`}>Rechazar</ConfirmButton></form>
+                  <form action={removeMemberAction}><input type="hidden" name="userId" value={m.id} /><ConfirmButton className="btn-danger py-1 text-xs" message={`¿Rechazar la solicitud de ${firstName(m.name)}? Se borrará su cuenta.`}>Rechazar</ConfirmButton></form>
                 </div>
               </li>
             ))}
@@ -95,18 +96,18 @@ export default async function InvitacionesPage() {
                   return (
                     <tr key={i.id} className="border-t border-slate-100">
                       <td className="px-5 py-2">
-                        <div className="font-medium">{i.name ?? "Sin nombre"}</div>
+                        <div className="font-medium">{i.name ? firstName(i.name) : "Sin nombre"}</div>
                         <div className="text-xs text-slate-400">{i.email ?? "cualquier email"}{i.note ? ` · ${i.note}` : ""}</div>
                       </td>
                       <td className="px-2 py-2 font-mono tracking-wider">{i.code}</td>
                       <td className="px-2 py-2">
                         <span className={`badge ${STATUS_STYLE[st]}`}>{st}</span>
-                        {st === "usada" && <div className="text-xs text-slate-400">{i.usedBy?.name} · {i.usedAt ? fmtDate(i.usedAt) : ""}</div>}
+                        {st === "usada" && <div className="text-xs text-slate-400">{firstName(i.usedBy?.name)} · {i.usedAt ? fmtDate(i.usedAt) : ""}</div>}
                         {i.sentAt && st !== "usada" && <div className="text-xs text-slate-400">correo enviado el {fmtDate(i.sentAt)}{i.sentTo && i.sentTo !== i.email ? ` a ${i.sentTo}` : ""}</div>}
                       </td>
                       <td className="px-2 py-2 hidden md:table-cell">{i.role === "ADMIN" ? "Presidente del club" : "Miembro"}</td>
                       <td className="px-2 py-2 text-slate-500 hidden md:table-cell">{i.expiresAt ? fmtDate(i.expiresAt) : "nunca"}</td>
-                      <td className="px-2 py-2 text-slate-500 hidden lg:table-cell">{fmtDate(i.createdAt)} · {i.createdBy.name}</td>
+                      <td className="px-2 py-2 text-slate-500 hidden lg:table-cell">{fmtDate(i.createdAt)} · {firstName(i.createdBy.name)}</td>
                       <td className="px-5 py-2 text-right whitespace-nowrap">
                         {st === "pendiente" && (
                           <>
@@ -143,7 +144,7 @@ export default async function InvitacionesPage() {
               const lastAdmin = m.role === "ADMIN" && activeAdmins <= 1;
               return (
                 <tr key={m.id} className="border-t border-slate-100">
-                  <td className="px-5 py-2"><div className="font-medium">{m.name}{isMe ? " (tú)" : ""}</div><div className="text-xs text-slate-400">{m.email}</div></td>
+                  <td className="px-5 py-2"><div className="font-medium">{firstName(m.name)}{isMe ? " (tú)" : ""}</div><div className="text-xs text-slate-400">{m.email}</div></td>
                   <td className="px-2 py-2">
                     <form action={setMemberRoleAction} className="inline-flex items-center gap-1">
                       <input type="hidden" name="userId" value={m.id} />
@@ -159,7 +160,7 @@ export default async function InvitacionesPage() {
                   <td className="px-2 py-2 text-slate-500 hidden md:table-cell">{fmtDate(m.createdAt)}</td>
                   <td className="px-5 py-2 text-right">
                     {!isMe && !lastAdmin && (
-                      <form action={removeMemberAction} className="inline"><input type="hidden" name="userId" value={m.id} /><ConfirmButton className="text-xs text-slate-400 hover:text-red-600" message={`¿Expulsar a ${m.name} del club? Se borrarán su cuenta, sus operaciones y sus aportaciones. Esta acción no se puede deshacer.`}>Expulsar</ConfirmButton></form>
+                      <form action={removeMemberAction} className="inline"><input type="hidden" name="userId" value={m.id} /><ConfirmButton className="text-xs text-slate-400 hover:text-red-600" message={`¿Expulsar a ${firstName(m.name)} del club? Se borrarán su cuenta, sus operaciones y sus aportaciones. Esta acción no se puede deshacer.`}>Expulsar</ConfirmButton></form>
                     )}
                   </td>
                 </tr>

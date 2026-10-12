@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { firstName } from "@/lib/names";
 import { familyOverview } from "@/lib/league";
 import { eur, fmtDate, ymOf } from "@/lib/format";
 import { CopyButton } from "@/components/CopyButton";
@@ -66,7 +67,7 @@ export default async function FamiliaPage() {
                 const p = overview.progress.get(m.id);
                 return (
                   <tr key={m.id}>
-                    <td className="font-medium">{m.name}{m.id === user.id ? " (tú)" : ""}<div className="text-xs text-neutral-600 font-normal">{m.email}</div></td>
+                    <td className="font-medium">{firstName(m.name)}{m.id === user.id ? " (tú)" : ""}<div className="text-xs text-neutral-600 font-normal">{m.email}</div></td>
                     <td><span className="tag tag-neutral">{m.role === "ADMIN" ? "Presidente del club" : "Miembro"}</span></td>
                     <td className="text-right tabular-nums">{eur(r?.contributed ?? 0)}</td>
                     <td className="text-right tabular-nums">{eur(r?.totalValue ?? 0)}</td>
@@ -84,14 +85,14 @@ export default async function FamiliaPage() {
         <section className="card blueprint gap-2 max-w-[560px]" style={{ padding: 20 }}>
           <div className="card-kicker">Aportación manual</div>
           <p className="m-0 text-[13px] text-neutral-700">Regalos, extras o correcciones (importe negativo para retirar).</p>
-          <ContributionForm members={members.map((m) => ({ id: m.id, name: m.name }))} />
+          <ContributionForm members={members.map((m) => ({ id: m.id, name: firstName(m.name) }))} />
         </section>
       )}
 
       <section className="flex flex-col gap-2.5">
         <h3 className="m-0">Aportaciones</h3>
         <div className="overflow-x-auto">
-          <ContributionList isAdmin={isAdmin} rows={contributions.map((c) => ({ id: c.id, date: c.date.toISOString().slice(0, 10), userName: c.user.name, note: c.note, amount: c.amount }))} />
+          <ContributionList isAdmin={isAdmin} rows={contributions.map((c) => ({ id: c.id, date: c.date.toISOString().slice(0, 10), userName: firstName(c.user.name), note: c.note, amount: c.amount }))} />
         </div>
       </section>
     </div>

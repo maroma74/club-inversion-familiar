@@ -63,6 +63,24 @@ THEMES.push(
   ["Mercado cripto", ["liquidaciones", "liquidations", "inflows", "outflows", "entradas", "salidas", "ballenas", "whales", "open interest", "funding", "bitcoin dominance", "dominancia"]],
 );
 
+// Materias primas: «favorable» y «desfavorable» se refieren a la dirección probable del PRECIO.
+POS.push(
+  "shortage", "escasez", "supply cut", "production cut", "output cut", "recorte de producción", "opec+ cuts", "stockpiles fall", "inventories fall", "inventory draw", "drawdown",
+  "drought", "sequía", "frost", "helada", "wildfire", "hurricane", "huracán", "mine strike", "huelga en la mina", "sanctions", "sanciones", "safe haven", "refugio", "weaker dollar", "dólar débil",
+  "rate cut", "recorte de tipos", "demand surge", "demanda récord", "supply disruption", "interrupción del suministro", "export ban", "prohíbe exportar",
+);
+NEG.push(
+  "glut", "oversupply", "exceso de oferta", "bumper crop", "cosecha récord", "stockpiles rise", "inventories rise", "inventory build", "output increase", "aumenta la producción", "raises output",
+  "stronger dollar", "dólar fuerte", "rate hike", "subida de tipos", "ceasefire", "alto el fuego", "demand slump", "caída de la demanda", "weak demand", "demanda débil", "recession fears", "temores de recesión",
+  "export surge", "tariffs on", "aranceles a",
+);
+THEMES.push(
+  ["Oferta y producción", ["oferta", "supply", "producción", "production", "opec", "opep", "cosecha", "harvest", "inventarios", "inventories", "stockpiles", "output", "mina", "mine"]],
+  ["Demanda y economía global", ["demanda", "demand", "china", "pmi", "recesión", "recession", "crecimiento", "growth", "importaciones", "imports"]],
+  ["Clima y geopolítica", ["sequía", "drought", "helada", "frost", "huracán", "hurricane", "el niño", "la niña", "clima", "weather", "guerra", "war", "sanciones", "sanctions", "oriente medio", "middle east", "ormuz", "hormuz"]],
+  ["Dólar y tipos de interés", ["dólar", "dollar", "fed", "tipos de interés", "interest rate", "inflación", "inflation", "bce", "ecb"]],
+);
+
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
 const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, (c) => "\\" + c);

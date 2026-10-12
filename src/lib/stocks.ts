@@ -80,7 +80,8 @@ type ChartJson = {
   };
 };
 
-function toCandles(data: ChartJson): Candle[] {
+/** `scale`: Yahoo cotiza los futuros agrícolas en centavos de dólar («USX»); se pasan a dólares (0,01). */
+function toCandles(data: ChartJson, scale = 1): Candle[] {
   const r = data.chart?.result?.[0];
   const q = r?.indicators?.quote?.[0];
   if (!r?.timestamp || !q) return [];
@@ -90,10 +91,10 @@ function toCandles(data: ChartJson): Candle[] {
     if (c === null || c === undefined) continue;
     out.push({
       date: new Date(r.timestamp[i] * 1000).toISOString().slice(0, 10),
-      open: q.open[i] ?? c,
-      high: q.high[i] ?? c,
-      low: q.low[i] ?? c,
-      close: c,
+      open: (q.open[i] ?? c) * scale,
+      high: (q.high[i] ?? c) * scale,
+      low: (q.low[i] ?? c) * scale,
+      close: c * scale,
       volume: q.volume[i] ?? 0,
     });
   }
@@ -107,9 +108,10 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote> {
   try {
     const data: ChartJson = await getJson(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=3mo&interval=1d`);
     const meta = data.chart?.result?.[0]?.meta;
-    const price = Number(meta?.regularMarketPrice);
+    const scale = meta?.currency === "USX" ? 0.01 : 1; // centavos de dólar → dólares
+    const price = Number(meta?.regularMarketPrice) * scale;
     if (!meta || !Number.isFinite(price)) throw new Error(data.chart?.error?.description ?? "sin datos");
-    const candles = toCandles(data);
+    const candles = toCandles(data, scale);
     const closes = candles.map((c) => c.close);
     // Cierre de referencia para la variación diaria. `chartPreviousClose` es el cierre anterior al INICIO del rango,
     // así que no sirve. Si la última vela es la sesión en curso (su cierre coincide con el precio actual),
@@ -117,12 +119,12 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote> {
     const lastClose = closes[closes.length - 1];
     const lastIsLive = closes.length > 1 && Math.abs(lastClose - price) / price < 0.0005;
     const prevFromCandles = lastIsLive ? closes[closes.length - 2] : lastClose;
-    const prev = typeof meta.previousClose === "number" ? meta.previousClose : prevFromCandles ?? price;
+    const prev = typeof meta.previousClose === "number" ? meta.previousClose * scale : prevFromCandles ?? price;
     // Variación a N sesiones, contando desde el último cierre completo.
     const base = lastIsLive ? closes.slice(0, -1) : closes;
     const ref = (sessions: number) => (base.length >= sessions ? price / base[base.length - sessions] - 1 : null);
     const crypto = isCrypto(sym); // cotiza 24/7: una semana son 7 velas y un mes 30
-    const currency = String(meta.currency ?? "EUR");
+    const currency = meta.currency === "USX" ? "USD" : String(meta.currency ?? "EUR");
     // Estado del mercado: abierto si la hora actual cae dentro de la sesión regular de hoy.
     const regular = (meta.currentTradingPeriod as { regular?: { start?: number; end?: number } } | undefined)?.regular;
     const nowS = Date.now() / 1000;
@@ -142,8 +144,8 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote> {
       change1d: prev > 0 ? price / prev - 1 : 0,
       change1w: ref(crypto ? 7 : 5),
       change1m: ref(crypto ? 30 : 21),
-      high52: typeof meta.fiftyTwoWeekHigh === "number" ? meta.fiftyTwoWeekHigh : null,
-      low52: typeof meta.fiftyTwoWeekLow === "number" ? meta.fiftyTwoWeekLow : null,
+      high52: typeof meta.fiftyTwoWeekHigh === "number" ? meta.fiftyTwoWeekHigh * scale : null,
+      low52: typeof meta.fiftyTwoWeekLow === "number" ? meta.fiftyTwoWeekLow * scale : null,
       sparkline: closes.slice(-22),
       exchange: String(meta.exchangeName ?? ""),
       marketState,
@@ -173,9 +175,9 @@ export async function fetchHistory(symbol: string, range: Range = "1y"): Promise
     try {
       const data: ChartJson = await getJson(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range === "5y" ? "5y" : "2y"}&interval=1d`, 12000);
       const meta = data.chart?.result?.[0]?.meta;
-      const candles = toCandles(data);
+      const candles = toCandles(data, meta?.currency === "USX" ? 0.01 : 1);
       if (!meta || candles.length < 30) return null;
-      hist = { symbol: String(meta.symbol ?? sym), name: String(meta.longName ?? meta.shortName ?? sym), currency: String(meta.currency ?? "EUR"), exchange: String(meta.exchangeName ?? ""), candles };
+      hist = { symbol: String(meta.symbol ?? sym), name: String(meta.longName ?? meta.shortName ?? sym), currency: meta.currency === "USX" ? "USD" : String(meta.currency ?? "EUR"), exchange: String(meta.exchangeName ?? ""), candles };
       boundedSet(historyCache, key, { at: Date.now(), data: hist }, 150);
     } catch {
       return null;
@@ -189,7 +191,7 @@ export const RANGE_SESSIONS: Record<Range, number> = { "3m": 63, "6m": 126, "1y"
 export const RANGE_LABEL: Record<Range, string> = { "3m": "3 meses", "6m": "6 meses", "1y": "1 año", "2y": "2 años", "5y": "5 años" };
 export const isRange = (r: string | undefined): r is Range => !!r && r in RANGE_PARAM;
 
-export type WatchKind = "STOCK" | "ETF" | "CRYPTO";
+export type WatchKind = "STOCK" | "ETF" | "CRYPTO" | "COMMODITY";
 
 /** Sesiones del gráfico para un rango: las criptomonedas cotizan los 365 días. */
 export function rangeSessions(range: Range, crypto: boolean) {
