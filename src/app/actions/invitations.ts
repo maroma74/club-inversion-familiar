@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { headers } from "next/headers";
 import { destroySession, requireAdmin, uniqueInviteCode } from "@/lib/auth";
+import { invitationEmail, sendEmail } from "@/lib/email";
 import type { FormState } from "./auth";
 
 const refresh = () => {
@@ -44,6 +46,38 @@ export async function createInvitationAction(_prev: FormState, formData: FormDat
   });
   refresh();
   return { ok: `Invitación creada con el código ${code}` };
+}
+
+const sendSchema = z.object({ id: z.string().min(1), email: z.string().trim().toLowerCase().email("Indica un email válido").optional().or(z.literal("")) });
+
+/** Envía (o reenvía) una invitación pendiente por correo con el enlace de registro. */
+export async function sendInvitationAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requireAdmin();
+  const parsed = sendSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const inv = await prisma.invitation.findFirst({ where: { id: parsed.data.id, familyId: admin.familyId }, include: { family: true } });
+  if (!inv) return { error: "Invitación no encontrada" };
+  if (inv.usedAt) return { error: "Esta invitación ya se ha usado" };
+  if (inv.revokedAt) return { error: "Esta invitación está anulada; reactívala antes de enviarla" };
+  if (inv.expiresAt && inv.expiresAt.getTime() < Date.now()) return { error: "Esta invitación ha caducado; reactívala antes de enviarla" };
+  const to = inv.email ?? parsed.data.email ?? "";
+  if (!to) return { error: "Indica a qué email enviarla" };
+  const h = await headers();
+  const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000"}`;
+  const message = invitationEmail({
+    to,
+    inviteeName: inv.name,
+    familyName: inv.family.name,
+    presidentName: admin.name,
+    code: inv.code,
+    link: `${origin}/registro?codigo=${inv.code}`,
+    expiresAt: inv.expiresAt,
+  });
+  const result = await sendEmail(message);
+  if (!result.sent) return { error: result.error };
+  await prisma.invitation.update({ where: { id: inv.id }, data: { sentAt: new Date(), sentTo: to } });
+  refresh();
+  return { ok: `Invitación enviada a ${to}` };
 }
 
 export async function revokeInvitationAction(formData: FormData) {

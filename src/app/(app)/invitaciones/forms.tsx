@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { createInvitationAction, regenerateFamilyCodeAction, setJoinModeAction } from "@/app/actions/invitations";
+import { createInvitationAction, regenerateFamilyCodeAction, sendInvitationAction, setJoinModeAction } from "@/app/actions/invitations";
 
 function Msg({ state }: { state: { error?: string; ok?: string } | undefined }) {
   if (!state) return null;
@@ -41,6 +41,19 @@ export function InvitationForm() {
         <button className="btn-primary" disabled={pending}>{pending ? "Creando…" : "Crear invitación"}</button>
         <Msg state={state} />
       </div>
+    </form>
+  );
+}
+
+/** Botón «Enviar por correo» de una invitación pendiente; si no tiene email fijado, pide uno. */
+export function SendInvitationForm({ id, email, resend }: { id: string; email: string | null; resend: boolean }) {
+  const [state, action, pending] = useActionState(sendInvitationAction, undefined);
+  return (
+    <form action={action} className="inline-flex flex-wrap items-center gap-2">
+      <input type="hidden" name="id" value={id} />
+      {!email && <input name="email" type="email" required placeholder="email del invitado" className="input py-1 text-xs w-44" />}
+      <button className="btn-secondary py-1 text-xs" disabled={pending}>{pending ? "Enviando…" : resend ? "Reenviar correo" : "Enviar por correo"}</button>
+      <Msg state={state} />
     </form>
   );
 }

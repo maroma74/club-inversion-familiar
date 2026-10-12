@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui";
 import { approveMemberAction, deleteInvitationAction, removeMemberAction, renewInvitationAction, revokeInvitationAction, setMemberRoleAction } from "@/app/actions/invitations";
 import { CopyButton } from "@/components/CopyButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { InvitationForm, JoinModeForm, RegenerateCodeForm } from "./forms";
+import { InvitationForm, JoinModeForm, RegenerateCodeForm, SendInvitationForm } from "./forms";
 
 type Status = "pendiente" | "usada" | "caducada" | "anulada";
 const STATUS_STYLE: Record<Status, string> = { pendiente: "bg-amber-100 text-amber-700", usada: "bg-green-100 text-green-700", caducada: "bg-slate-100 text-slate-500", anulada: "bg-red-100 text-red-700" };
@@ -51,7 +51,7 @@ export default async function InvitacionesPage() {
       <div className="grid lg:grid-cols-3 gap-4 mb-6">
         <div className="card lg:col-span-2">
           <h2 className="font-semibold mb-1">Nueva invitación personal</h2>
-          <p className="text-xs text-slate-500 mb-3">Código de un solo uso. Si indicas el email, solo podrá usarse con ese email. Comparte el enlace por WhatsApp o correo.</p>
+          <p className="text-xs text-slate-500 mb-3">Código de un solo uso. Si indicas el email, solo podrá usarse con ese email. Después puedes enviarla por correo desde la lista o copiar el enlace para compartirlo por WhatsApp.</p>
           <InvitationForm />
         </div>
         <div className="space-y-4">
@@ -103,6 +103,7 @@ export default async function InvitacionesPage() {
                       <td className="px-2 py-2">
                         <span className={`badge ${STATUS_STYLE[st]}`}>{st}</span>
                         {st === "usada" && <div className="text-xs text-slate-400">{i.usedBy?.name} · {i.usedAt ? fmtDate(i.usedAt) : ""}</div>}
+                        {i.sentAt && st !== "usada" && <div className="text-xs text-slate-400">correo enviado el {fmtDate(i.sentAt)}{i.sentTo && i.sentTo !== i.email ? ` a ${i.sentTo}` : ""}</div>}
                       </td>
                       <td className="px-2 py-2 hidden md:table-cell">{i.role === "ADMIN" ? "Presidente del club" : "Miembro"}</td>
                       <td className="px-2 py-2 text-slate-500 hidden md:table-cell">{i.expiresAt ? fmtDate(i.expiresAt) : "nunca"}</td>
@@ -110,6 +111,7 @@ export default async function InvitacionesPage() {
                       <td className="px-5 py-2 text-right whitespace-nowrap">
                         {st === "pendiente" && (
                           <>
+                            <span className="inline-block mr-2"><SendInvitationForm id={i.id} email={i.email} resend={Boolean(i.sentAt)} /></span>
                             <span className="inline-block mr-2"><CopyButton text={linkFor(i.code)} label="Copiar enlace" /></span>
                             <form action={revokeInvitationAction} className="inline"><input type="hidden" name="id" value={i.id} /><button className="text-xs text-slate-400 hover:text-red-600 mr-2">Anular</button></form>
                           </>

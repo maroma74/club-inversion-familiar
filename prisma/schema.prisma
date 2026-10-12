@@ -59,6 +59,8 @@ model Invitation {
   usedById    String?   @unique
   usedBy      User?     @relation("InvitationUser", fields: [usedById], references: [id], onDelete: SetNull)
   revokedAt   DateTime?
+  sentAt      DateTime? // último envío por correo
+  sentTo      String?   // dirección a la que se envió
 
   @@index([familyId, createdAt])
 }

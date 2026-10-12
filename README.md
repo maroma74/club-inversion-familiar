@@ -71,7 +71,7 @@ Ajustes de consumo: `--min-instances 0` (no cuesta nada sin visitas), `--max-ins
 - **Node sin Docker**: `npm ci && npm run build && DATABASE_URL=postgresql://... AUTH_SECRET=... npm run start:prod`.
 - **Vercel / Netlify**: funciona con cualquier PostgreSQL gestionado (Neon, Supabase…) definiendo `DATABASE_URL` y `AUTH_SECRET`; ejecuta `npm run db:deploy` una vez contra esa base de datos.
 
-Variables de entorno: `DATABASE_URL` y `AUTH_SECRET` (ver `.env.example`). Los precios se obtienen de Yahoo Finance y CoinGecko, así que el servidor necesita salida a internet. Para traer datos de una instalación anterior: `npm run db:import ruta/export.json`.
+Variables de entorno: `DATABASE_URL`, `AUTH_SECRET` y, para enviar invitaciones por correo, `RESEND_API_KEY` y `EMAIL_FROM` (ver `.env.example`). El correo sale por la API de [Resend](https://resend.com) desde un dominio verificado allí (`clubdeinversionfamiliar.com`); sin clave, en desarrollo el correo se imprime en la consola del servidor y en producción el botón avisa de que no está configurado. Los precios se obtienen de Yahoo Finance y CoinGecko, así que el servidor necesita salida a internet. Para traer datos de una instalación anterior: `npm run db:import ruta/export.json`.
 
 ## Cómo se usa
 
