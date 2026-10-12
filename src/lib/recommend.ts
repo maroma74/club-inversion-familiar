@@ -8,7 +8,7 @@ import { fp, priceDecimals, rp } from "./fmtPrice";
 
 export type Action = "COMPRAR" | "MANTENER" | "VENDER";
 export type Confidence = "Alta" | "Media" | "Baja";
-export type Block = { key: "trend" | "momentum" | "volume" | "structure"; label: string; weight: number; score: number; note: string; available: number; total: number };
+export type Block = { key: "trend" | "momentum" | "volume" | "structure" | "valuation"; label: string; weight: number; score: number; note: string; available: number; total: number };
 
 export type Extras = {
   sector?: string | null;
@@ -20,6 +20,8 @@ export type Extras = {
   newsSummary?: string | null;
   isFund?: boolean; // ETF o fondo: no publica resultados
   isCrypto?: boolean; // criptomoneda: sin resultados ni beta; umbrales de volatilidad propios de su mercado
+  /** Señal de valoración por PER histórico (solo acciones con datos). Añade un quinto bloque con peso `weight`. */
+  valuation?: { score: number; weight: number; per: number | null; percentile: number | null; rangeLabel: string; signal: string; valueTrap: boolean; reason: string } | null;
   isCommodity?: boolean; // materia prima (futuro continuo): sin resultados ni beta
   commodityGroup?: string | null; // metales preciosos, energía, agrícolas…
   cryptoRank?: number | null; // puesto por capitalización
@@ -202,6 +204,20 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
     { key: "volume", label: "Volumen", weight: 0.2, score: r2(vol), note: vNotes.join(" · ") || "N/D", available: vAvail, total: 2 },
     { key: "structure", label: "Volatilidad/Estructura", weight: 0.25, score: r2(str), note: sNotes.join(" · ") || "N/D", available: sAvail, total: 3 },
   ];
+  // Bloque de valoración (PER histórico): si hay datos, los cuatro técnicos se reescalan para que todo siga sumando 1.
+  const val = extras.valuation && extras.valuation.weight > 0 && extras.valuation.weight < 1 ? extras.valuation : null;
+  if (val) {
+    for (const b of blocks) b.weight = b.weight * (1 - val.weight);
+    blocks.push({
+      key: "valuation",
+      label: "Valoración (PER)",
+      weight: val.weight,
+      score: r2(val.score),
+      note: `PER ${val.per === null ? "N/D" : val.per.toFixed(1)} · percentil ${val.percentile === null ? "N/D" : val.percentile.toFixed(0)} de ${val.rangeLabel} · ${val.signal.toLowerCase()}${val.valueTrap ? " · posible trampa de valor" : ""}`,
+      available: 1,
+      total: 1,
+    });
+  }
   const availableKey = tAvail + mAvail + vAvail + sAvail;
   const total = r2(blocks.reduce((s, b) => s + b.score * b.weight, 0));
 
@@ -285,6 +301,8 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
     if (extras.fearGreed.value >= 75) risks.push(`Codicia extrema en el mercado cripto (índice ${extras.fearGreed.value}): históricamente coincide con techos de corto plazo y recortes bruscos.`);
     else if (extras.fearGreed.value <= 25 && action !== "VENDER") risks.push(`Miedo extremo en el mercado cripto (índice ${extras.fearGreed.value}): puede ser zona de oportunidad, pero la caída puede continuar.`);
   }
+  if (val?.valueTrap) risks.push(`Posible trampa de valor: ${val.reason}`);
+  else if (val?.signal === "Cara") risks.push(`Valoración exigente: ${val.reason}`);
   if (earningsSoon) risks.push(`Publica resultados el ${earningsDate} (en ${daysToEarnings} días): el gap posterior puede saltarse el stop.`);
   if (a.volatility30 !== null && a.volatility30 > (extras.isCrypto ? 0.9 : extras.isCommodity ? 0.55 : 0.4)) risks.push(`Volatilidad anualizada alta (${(a.volatility30 * 100).toFixed(0)} %): dimensionar la posición con el ATR.`);
   if (distRes !== null && distRes < 0.04) risks.push(`Resistencia muy cercana en ${fp(a.resistance!)}: posible rechazo.`);

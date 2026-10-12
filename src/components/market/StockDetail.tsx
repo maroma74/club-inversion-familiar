@@ -8,6 +8,7 @@ import { eur } from "@/lib/format";
 import { fp, priceDecimals } from "@/lib/fmtPrice";
 import { findCommodity } from "@/lib/commodities";
 import { ClubRecommendationCard } from "@/components/ClubRecommendationCard";
+import { PerPanel } from "@/components/PerPanel";
 import { DiaryDialog } from "@/components/DiaryDialog";
 import { StockChart } from "@/app/(app)/acciones/[symbol]/StockChart";
 
@@ -17,7 +18,7 @@ const tone = (v: Verdict) => (v === "alcista" ? "border-accent-400 bg-accent-100
 const dot = (v: Verdict) => (v === "alcista" ? "▲" : v === "bajista" ? "▼" : "•");
 const Pct = ({ v, d = 1 }: { v: number | null; d?: number }) => (v === null ? <span className="text-neutral-500">—</span> : <span className="tabular-nums font-medium" style={{ color: v >= 0 ? "var(--color-accent-700)" : "var(--color-text)" }}>{v >= 0 ? "+" : "−"}{(Math.abs(v) * 100).toFixed(d)} %</span>);
 
-export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind }: { symbol: string; range?: string; kind: WatchKind }) {
+export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind, perRange }: { symbol: string; range?: string; kind: WatchKind; perRange?: string }) {
   await requireUser();
   const crypto = kind === "CRYPTO";
   const commodity = kind === "COMMODITY";
@@ -99,12 +100,14 @@ export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind }: 
         </div>
       )}
 
+      {kind === "STOCK" && !isIndex && <PerPanel symbol={hist.symbol} perRange={perRange} hrefFor={(k) => `${base}/${encodeURIComponent(hist.symbol)}?per=${k}&r=${range}`} />}
+
       <div className="card mb-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <h2 className="font-semibold">Precio, medias móviles y Bollinger</h2>
           <div className="flex flex-wrap gap-1">
             {RANGES.map((x) => (
-              <Link key={x} href={`${base}/${encodeURIComponent(hist.symbol)}?r=${x}`} className={x === range ? "btn-primary py-1 text-xs" : "btn-secondary py-1 text-xs"}>{RANGE_LABEL[x]}</Link>
+              <Link key={x} href={`${base}/${encodeURIComponent(hist.symbol)}?r=${x}${perRange ? `&per=${perRange}` : ""}`} className={x === range ? "btn-primary py-1 text-xs" : "btn-secondary py-1 text-xs"}>{RANGE_LABEL[x]}</Link>
             ))}
           </div>
         </div>

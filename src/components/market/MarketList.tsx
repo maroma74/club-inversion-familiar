@@ -4,6 +4,9 @@ import { DEFAULT_CRYPTO_WATCHLIST, DEFAULT_ETF_WATCHLIST, DEFAULT_WATCHLIST, fet
 import { familyLeaderboard } from "@/lib/portfolio";
 import { symbolKind } from "@/lib/kinds";
 import { DEFAULT_COMMODITY_WATCHLIST, findCommodity } from "@/lib/commodities";
+import { getPerSummaries } from "@/lib/perService";
+import { PerBadge } from "@/components/PerPanel";
+import type { PerSummary } from "@/lib/per";
 import { eur } from "@/lib/format";
 import { Sparkline } from "@/components/Sparkline";
 import { PageHeader } from "@/components/ui";
@@ -61,7 +64,7 @@ const COPY: Record<WatchKind, { title: string; subtitle: string; listTitle: stri
   },
 };
 
-export async function MarketList({ kind, embedded = false }: { kind: WatchKind; embedded?: boolean }) {
+export async function MarketList({ kind, embedded = false, sort }: { kind: WatchKind; embedded?: boolean; sort?: string }) {
   const user = await requireUser();
   const c = COPY[kind];
   const [watchlist, ranking] = await Promise.all([getWatchlist(user.familyId, kind), familyLeaderboard(user.familyId)]);
@@ -78,7 +81,20 @@ export async function MarketList({ kind, embedded = false }: { kind: WatchKind; 
   const extra = kind !== "ETF" ? [...held.keys()].filter((s) => !allListed.has(s)) : [];
   const symbols = [...watchlist.map((w) => w.symbol), ...extra];
 
-  const [indices, quotes, club] = await Promise.all([fine ? Promise.resolve([]) : fetchStockQuotes(INDICES.map((i) => i.symbol)), fetchStockQuotes(symbols), getClubRecommendations(symbols)]);
+  const showPer = kind === "STOCK";
+  const [indices, quotes, club, perMap] = await Promise.all([fine ? Promise.resolve([]) : fetchStockQuotes(INDICES.map((i) => i.symbol)), fetchStockQuotes(symbols), getClubRecommendations(symbols), showPer ? getPerSummaries(symbols) : Promise.resolve(new Map<string, PerSummary | null>())]);
+  // «PER vs histórico» ordenable: de más barata (percentil bajo) a más cara, o al revés; los que no tienen dato, al final
+  const perSort = showPer && (sort === "per" || sort === "per_desc") ? sort : null;
+  const orderedQuotes = perSort
+    ? [...quotes].sort((x, y) => {
+        const px = perMap.get(x.symbol.toUpperCase())?.percentile ?? null;
+        const py = perMap.get(y.symbol.toUpperCase())?.percentile ?? null;
+        if (px === null && py === null) return 0;
+        if (px === null) return 1;
+        if (py === null) return -1;
+        return perSort === "per" ? px - py : py - px;
+      })
+    : quotes;
   const names = new Map(watchlist.map((w) => [w.symbol, w.name]));
   const defaults = kind === "ETF" ? DEFAULT_ETF_WATCHLIST : kind === "CRYPTO" ? DEFAULT_CRYPTO_WATCHLIST : kind === "COMMODITY" ? DEFAULT_COMMODITY_WATCHLIST : DEFAULT_WATCHLIST;
 
@@ -132,6 +148,13 @@ export async function MarketList({ kind, embedded = false }: { kind: WatchKind; 
                   <th className="text-right px-2 py-2 font-medium">Precio</th>
                   <th className="text-right px-2 py-2 font-medium">{crypto ? "24 h" : "Hoy"}</th>
                   <th className="text-left px-2 py-2 font-medium">Club de inversión</th>
+                  {showPer && (
+                    <th className="text-left px-2 py-2 font-medium whitespace-nowrap" aria-sort={perSort === "per" ? "ascending" : perSort === "per_desc" ? "descending" : "none"}>
+                      <Link href={`${c.base}?orden=${perSort === "per" ? "per_desc" : "per"}`} className="no-underline text-inherit hover:underline" title="Ordenar por PER frente a su historia: de más barata a más cara">
+                        PER vs histórico {perSort === "per" ? "▲" : perSort === "per_desc" ? "▼" : ""}
+                      </Link>
+                    </th>
+                  )}
                   <th className="text-right px-2 py-2 font-medium hidden sm:table-cell">{crypto ? "7 d" : "1 sem."}</th>
                   <th className="text-right px-2 py-2 font-medium hidden sm:table-cell">{crypto ? "30 d" : "1 mes"}</th>
                   <th className="px-2 py-2 font-medium hidden md:table-cell">{crypto ? "Últimos 30 días" : "Último mes"}</th>
@@ -141,7 +164,7 @@ export async function MarketList({ kind, embedded = false }: { kind: WatchKind; 
                 </tr>
               </thead>
               <tbody>
-                {quotes.map((q) => {
+                {orderedQuotes.map((q) => {
                   const owners = held.get(q.symbol);
                   const pos52 = q.high52 && q.low52 && q.high52 > q.low52 ? (q.price - q.low52) / (q.high52 - q.low52) : null;
                   const rec = club.get(q.symbol);
@@ -168,6 +191,23 @@ export async function MarketList({ kind, embedded = false }: { kind: WatchKind; 
                           <span className="text-xs text-slate-400">N/D</span>
                         )}
                       </td>
+                      {showPer && (
+                        <td className="px-2 py-2 whitespace-nowrap">
+                          {(() => {
+                            const per = perMap.get(q.symbol.toUpperCase());
+                            if (!per || per.signal === "N/D" || per.per === null) return <span className="text-xs text-slate-400" title={per?.reason ?? "Solo acciones de EE. UU. con resultados en la SEC"}>N/D</span>;
+                            return (
+                              <Link href={`${c.base}/${encodeURIComponent(q.symbol)}#per-title`} className="no-underline text-inherit" title={per.reason}>
+                                <span className="inline-flex items-center gap-1.5">
+                                  <PerBadge signal={per.signal} small />
+                                  <span className="text-xs tabular-nums font-medium">P{per.percentile?.toFixed(0)}</span>
+                                </span>
+                                <div className="text-[11px] text-slate-400 tabular-nums">PER {per.per.toLocaleString("es-ES", { maximumFractionDigits: 1 })}×{per.valueTrap ? " · posible trampa" : ""}</div>
+                              </Link>
+                            );
+                          })()}
+                        </td>
+                      )}
                       <td className="px-2 py-2 text-right whitespace-nowrap hidden sm:table-cell"><Change v={q.change1w} /></td>
                       <td className="px-2 py-2 text-right whitespace-nowrap hidden sm:table-cell"><Change v={q.change1m} /></td>
                       <td className="px-2 py-2 hidden md:table-cell"><Sparkline data={q.sparkline} positive={(q.change1m ?? 0) >= 0} /></td>

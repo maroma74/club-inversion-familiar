@@ -138,6 +138,18 @@ model AuthAttempt {
   @@index([key, at])
 }
 
+/// Caché diaria de los resultados trimestrales (BPA) de una acción y del resumen de su PER histórico.
+/// Los trimestrales cambian poco: se refresca como mucho una vez al día, nunca en cada carga de página.
+model EpsCache {
+  symbol    String   @id
+  provider  String // sec-edgar
+  status    String // OK | UNAVAILABLE (el proveedor funciona pero no tiene el valor)
+  reason    String?
+  quarters  Json // QuarterEps[] ya ajustados por splits
+  summary   Json? // PerSummary del rango por defecto (para el listado y la recomendación)
+  fetchedAt DateTime
+}
+
 model PortfolioSnapshot {
   id       String   @id @default(cuid())
   userId   String

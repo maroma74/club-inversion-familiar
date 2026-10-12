@@ -10,6 +10,9 @@ import { emptyProfile, fetchProfile, type Profile } from "./fundamentals";
 import { isCrypto } from "./prices";
 import { findCommodity, type Commodity } from "./commodities";
 import { fetchCommodityNews } from "./commodityNews";
+import { getPerSummary } from "./perService";
+import type { PerSummary } from "./per";
+import { PER_CONFIG, PER_RANGES } from "./perConfig";
 import { fetchFearGreed, type FearGreed } from "./crypto";
 import { baseSymbol, fetchCryptoProfile, type CryptoProfile } from "./cryptoProfile";
 import { fetchCryptoNews } from "./cryptoNews";
@@ -27,6 +30,7 @@ export type ClubRecommendation = Recommendation & {
   crypto: CryptoProfile | null; // ficha de la moneda (CoinGecko), solo en criptomonedas y en la vista de detalle
   fearGreed: FearGreed | null; // índice de miedo y codicia, solo en criptomonedas
   newsGeneral: boolean; // las noticias son del mercado cripto en general, no de la moneda
+  per: PerSummary | null; // PER histórico (resumen del rango por defecto), solo acciones de EE. UU. con datos
   commodity: Commodity | null; // ficha de la materia prima (catálogo del club)
   usdFallback: boolean; // no hay par en euros en Yahoo y el análisis es sobre el par en dólares
 };
@@ -54,6 +58,13 @@ export async function getClubRecommendation(symbol: string, opts: { withNews?: b
     crypto && opts.withNews ? fetchCryptoNews(coinName, ticker).catch(() => ({ items: [], general: false })) : Promise.resolve(null),
     commodity && opts.withNews ? fetchCommodityNews(commodity).catch(() => ({ items: [], general: false })) : Promise.resolve(null),
   ]);
+  // PER histórico: solo acciones (no ETF, cripto, materias primas ni índices) y solo si hay datos de la SEC
+  const per = !crypto && !commodity && !profile.isFund && !sym.startsWith("^") ? await getPerSummary(sym) : null;
+  const perYears = per ? PER_RANGES[per.range].years : null;
+  const valuation =
+    per && per.score !== null && PER_CONFIG.recommendationWeight > 0
+      ? { score: per.score, weight: PER_CONFIG.recommendationWeight, per: per.per, percentile: per.percentile, rangeLabel: perYears === null ? "todo el histórico" : perYears === 1 ? "1 año" : `${perYears} años`, signal: per.signal, valueTrap: per.valueTrap, reason: per.reason }
+      : null;
   const digest = commodityNews ? digestNews(commodityNews.items, commodity!.name) : cryptoNews ? digestNews(cryptoNews.items, coinName) : newsItems ? digestNews(newsItems, sym) : null;
   const analysis = analyze(hist.candles, { crypto });
   const rec = recommend(
@@ -69,6 +80,7 @@ export async function getClubRecommendation(symbol: string, opts: { withNews?: b
       newsSummary: digest?.summary ?? null,
       isFund: profile.isFund,
       isCrypto: crypto,
+      valuation,
       isCommodity: !!commodity,
       commodityGroup: commodity?.group ?? null,
       cryptoRank: cryptoProfile?.rank ?? null,
@@ -111,6 +123,7 @@ export async function getClubRecommendation(symbol: string, opts: { withNews?: b
     newsDigest: digest,
     crypto: cryptoProfile,
     fearGreed,
+    per,
     commodity,
     newsGeneral: commodityNews?.general ?? cryptoNews?.general ?? false,
     usdFallback: resolved?.fallback ?? false,
