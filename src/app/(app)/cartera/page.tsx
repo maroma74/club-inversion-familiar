@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
-import { getCurrentPortfolio, isDeadlinePassed, lessonParagraphs, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
+import { getCurrentPortfolio, isDeadlinePassed, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
+import { Markdown } from "@/components/Markdown";
 import { getPrices } from "@/lib/prices";
 import { getClubRecommendations } from "@/lib/club";
 import { eur, fmtDate } from "@/lib/format";
@@ -54,11 +55,9 @@ export default async function CarteraPage() {
         {isAdmin && <Link href={`/cartera/gestion/${p.id}`} className="btn-secondary">Gestionar esta cartera</Link>}
       </header>
 
-      <section className="card blueprint gap-3" style={{ padding: 24, borderColor: "var(--color-accent)" }}>
+      <section className="card blueprint gap-3" style={{ padding: 28, borderColor: "var(--color-accent)" }}>
         <div className="card-kicker">Lección del mes · por el presidente del club</div>
-        {lessonParagraphs(p.lesson).map((t, i) => (
-          <p key={i} className="m-0 text-[16px] leading-[1.6] [text-wrap:pretty]">{t}</p>
-        ))}
+        <Markdown text={p.lesson} />
       </section>
 
       <section className="flex flex-col gap-3">

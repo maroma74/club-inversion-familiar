@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { addOptionAction, createPortfolioAction, publishAction, setAllocationsAction, updatePortfolioAction } from "@/app/actions/monthly";
+import { LESSON_TEMPLATE, Markdown } from "@/components/Markdown";
 
 function Msg({ state }: { state: { error?: string; ok?: string } | undefined }) {
   if (!state) return null;
@@ -14,6 +15,8 @@ type Details = { id?: string; month: string; title: string; lesson: string; minC
 
 export function PortfolioDetailsForm({ initial, locked = false }: { initial: Details; locked?: boolean }) {
   const [state, action, pending] = useActionState(initial.id ? updatePortfolioAction : createPortfolioAction, undefined);
+  const [lesson, setLesson] = useState(initial.lesson);
+  const [mode, setMode] = useState<"edit" | "preview">("edit");
   return (
     <form action={action} className="flex flex-col gap-3">
       {initial.id && <input type="hidden" name="id" value={initial.id} />}
@@ -25,8 +28,44 @@ export function PortfolioDetailsForm({ initial, locked = false }: { initial: Det
       </div>
       <div className="field"><label>Título</label><input name="title" defaultValue={initial.title} className="input" placeholder="Octubre: dividendos frente a crecimiento" maxLength={120} required disabled={locked} /></div>
       <div className="field">
-        <label>Lección del mes: explica la propuesta, qué deben investigar y qué quieres que aprendan</label>
-        <textarea name="lesson" defaultValue={initial.lesson} className="input" style={{ minHeight: 180 }} placeholder={"Este mes comparamos dos formas de ganar dinero con una acción…\n\nSepara los párrafos con una línea en blanco."} required disabled={locked} />
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+          <label className="m-0">Lección del mes: explica la propuesta, qué deben investigar y qué quieres que aprendan</label>
+          <div className="flex items-center gap-2">
+            {!locked && mode === "edit" && !lesson.trim() && (
+              <button type="button" className="btn-ghost text-xs" onClick={() => setLesson(LESSON_TEMPLATE)}>Usar plantilla</button>
+            )}
+            <div className="seg">
+              <label className="seg-opt" data-on={mode === "edit" ? "true" : "false"}>
+                <input type="radio" name="_mode" checked={mode === "edit"} onChange={() => setMode("edit")} />Editar
+              </label>
+              <label className="seg-opt" data-on={mode === "preview" ? "true" : "false"}>
+                <input type="radio" name="_mode" checked={mode === "preview"} onChange={() => setMode("preview")} />Previsualizar
+              </label>
+            </div>
+          </div>
+        </div>
+        {/* El textarea se mantiene siempre montado para que el valor viaje con el formulario */}
+        <textarea
+          name="lesson"
+          value={lesson}
+          onChange={(e) => setLesson(e.target.value)}
+          className="input"
+          style={{ minHeight: 260, fontFamily: "var(--font-numeric)", fontSize: 13, display: mode === "edit" ? "block" : "none" }}
+          placeholder={"## Objetivo del mes\nEscribe la lección con formato: títulos con #, **negrita**, listas con -, citas con > y tablas con |."}
+          required
+          disabled={locked}
+        />
+        {mode === "preview" && (
+          <div className="card blueprint gap-3" style={{ padding: 28, borderColor: "var(--color-accent)" }}>
+            <div className="card-kicker">Lección del mes · así la verán los miembros</div>
+            {lesson.trim() ? <Markdown text={lesson} /> : <p className="m-0 text-sm text-neutral-700">Todavía no has escrito nada.</p>}
+          </div>
+        )}
+        {mode === "edit" && (
+          <p className="m-0 mt-1.5 text-xs text-neutral-700">
+            Formato: <code className="md-code">## Título</code> · <code className="md-code">**negrita**</code> · <code className="md-code">*cursiva*</code> · <code className="md-code">- lista</code> · <code className="md-code">1. numerada</code> · <code className="md-code">&gt; cita destacada</code> · <code className="md-code">| tabla |</code> · <code className="md-code">[enlace](https://…)</code> · línea en blanco entre párrafos.
+          </p>
+        )}
       </div>
       {!locked && (
         <div className="flex items-center gap-3">
