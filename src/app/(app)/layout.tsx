@@ -6,6 +6,7 @@ import { roleLabel } from "@/lib/monthly";
 import { logoutAction } from "@/app/actions/auth";
 import { NavLinks } from "@/components/NavLinks";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ViewAsBar } from "@/components/ViewAsBar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -37,7 +38,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </aside>
-      <main className="flex-[1_1_640px] min-w-0 max-w-[1240px]" style={{ padding: "32px clamp(16px, 4vw, 48px) 64px" }}>{children}</main>
+      <main className="flex-[1_1_640px] min-w-0 max-w-[1240px]" style={{ padding: "20px clamp(16px, 4vw, 48px) 64px" }}>
+        {user.realRole === "ADMIN" && <ViewAsBar previewAsMember={user.previewAsMember} />}
+        {children}
+      </main>
     </div>
   );
 }

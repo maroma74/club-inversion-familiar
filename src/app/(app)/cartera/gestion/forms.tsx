@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { addOptionAction, createPortfolioAction, publishAction, setAllocationsAction, updatePortfolioAction } from "@/app/actions/monthly";
-import { LESSON_TEMPLATE, Markdown } from "@/components/Markdown";
+import { autoFormat, LESSON_TEMPLATE, Markdown } from "@/components/Markdown";
 
 function Msg({ state }: { state: { error?: string; ok?: string } | undefined }) {
   if (!state) return null;
@@ -34,6 +34,9 @@ export function PortfolioDetailsForm({ initial, locked = false }: { initial: Det
             {!locked && mode === "edit" && !lesson.trim() && (
               <button type="button" className="btn-ghost text-xs" onClick={() => setLesson(LESSON_TEMPLATE)}>Usar plantilla</button>
             )}
+            {!locked && mode === "edit" && lesson.trim() && autoFormat(lesson) !== lesson && (
+              <button type="button" className="btn-ghost text-xs" onClick={() => setLesson(autoFormat(lesson))} title="Convierte el texto en títulos, listas y citas que puedes ajustar">Dar formato automático</button>
+            )}
             <div className="seg">
               <label className="seg-opt" data-on={mode === "edit" ? "true" : "false"}>
                 <input type="radio" name="_mode" checked={mode === "edit"} onChange={() => setMode("edit")} />Editar
@@ -63,7 +66,7 @@ export function PortfolioDetailsForm({ initial, locked = false }: { initial: Det
         )}
         {mode === "edit" && (
           <p className="m-0 mt-1.5 text-xs text-neutral-700">
-            Formato: <code className="md-code">## Título</code> · <code className="md-code">**negrita**</code> · <code className="md-code">*cursiva*</code> · <code className="md-code">- lista</code> · <code className="md-code">1. numerada</code> · <code className="md-code">&gt; cita destacada</code> · <code className="md-code">| tabla |</code> · <code className="md-code">[enlace](https://…)</code> · línea en blanco entre párrafos.
+            Escribe con naturalidad: las líneas cortas sueltas se convierten en títulos, «Idea clave:» o «Importante:» en destacados, las preguntas en bloques de reflexión y las cifras y símbolos se resaltan solos. Si quieres más control:<code className="md-code">## Título</code> · <code className="md-code">**negrita**</code> · <code className="md-code">*cursiva*</code> · <code className="md-code">- lista</code> · <code className="md-code">1. numerada</code> · <code className="md-code">&gt; cita destacada</code> · <code className="md-code">| tabla |</code> · <code className="md-code">[enlace](https://…)</code> · línea en blanco entre párrafos.
           </p>
         )}
       </div>

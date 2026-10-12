@@ -49,16 +49,26 @@ export async function getSessionUserId(): Promise<string | null> {
   }
 }
 
-export async function getCurrentUser() {
-  const id = await getSessionUserId();
-  if (!id) return null;
-  return prisma.user.findUnique({
-    where: { id },
-    include: { family: true },
-  });
+type DbUser = NonNullable<Awaited<ReturnType<typeof loadUser>>>;
+export type CurrentUser = DbUser & { realRole: string; previewAsMember: boolean };
+
+async function loadUser(id: string) {
+  return prisma.user.findUnique({ where: { id }, include: { family: true } });
 }
 
-export type CurrentUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
+/**
+ * Usuario de la sesión. Si el presidente ha activado «ver como miembro» (cookie ff_view_as),
+ * `role` pasa a MEMBER para toda la interfaz y `realRole` conserva ADMIN.
+ */
+export async function getCurrentUser(): Promise<CurrentUser | null> {
+  const id = await getSessionUserId();
+  if (!id) return null;
+  const user = await loadUser(id);
+  if (!user) return null;
+  const store = await cookies();
+  const previewAsMember = user.role === "ADMIN" && store.get("ff_view_as")?.value === "member";
+  return { ...user, realRole: user.role, role: previewAsMember ? "MEMBER" : user.role, previewAsMember };
+}
 
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();

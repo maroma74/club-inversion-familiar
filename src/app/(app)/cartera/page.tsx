@@ -57,7 +57,7 @@ export default async function CarteraPage() {
 
       <section className="card blueprint gap-3" style={{ padding: 28, borderColor: "var(--color-accent)" }}>
         <div className="card-kicker">Lección del mes · por el presidente del club</div>
-        <Markdown text={p.lesson} />
+        <Markdown text={p.lesson} symbols={p.options.map((o) => ({ symbol: o.symbol, href: analysisHref(o.kind, o.symbol) }))} />
       </section>
 
       <section className="flex flex-col gap-3">
