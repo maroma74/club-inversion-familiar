@@ -1,0 +1,284 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Family {
+  id               String       @id @default(cuid())
+  name             String
+  inviteCode       String       @unique
+  /// Cómo se entra con el código general: CODE (directo), CODE_APPROVAL (queda pendiente de aprobación), INVITE_ONLY (solo con invitación personal)
+  joinMode         String       @default("CODE")
+  monthlyAllowance Float        @default(100)
+  createdAt        DateTime     @default(now())
+  users            User[]
+  invitations      Invitation[]
+}
+
+model User {
+  id            String         @id @default(cuid())
+  familyId      String
+  family        Family         @relation(fields: [familyId], references: [id])
+  name          String
+  email         String         @unique
+  passwordHash  String
+  role          String         @default("MEMBER") // ADMIN | MEMBER
+  status        String         @default("ACTIVE") // ACTIVE | PENDING (esperando aprobación)
+  badgeCount    Int            @default(0) // logros conseguidos (se actualiza al calcular la liga)
+  createdAt     DateTime       @default(now())
+  contributions Contribution[]
+  trades        Trade[]
+  snapshots     PortfolioSnapshot[]
+  invitationsSent Invitation[] @relation("InvitationCreator")
+  invitationUsed  Invitation?  @relation("InvitationUser")
+  lessonProgress  LessonProgress[]
+  journalEntries  JournalEntry[]
+  monthlyAllocations MonthlyAllocation[]
+  monthlyDecisions   MonthlyDecision[]
+}
+
+/// Invitación personal al club: un código de un solo uso, opcionalmente ligado a un nombre y un email, con caducidad.
+model Invitation {
+  id          String    @id @default(cuid())
+  familyId    String
+  family      Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  code        String    @unique
+  name        String?
+  email       String?
+  role        String    @default("MEMBER") // rol que tendrá al entrar
+  note        String?
+  expiresAt   DateTime?
+  createdById String
+  createdBy   User      @relation("InvitationCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  usedAt      DateTime?
+  usedById    String?   @unique
+  usedBy      User?     @relation("InvitationUser", fields: [usedById], references: [id], onDelete: SetNull)
+  revokedAt   DateTime?
+
+  @@index([familyId, createdAt])
+}
+
+model Contribution {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
+  amount    Float
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model Trade {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
+  symbol    String
+  name      String
+  side      String // BUY | SELL
+  quantity  Float
+  price     Float // precio por unidad en `currency`
+  currency  String   @default("EUR")
+  fxRate    Float    @default(1) // euros por unidad de `currency` en la fecha de la operación
+  fees      Float    @default(0) // siempre en EUR
+  broker    String? // entidad donde se ejecutó la orden (Trade Republic, Degiro, Binance…)
+  createdAt DateTime @default(now())
+  journal   JournalEntry?
+
+  @@index([userId, date])
+}
+
+model PriceQuote {
+  symbol    String   @id
+  name      String
+  price     Float
+  currency  String   @default("EUR")
+  updatedAt DateTime @default(now())
+}
+
+model PortfolioSnapshot {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date     DateTime
+  value    Float
+  invested Float
+
+  @@unique([userId, date])
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  familyId  String
+  symbol    String
+  name      String
+  kind      String   @default("STOCK") // STOCK | ETF
+  createdAt DateTime @default(now())
+
+  @@unique([familyId, symbol])
+}
+
+/// Recomendación del Club de inversión: una foto diaria por símbolo para ver cambios de opinión en el tiempo.
+model ClubRecommendation {
+  id         String   @id @default(cuid())
+  symbol     String
+  date       DateTime
+  action     String // COMPRAR | MANTENER | VENDER
+  bias       String
+  score      Float
+  confidence String
+  rr         Float?
+  createdAt  DateTime @default(now())
+
+  @@unique([symbol, date])
+  @@index([symbol, date])
+}
+
+/// Academia: cursos por nivel, lecciones con quiz y progreso por miembro.
+model Course {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  level       Int      @unique // 1..6, coincide con los niveles de la liga
+  title       String
+  description String
+  lessons     Lesson[]
+}
+
+model Lesson {
+  id        String           @id @default(cuid())
+  courseId  String
+  course    Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  slug      String
+  order     Int
+  title     String
+  minutes   Int              @default(6)
+  body      Json // { intro: string[], keyIdea: string, table?: {headers, rows, caption}, outro: string[], apply: string }
+  questions QuizQuestion[]
+  progress  LessonProgress[]
+
+  @@unique([courseId, slug])
+  @@unique([courseId, order])
+}
+
+model QuizQuestion {
+  id           String @id @default(cuid())
+  lessonId     String
+  lesson       Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  order        Int
+  text         String
+  options      Json // string[]
+  correctIndex Int
+  feedback     String
+}
+
+model LessonProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  score       Int       @default(0) // aciertos del último intento
+  attempts    Int       @default(0)
+  completedAt DateTime? // null hasta superar la lección (todas correctas)
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, lessonId])
+}
+
+/// Diario de inversión: el porqué de cada decisión, opcionalmente ligado a una operación.
+model JournalEntry {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tradeId       String?  @unique
+  trade         Trade?   @relation(fields: [tradeId], references: [id], onDelete: SetNull)
+  symbol        String
+  side          String // BUY | SELL | NOTE
+  why           String
+  exitCondition String?
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/// Cartera mensual: el presidente decide cuánto recibe cada miembro y entre qué valores pueden elegir; los miembros investigan, argumentan y deciden.
+model MonthlyPortfolio {
+  id          String   @id @default(cuid())
+  familyId    String
+  month       String // YYYY-MM
+  title       String
+  lesson      String // explicación / lección del mes (texto, párrafos separados por líneas en blanco)
+  status      String   @default("DRAFT") // DRAFT | PUBLISHED | CLOSED
+  minChoices  Int      @default(1)
+  maxChoices  Int      @default(1)
+  deadline    DateTime?
+  createdById String
+  createdAt   DateTime @default(now())
+  publishedAt DateTime?
+  closedAt    DateTime?
+  options     MonthlyOption[]
+  allocations MonthlyAllocation[]
+  decisions   MonthlyDecision[]
+
+  @@unique([familyId, month])
+}
+
+model MonthlyOption {
+  id          String   @id @default(cuid())
+  portfolioId String
+  portfolio   MonthlyPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  symbol      String
+  name        String
+  kind        String   @default("STOCK") // STOCK | ETF | CRYPTO
+  note        String? // qué investigar / por qué está en la lista
+  order       Int      @default(0)
+  choices     MonthlyChoice[]
+
+  @@unique([portfolioId, symbol])
+}
+
+/// Cantidad asignada por el presidente a cada miembro para ese mes (se convierte en aportación al publicar).
+model MonthlyAllocation {
+  id             String   @id @default(cuid())
+  portfolioId    String
+  portfolio      MonthlyPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount         Float
+  contributionId String?  @unique
+
+  @@unique([portfolioId, userId])
+}
+
+model MonthlyDecision {
+  id          String   @id @default(cuid())
+  portfolioId String
+  portfolio   MonthlyPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  argument    String // razonamiento general
+  submittedAt DateTime @default(now())
+  choices     MonthlyChoice[]
+
+  @@unique([portfolioId, userId])
+}
+
+model MonthlyChoice {
+  id             String   @id @default(cuid())
+  decisionId     String
+  decision       MonthlyDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  optionId       String
+  option         MonthlyOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  amount         Float
+  why            String
+  exitCondition  String?
+  tradeId        String?
+  journalEntryId String?
+  price          Float? // precio de ejecución en EUR
+  quantity       Float?
+}

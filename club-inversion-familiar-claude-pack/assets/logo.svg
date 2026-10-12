@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 180" width="620" height="180">
+  <defs>
+    <linearGradient id="cifGrowthGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0E8A63" />
+      <stop offset="50%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#E5A016" />
+    </linearGradient>
+    <linearGradient id="cifBodyGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#0E8A63" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+  </defs>
+
+  <!-- Isotipo: Familia y Gráfica Ascendente -->
+  <g transform="translate(15, 15)">
+    <path d="M 25 105 L 50 65 L 78 105 L 140 38" 
+          fill="none" 
+          stroke="url(#cifGrowthGrad)" 
+          stroke-width="12" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+    <path d="M 115 32 L 145 34 L 143 64" 
+          fill="none" 
+          stroke="#E5A016" 
+          stroke-width="12" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+    <circle cx="25" cy="105" r="9" fill="#E5A016" />
+    <circle cx="50" cy="40" r="10" fill="#10B981" />
+    <circle cx="78" cy="105" r="9" fill="#E5A016" />
+    <circle cx="78" cy="22" r="11" fill="#10B981" />
+    <path d="M 68 85 Q 66 50, 78 48 Q 90 50, 88 85 Z" fill="url(#cifBodyGrad)" />
+    <circle cx="106" cy="12" r="12" fill="#E5A016" />
+  </g>
+
+  <!-- Logotipo Tipográfico -->
+  <text x="185" y="72" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="34" font-weight="800" fill="#FFFFFF" letter-spacing="-0.5">CLUB DE INVERSIÓN</text>
+  <text x="185" y="114" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="34" font-weight="800" fill="#10B981" letter-spacing="1">FAMILIAR</text>
+  <text x="187" y="144" font-family="'Inter', system-ui, sans-serif" font-size="14" font-weight="500" fill="#94A3B8" letter-spacing="0.3">Aprende, invierte y crece en familia</text>
+</svg>
