@@ -48,6 +48,8 @@ Antes de usarla en serio, cambia `AUTH_SECRET` en `.env` por una cadena larga y 
 
 ## Despliegue en Google Cloud (producción)
 
+URL pública: https://club-inversion-790874739436.europe-southwest1.run.app
+
 La app corre en **Cloud Run** (proyecto `clubdeinversionfamiliar`, región `europe-southwest1`, escala a cero) y usa **PostgreSQL en la instancia Cloud SQL de AlquilaFacil** (`alquilafacil-510608:europe-southwest1:alquilafacil-db`, base de datos `clubinversion`, usuario `club_app`) para no pagar una segunda instancia. Credenciales en Secret Manager (`club-database-url`, `club-auth-secret`); la cuenta de servicio de Cloud Run tiene `roles/cloudsql.client` en el proyecto de AlquilaFacil.
 
 Publicar una versión nueva (la CLI necesita `CLOUDSDK_PYTHON` apuntando al Python del SDK en Windows):
