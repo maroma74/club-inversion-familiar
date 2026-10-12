@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { levelFromPoints, POINTS_PER_BADGE, POINTS_PER_LESSON } from "@/lib/academy";
-import { roleLabel } from "@/lib/monthly";
+import { isDeadlinePassed, roleLabel } from "@/lib/monthly";
 import { logoutAction } from "@/app/actions/auth";
 import { MobileNav, NavLinks } from "@/components/NavLinks";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -12,6 +12,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser();
   const lessonsPassed = await prisma.lessonProgress.count({ where: { userId: user.id, completedAt: { not: null } } });
   const lv = levelFromPoints(user.badgeCount * POINTS_PER_BADGE + lessonsPassed * POINTS_PER_LESSON);
+
+  // Señal parpadeante en «Cartera del mes»: hay una cartera abierta y a este usuario todavía le queda decidir
+  // (tiene importe asignado, no ha enviado su decisión y el plazo no ha terminado).
+  const open = await prisma.monthlyPortfolio.findFirst({
+    where: { familyId: user.familyId, status: "PUBLISHED" },
+    orderBy: { month: "desc" },
+    select: { deadline: true, allocations: { where: { userId: user.id }, select: { amount: true } }, decisions: { where: { userId: user.id }, select: { id: true } } },
+  });
+  const pendingDecision = !!open && !isDeadlinePassed(open) && (open.allocations[0]?.amount ?? 0) > 0 && open.decisions.length === 0;
+  const alertHref = pendingDecision ? "/cartera" : null;
 
   const userMeta = `${roleLabel(user.role)} · Nivel ${lv.level}`;
   const logout = (
@@ -24,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen flex flex-col md:flex-row">
       <MobileNav
         isAdmin={user.role === "ADMIN"}
+        alertHref={alertHref}
         familyName={user.family.name}
         userName={user.name}
         userMeta={userMeta}
@@ -43,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div className="text-[11px] opacity-70 truncate">{user.family.name}</div>
           </div>
         </Link>
-        <NavLinks isAdmin={user.role === "ADMIN"} />
+        <NavLinks isAdmin={user.role === "ADMIN"} alertHref={alertHref} />
         <div className="flex items-center justify-between gap-2 border-t border-[rgba(248,250,252,0.12)]" style={{ padding: "14px 20px" }}>
           <div className="min-w-0">
             <div className="text-[14px] font-medium truncate">{user.name}</div>

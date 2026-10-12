@@ -27,8 +27,19 @@ function isActive(path: string, href: string) {
   return path === href || path.startsWith(href + "/");
 }
 
+/** Punto parpadeante y etiqueta «Abierta» que avisan de una cartera pendiente de decidir. */
+function AlertMark() {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="nav-alert-tag">Abierta</span>
+      <span className="alert-dot" aria-hidden="true" />
+      <span className="sr-only">: hay una cartera del mes abierta pendiente de tu decisión</span>
+    </span>
+  );
+}
+
 /** Navegación lateral de escritorio (dentro de la barra navy). */
-export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
+export function NavLinks({ isAdmin, alertHref = null }: { isAdmin: boolean; alertHref?: string | null }) {
   const path = usePathname();
   return (
     <nav className="flex flex-col px-3 py-1 gap-0.5 flex-1">
@@ -38,9 +49,10 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
           {g.items
             .filter((i) => !i.admin || isAdmin)
             .map((i) => (
-              <Link key={i.href} href={i.href} data-active={isActive(path, i.href) ? "true" : "false"} className="nav-link flex items-center gap-2.5 w-full text-left text-[14px] no-underline whitespace-nowrap border border-transparent" style={{ padding: "8px 10px" }}>
+              <Link key={i.href} href={i.href} data-active={isActive(path, i.href) ? "true" : "false"} data-alert={alertHref === i.href ? "true" : "false"} className="nav-link flex items-center gap-2.5 w-full text-left text-[14px] no-underline whitespace-nowrap border border-transparent" style={{ padding: "8px 10px" }}>
                 <span className="nav-num font-mono text-[11px] w-[20px]">{i.num}</span>
                 <span className="flex-1 font-medium">{i.label}</span>
+                {alertHref === i.href && <AlertMark />}
                 {i.note && <span className="text-[10px] opacity-60">{i.note}</span>}
               </Link>
             ))}
@@ -54,7 +66,7 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
  * Cabecera fija para móvil con menú desplegable: enlaces por grupos, usuario, tema y salir.
  * `footer` recibe los controles que necesitan acciones de servidor (botón Salir) desde el layout.
  */
-export function MobileNav({ isAdmin, familyName, userName, userMeta, footer }: { isAdmin: boolean; familyName: string; userName: string; userMeta: string; footer: React.ReactNode }) {
+export function MobileNav({ isAdmin, familyName, userName, userMeta, footer, alertHref = null }: { isAdmin: boolean; familyName: string; userName: string; userMeta: string; footer: React.ReactNode; alertHref?: string | null }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -88,6 +100,12 @@ export function MobileNav({ isAdmin, familyName, userName, userMeta, footer }: {
         <button type="button" onClick={() => setOpen(true)} className="mobile-menu-btn" aria-label="Abrir el menú" aria-expanded={open} aria-controls="menu-movil">
           <span aria-hidden="true" className="mobile-menu-icon" />
           <span className="text-[12px] font-semibold">Menú</span>
+          {alertHref && (
+            <>
+              <span className="alert-dot menu-alert-dot" aria-hidden="true" />
+              <span className="sr-only">: hay una cartera del mes abierta pendiente de tu decisión</span>
+            </>
+          )}
         </button>
       </header>
 
@@ -109,9 +127,10 @@ export function MobileNav({ isAdmin, familyName, userName, userMeta, footer }: {
                   {g.items
                     .filter((i) => !i.admin || isAdmin)
                     .map((i) => (
-                      <Link key={i.href} href={i.href} data-active={isActive(path, i.href) ? "true" : "false"} className="nav-link flex items-center gap-3 w-full text-left text-[16px] no-underline border border-transparent" style={{ padding: "12px 12px" }}>
+                      <Link key={i.href} href={i.href} data-active={isActive(path, i.href) ? "true" : "false"} data-alert={alertHref === i.href ? "true" : "false"} className="nav-link flex items-center gap-3 w-full text-left text-[16px] no-underline border border-transparent" style={{ padding: "12px 12px" }}>
                         <span className="nav-num font-mono text-[12px] w-[22px]">{i.num}</span>
                         <span className="flex-1 font-medium">{i.label}</span>
+                        {alertHref === i.href && <AlertMark />}
                         {i.note && <span className="text-[11px] opacity-60">{i.note}</span>}
                       </Link>
                     ))}
