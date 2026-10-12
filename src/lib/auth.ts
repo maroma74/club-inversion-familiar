@@ -4,7 +4,10 @@ import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 
-const COOKIE = "ff_session";
+// Firebase Hosting solo deja pasar la cookie llamada __session hacia Cloud Run, así que la sesión
+// (y el modo «ver como miembro» del presidente) viajan juntos en esa única cookie.
+const COOKIE = "__session";
+export type ViewAs = "member" | null;
 const secret = () =>
   new TextEncoder().encode(process.env.AUTH_SECRET ?? "dev-secret-change-me");
 
@@ -16,8 +19,8 @@ export async function verifyPassword(pw: string, hash: string) {
   return bcrypt.compare(pw, hash);
 }
 
-export async function createSession(userId: string) {
-  const token = await new SignJWT({ sub: userId })
+export async function createSession(userId: string, viewAs: ViewAs = null) {
+  const token = await new SignJWT(viewAs ? { sub: userId, viewAs } : { sub: userId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("30d")
@@ -37,16 +40,21 @@ export async function destroySession() {
   store.delete(COOKIE);
 }
 
-export async function getSessionUserId(): Promise<string | null> {
+export async function getSession(): Promise<{ userId: string; viewAs: ViewAs } | null> {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret());
-    return typeof payload.sub === "string" ? payload.sub : null;
+    if (typeof payload.sub !== "string") return null;
+    return { userId: payload.sub, viewAs: payload.viewAs === "member" ? "member" : null };
   } catch {
     return null;
   }
+}
+
+export async function getSessionUserId(): Promise<string | null> {
+  return (await getSession())?.userId ?? null;
 }
 
 type DbUser = NonNullable<Awaited<ReturnType<typeof loadUser>>>;
@@ -57,16 +65,15 @@ async function loadUser(id: string) {
 }
 
 /**
- * Usuario de la sesión. Si el presidente ha activado «ver como miembro» (cookie ff_view_as),
+ * Usuario de la sesión. Si el presidente ha activado «ver como miembro» (claim viewAs de la sesión),
  * `role` pasa a MEMBER para toda la interfaz y `realRole` conserva ADMIN.
  */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  const id = await getSessionUserId();
-  if (!id) return null;
-  const user = await loadUser(id);
+  const session = await getSession();
+  if (!session) return null;
+  const user = await loadUser(session.userId);
   if (!user) return null;
-  const store = await cookies();
-  const previewAsMember = user.role === "ADMIN" && store.get("ff_view_as")?.value === "member";
+  const previewAsMember = user.role === "ADMIN" && session.viewAs === "member";
   return { ...user, realRole: user.role, role: previewAsMember ? "MEMBER" : user.role, previewAsMember };
 }
 
