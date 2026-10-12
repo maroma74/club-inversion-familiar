@@ -40,6 +40,18 @@ model User {
   journalEntries  JournalEntry[]
   monthlyAllocations MonthlyAllocation[]
   monthlyDecisions   MonthlyDecision[]
+  /// Cuándo se subió la foto de perfil (null = sin foto). Sirve para cachear la imagen con ?v=.
+  avatarUpdatedAt    DateTime?
+  avatar             UserAvatar?
+}
+
+/// Foto de perfil (cuadrada, ya reducida en el navegador). Va en tabla aparte para no cargar los bytes en cada consulta de usuario.
+model UserAvatar {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data      Bytes
+  mime      String
+  updatedAt DateTime @default(now())
 }
 
 /// Invitación personal al club: un código de un solo uso, opcionalmente ligado a un nombre y un email, con caducidad.

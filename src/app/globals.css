@@ -437,3 +437,7 @@ table thead th { font-size: 11px; letter-spacing: 0.08em; text-transform: upperc
   .alert-dot, .nav-alert-tag, .sidebar .nav-link[data-alert="true"] { animation: none; }
   .sidebar .nav-link[data-alert="true"] { background: rgba(229, 160, 22, 0.14); }
 }
+
+/* ---------- Foto de perfil ---------- */
+.avatar { display: inline-block; border-radius: 999px; object-fit: cover; flex: none; vertical-align: middle; }
+.avatar-initial { display: inline-flex; align-items: center; justify-content: center; background: var(--brand-emerald, #10b981); color: #0e2138; font-family: var(--font-heading); font-weight: 800; line-height: 1; }

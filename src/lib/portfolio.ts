@@ -20,6 +20,7 @@ export type Holding = {
 export type PortfolioSummary = {
   userId: string;
   userName: string;
+  avatarUpdatedAt: Date | null; // foto de perfil (null = sin foto)
   contributed: number; // dinero recibido (aportaciones)
   cash: number; // efectivo sin invertir
   invested: number; // coste de las posiciones abiertas
@@ -36,7 +37,7 @@ export type PortfolioSummary = {
 
 export async function computePortfolio(userId: string, opts: { excludeTradeId?: string } = {}): Promise<PortfolioSummary> {
   const [user, contributions, trades] = await Promise.all([
-    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true, familyId: true } }),
+    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true, familyId: true, avatarUpdatedAt: true } }),
     prisma.contribution.findMany({ where: { userId }, orderBy: { date: "asc" } }),
     prisma.trade.findMany({
       where: { userId, ...(opts.excludeTradeId ? { id: { not: opts.excludeTradeId } } : {}) },
@@ -104,6 +105,7 @@ export async function computePortfolio(userId: string, opts: { excludeTradeId?: 
   return {
     userId,
     userName: firstName(user.name),
+    avatarUpdatedAt: user.avatarUpdatedAt,
     contributed,
     cash,
     invested,

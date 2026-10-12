@@ -104,6 +104,8 @@ Variables de entorno: `DATABASE_URL`, `AUTH_SECRET` (mínimo 32 caracteres; en p
    - Cada ficha explica qué es la materia prima, qué mueve su precio, quién la produce y el tamaño del contrato. Se avisa del salto de precio al cambiar de contrato y de que los futuros no son un producto para empezar (para eso están los ETC y ETF).
    - Noticias: RSS de Investing.com, Expansión (español), OilPrice, Mining.com, Natural Gas Intelligence y CNBC filtrados por materia prima, más Yahoo por nombre. El buscador de la lista acepta el nombre («oro», «petróleo») o el símbolo.
 
+9. **Mi perfil.** Pulsando en tu nombre (abajo del menú) cada miembro sube su foto de perfil. El navegador la recorta en cuadrado (con zoom y desplazamiento) y la reduce a 256×256 antes de subirla; el servidor la valida por sus primeros bytes (solo JPG, PNG o WebP, máximo 150 KB, nada de SVG) y la guarda en la base de datos, en una tabla aparte (`UserAvatar`), sin servicios nuevos. Solo la ven los miembros activos de la misma familia (`/api/avatar/[id]`) y se cachea un día con la fecha de subida en la URL. La foto aparece en el menú, el ranking de la liga, Inicio, Familia e Invitaciones; sin foto se ve la inicial.
+
 ## Invitaciones y entrada al club
 
 El administrador gestiona la entrada desde *Invitaciones*: invitaciones personales de un solo uso (con nombre, email opcional, rol y caducidad, compartidas como enlace `/registro?codigo=XXXX`), modo de entrada del código general (directo, con aprobación o desactivado), solicitudes pendientes de aprobar, cambio de rol y expulsión de miembros. Un usuario pendiente ve la pantalla `/pendiente` hasta que se le aprueba.

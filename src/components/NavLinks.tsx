@@ -67,7 +67,7 @@ export function NavLinks({ isAdmin, alertHref = null }: { isAdmin: boolean; aler
  * Cabecera fija para móvil con menú desplegable: enlaces por grupos, usuario, tema y salir.
  * `footer` recibe los controles que necesitan acciones de servidor (botón Salir) desde el layout.
  */
-export function MobileNav({ isAdmin, familyName, userName, userMeta, footer, alertHref = null }: { isAdmin: boolean; familyName: string; userName: string; userMeta: string; footer: React.ReactNode; alertHref?: string | null }) {
+export function MobileNav({ isAdmin, familyName, userName, userMeta, userAvatar, footer, alertHref = null }: { isAdmin: boolean; familyName: string; userName: string; userMeta: string; userAvatar?: React.ReactNode; footer: React.ReactNode; alertHref?: string | null }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -139,10 +139,13 @@ export function MobileNav({ isAdmin, familyName, userName, userMeta, footer, ale
               ))}
             </nav>
             <div className="border-t border-[rgba(248,250,252,0.12)] flex items-center justify-between gap-2" style={{ padding: "14px 16px 18px 20px" }}>
-              <div className="min-w-0">
-                <div className="text-[14px] font-medium truncate">{userName}</div>
-                <div className="text-[11px] opacity-70">{userMeta}</div>
-              </div>
+              <Link href="/perfil" className="flex items-center gap-2.5 min-w-0 no-underline" title="Mi perfil y foto">
+                {userAvatar}
+                <div className="min-w-0">
+                  <div className="text-[14px] font-medium truncate">{userName}</div>
+                  <div className="text-[11px] opacity-70">{userMeta}</div>
+                </div>
+              </Link>
               <div className="flex items-center gap-1 shrink-0">{footer}</div>
             </div>
           </div>

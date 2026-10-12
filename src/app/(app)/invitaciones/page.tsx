@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+import { Avatar } from "@/components/Avatar";
 import { firstName } from "@/lib/names";
 import { appUrl } from "@/lib/appUrl";
 import { fmtDate } from "@/lib/format";
@@ -18,7 +19,7 @@ export default async function InvitacionesPage() {
   const [family, invitations, members] = await Promise.all([
     prisma.family.findUniqueOrThrow({ where: { id: admin.familyId } }),
     prisma.invitation.findMany({ where: { familyId: admin.familyId }, orderBy: { createdAt: "desc" }, include: { usedBy: { select: { name: true } }, createdBy: { select: { name: true } } } }),
-    prisma.user.findMany({ where: { familyId: admin.familyId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, email: true, role: true, status: true, createdAt: true, _count: { select: { trades: true } } } }),
+    prisma.user.findMany({ where: { familyId: admin.familyId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, email: true, role: true, status: true, createdAt: true, avatarUpdatedAt: true, _count: { select: { trades: true } } } }),
   ]);
   const pendingMembers = members.filter((m) => m.status === "PENDING");
   const activeMembers = members.filter((m) => m.status === "ACTIVE");
@@ -144,7 +145,7 @@ export default async function InvitacionesPage() {
               const lastAdmin = m.role === "ADMIN" && activeAdmins <= 1;
               return (
                 <tr key={m.id} className="border-t border-slate-100">
-                  <td className="px-5 py-2"><div className="font-medium">{firstName(m.name)}{isMe ? " (tú)" : ""}</div><div className="text-xs text-slate-400">{m.email}</div></td>
+                  <td className="px-5 py-2"><div className="flex items-center gap-2.5"><Avatar id={m.id} name={m.name} updatedAt={m.avatarUpdatedAt} size={32} /><div><div className="font-medium">{firstName(m.name)}{isMe ? " (tú)" : ""}</div><div className="text-xs text-slate-400">{m.email}</div></div></div></td>
                   <td className="px-2 py-2">
                     <form action={setMemberRoleAction} className="inline-flex items-center gap-1">
                       <input type="hidden" name="userId" value={m.id} />

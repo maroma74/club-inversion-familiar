@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { Avatar } from "@/components/Avatar";
 import { firstName } from "@/lib/names";
 import { familyOverview } from "@/lib/league";
 import { eur, fmtDate, ymOf } from "@/lib/format";
@@ -13,7 +14,7 @@ export default async function FamiliaPage() {
   const isAdmin = user.role === "ADMIN";
   const thisMonth = ymOf(new Date());
   const [members, contributions, overview, paidThisMonth] = await Promise.all([
-    prisma.user.findMany({ where: { familyId: user.familyId, status: "ACTIVE" }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, email: true, role: true, createdAt: true } }),
+    prisma.user.findMany({ where: { familyId: user.familyId, status: "ACTIVE" }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, email: true, role: true, createdAt: true, avatarUpdatedAt: true } }),
     prisma.contribution.findMany({ where: { user: { familyId: user.familyId } }, orderBy: { date: "desc" }, take: 40, include: { user: { select: { name: true } } } }),
     familyOverview(user.familyId),
     prisma.contribution.count({ where: { user: { familyId: user.familyId, status: "ACTIVE" }, note: `Paga mensual ${thisMonth}` } }),
@@ -67,7 +68,7 @@ export default async function FamiliaPage() {
                 const p = overview.progress.get(m.id);
                 return (
                   <tr key={m.id}>
-                    <td className="font-medium">{firstName(m.name)}{m.id === user.id ? " (tú)" : ""}<div className="text-xs text-neutral-600 font-normal">{m.email}</div></td>
+                    <td className="font-medium"><div className="flex items-center gap-2.5"><Avatar id={m.id} name={m.name} updatedAt={m.avatarUpdatedAt} size={32} /><div>{firstName(m.name)}{m.id === user.id ? " (tú)" : ""}<div className="text-xs text-neutral-600 font-normal">{m.email}</div></div></div></td>
                     <td><span className="tag tag-neutral">{m.role === "ADMIN" ? "Presidente del club" : "Miembro"}</span></td>
                     <td className="text-right tabular-nums">{eur(r?.contributed ?? 0)}</td>
                     <td className="text-right tabular-nums">{eur(r?.totalValue ?? 0)}</td>

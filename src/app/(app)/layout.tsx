@@ -8,6 +8,7 @@ import { logoutAction } from "@/app/actions/auth";
 import { MobileNav, NavLinks } from "@/components/NavLinks";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ViewAsBar } from "@/components/ViewAsBar";
+import { Avatar } from "@/components/Avatar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -38,6 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         alertHref={alertHref}
         familyName={user.family.name}
         userName={firstName(user.name)}
+        userAvatar={<Avatar id={user.id} name={user.name} updatedAt={user.avatarUpdatedAt} size={36} />}
         userMeta={userMeta}
         footer={
           <>
@@ -57,10 +59,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </Link>
         <NavLinks isAdmin={user.role === "ADMIN"} alertHref={alertHref} />
         <div className="flex items-center justify-between gap-2 border-t border-[rgba(248,250,252,0.12)]" style={{ padding: "14px 20px" }}>
-          <div className="min-w-0">
-            <div className="text-[14px] font-medium truncate">{firstName(user.name)}</div>
-            <div className="text-[11px] opacity-70">{userMeta}</div>
-          </div>
+          <Link href="/perfil" className="flex items-center gap-2.5 min-w-0 no-underline" title="Mi perfil y foto">
+            <Avatar id={user.id} name={user.name} updatedAt={user.avatarUpdatedAt} size={36} />
+            <div className="min-w-0">
+              <div className="text-[14px] font-medium truncate">{firstName(user.name)}</div>
+              <div className="text-[11px] opacity-70">{userMeta}</div>
+            </div>
+          </Link>
           <div className="flex items-center gap-1">
             <ThemeToggle />
             {logout}

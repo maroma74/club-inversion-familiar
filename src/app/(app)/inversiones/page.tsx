@@ -5,6 +5,7 @@ import { familyOverview } from "@/lib/league";
 import { fetchNews } from "@/lib/news";
 import { eur, pct } from "@/lib/format";
 import { LeagueChart } from "@/components/charts";
+import { Avatar } from "@/components/Avatar";
 import { AutoRefresh } from "./AutoRefresh";
 import { analysisPath, symbolKind } from "@/lib/kinds";
 
@@ -47,7 +48,7 @@ export default async function InversionesPage() {
           return (
             <div key={r.userId} className="card blueprint gap-1.5" style={{ padding: 18, borderColor: r.userId === user.id ? "var(--color-accent)" : "var(--color-divider)" }}>
               <div className="flex justify-between items-baseline">
-                <div className="font-heading text-[20px] flex items-center gap-2"><span className="medal">{i + 1}</span>{r.userName}</div>
+                <div className="font-heading text-[20px] flex items-center gap-2"><span className="medal">{i + 1}</span><Avatar id={r.userId} name={r.userName} updatedAt={r.avatarUpdatedAt} size={32} />{r.userName}</div>
                 {i === 0 && r.contributed > 0 && <span className="tag tag-gold">Líder</span>}
               </div>
               <div className="figure text-[40px]" style={{ color: tone(r.pnl) }}>{pct(r.returnPct, 2)}</div>

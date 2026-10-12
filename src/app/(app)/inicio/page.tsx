@@ -6,6 +6,7 @@ import { getCoursesWithProgress, LEVELS } from "@/lib/academy";
 import { familyOverview } from "@/lib/league";
 import { eur, fmtDate, pct } from "@/lib/format";
 import { DiaryDialog } from "@/components/DiaryDialog";
+import { Avatar } from "@/components/Avatar";
 import { getCurrentPortfolio, isDeadlinePassed, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
 
 const SIDE: Record<string, string> = { BUY: "Compra", SELL: "Venta", NOTE: "Nota" };
@@ -151,7 +152,7 @@ export default async function InicioPage() {
                   return (
                     <tr key={r.userId}>
                       <td className="font-heading text-[16px]">{i + 1}.º</td>
-                      <td>{r.userName} <span className="text-xs text-neutral-700">· {p?.levelName ?? "Novato"}</span></td>
+                      <td><span className="inline-flex items-center gap-2"><Avatar id={r.userId} name={r.userName} updatedAt={r.avatarUpdatedAt} size={24} />{r.userName}</span> <span className="text-xs text-neutral-700">· {p?.levelName ?? "Novato"}</span></td>
                       <td className="text-right tabular-nums" style={{ color: r.pnl >= 0 ? "var(--color-accent-700)" : "var(--color-text)" }}>{pct(r.returnPct, 2)}</td>
                       <td className="text-right tabular-nums">{overview.learning.get(r.userId)?.lessonsPassed ?? 0}</td>
                     </tr>
