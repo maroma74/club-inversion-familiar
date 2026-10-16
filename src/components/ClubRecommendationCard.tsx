@@ -10,7 +10,7 @@ import { priceDecimals } from "@/lib/fmtPrice";
 export function ActionBadge({ action, small = false }: { action: string; small?: boolean }) {
   const style =
     action === "COMPRAR"
-      ? { background: "linear-gradient(135deg, #10b981, #059669)", color: "#ffffff", border: "1px solid transparent" }
+      ? { background: "linear-gradient(135deg, #047857, #065f46)", color: "#ffffff", border: "1px solid transparent" }
       : action === "VENDER"
         ? { background: "#0e2138", color: "#f8fafc", border: "1px solid #0e2138" }
         : { background: "var(--color-amber-100)", color: "var(--color-amber-700)", border: "1px solid #e5a016" };
