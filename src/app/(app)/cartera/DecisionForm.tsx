@@ -10,21 +10,36 @@ type Draft = { step: Step; allocation: number; picked: string[]; amounts: Record
 
 const MIN_WHY = 10;
 const MIN_ARGUMENT = 20;
+// Mismos límites que aplica el servidor: así nada se recorta sin que el usuario lo sepa.
+const MAX_WHY = 2000;
+const MAX_EXIT = 1000;
+const MAX_ARGUMENT = 4000;
 const STEPS = ["Elige y reparte", "Explica", "Revisa y envía"];
 
 const kindLabel = (k: string) => (k === "ETF" ? "ETF" : k === "CRYPTO" ? "cripto" : k === "COMMODITY" ? "materia prima" : "acción");
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Interpreta «1.000,50», «12,5» o «12.5». Devuelve null si no es un número. */
+/** Interpreta «1.000,50», «1.000», «12,5» o «12.5». Devuelve null si no es un número claro. */
 function parseAmount(s: string | undefined): number | null {
   const t = (s ?? "").trim().replace(/\s/g, "");
   if (!t) return 0;
-  const norm = t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t;
+  let norm: string;
+  if (t.includes(",")) {
+    // Con coma decimal, los puntos solo pueden ser separadores de miles y van antes de la coma.
+    if (t.lastIndexOf(".") > t.lastIndexOf(",") || t.split(",").length > 2) return null;
+    norm = t.replace(/\./g, "").replace(",", ".");
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(t)) {
+    norm = t.replace(/\./g, ""); // «1.000» son mil
+  } else {
+    norm = t;
+  }
   if (!/^\d+(\.\d+)?$/.test(norm)) return null;
   const n = Number(norm);
   return Number.isFinite(n) ? n : null;
 }
 const num = (s: string | undefined) => parseAmount(s) ?? 0;
+/** Los importes se muestran con coma decimal, como se escriben en España. */
+const show = (n: number) => String(n).replace(".", ",");
 
 type Values = { allocation: number; minChoices: number; opts: Opt[]; picked: string[]; amounts: Record<string, string>; whys: Record<string, string>; argument: string };
 
@@ -34,8 +49,8 @@ function problemStep1({ allocation, minChoices, opts, picked, amounts }: Values,
   if (picked.length < minChoices) return single ? "Elige una opción para continuar." : `Elige al menos ${minChoices} ${minChoices === 1 ? "opción" : "opciones"} para continuar.`;
   const bad = pk.find((o) => parseAmount(amounts[o.id]) === null);
   if (bad) return `Escribe el importe de ${bad.symbol} solo con cifras y una coma, por ejemplo 12,50.`;
-  const empty = pk.find((o) => num(amounts[o.id]) <= 0);
-  if (empty) return `Indica cuánto pones en ${empty.symbol}.`;
+  const empty = pk.find((o) => num(amounts[o.id]) < 0.01);
+  if (empty) return `Indica cuánto pones en ${empty.symbol} (al menos 0,01 €).`;
   const rest = round2(allocation - pk.reduce((s, o) => s + num(amounts[o.id]), 0));
   if (rest < -0.01) return `Te pasas ${eur(-rest)} de tu importe: baja algún importe.`;
   return null;
@@ -62,6 +77,8 @@ export function DecisionForm({ portfolioId, userId, options, allocation, minChoi
   const restored = useRef(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [dismissed, setDismissed] = useState<unknown>(null);
   const single = maxChoices === 1;
   const draftKey = `cartera-borrador:${portfolioId}:${userId}`;
 
@@ -123,7 +140,7 @@ export function DecisionForm({ portfolioId, userId, options, allocation, minChoi
   function equalSplit(ids: string[]) {
     const share = ids.length ? Math.floor((allocation / ids.length) * 100) / 100 : 0;
     const a: Record<string, string> = {};
-    ids.forEach((x, i) => (a[x] = String(i === ids.length - 1 ? round2(allocation - share * (ids.length - 1)) : share)));
+    ids.forEach((x, i) => (a[x] = show(i === ids.length - 1 ? round2(allocation - share * (ids.length - 1)) : share)));
     return a;
   }
 
@@ -131,7 +148,7 @@ export function DecisionForm({ portfolioId, userId, options, allocation, minChoi
     if (single) {
       // Con una sola opción posible, el importe es siempre todo lo asignado.
       setPicked([id]);
-      setAmounts({ [id]: String(allocation) });
+      setAmounts({ [id]: show(allocation) });
       return;
     }
     let next: string[];
@@ -144,6 +161,7 @@ export function DecisionForm({ portfolioId, userId, options, allocation, minChoi
   }
 
   function resetDraft() {
+    if (!window.confirm("¿Borrar lo que has escrito y empezar de nuevo?")) return;
     setStep(1);
     setPicked([]);
     setAmounts({});
@@ -170,8 +188,11 @@ export function DecisionForm({ portfolioId, userId, options, allocation, minChoi
 
   function go(to: Step) {
     setStep(to);
+    if (state?.error) setDismissed(state); // un error viejo no debe seguir visible en otro paso
     const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     topRef.current?.scrollIntoView({ block: "start", behavior: calm ? "auto" : "smooth" });
+    // El botón pulsado desaparece al cambiar de paso: el foco pasa al título para no perder el sitio.
+    window.requestAnimationFrame(() => headingRef.current?.focus({ preventScroll: true }));
   }
 
   if (!ready) return <p className="m-0 text-sm text-neutral-700" aria-busy="true">Preparando tu decisión…</p>;
@@ -190,14 +211,14 @@ export function DecisionForm({ portfolioId, userId, options, allocation, minChoi
       {pickedOpts.map((o) => (
         <span key={o.id} hidden>
           <input type="hidden" name={`pick_${o.id}`} value="on" />
-          <input type="hidden" name={`amount_${o.id}`} value={String(num(amounts[o.id]))} />
+          <input type="hidden" name={`amount_${o.id}`} value={String(round2(num(amounts[o.id])))} />
           <input type="hidden" name={`why_${o.id}`} value={whys[o.id] ?? ""} />
           <input type="hidden" name={`exit_${o.id}`} value={exits[o.id] ?? ""} />
         </span>
       ))}
 
       <div ref={topRef} className="scroll-mt-20 flex flex-col gap-2">
-        <h3 className="m-0">Tu decisión <span className="text-base font-normal text-neutral-700">· paso {step} de 3</span></h3>
+        <h3 ref={headingRef} tabIndex={-1} className="m-0 outline-none">Tu decisión <span className="text-base font-normal text-neutral-700">· paso {step} de 3</span></h3>
         <ol aria-label="Pasos de tu decisión" className="m-0 p-0 list-none flex flex-wrap gap-2 text-sm">
           {STEPS.map((label, i) => {
             const n = (i + 1) as Step;
@@ -297,15 +318,16 @@ export function DecisionForm({ portfolioId, userId, options, allocation, minChoi
                     id={`why-${o.id}`}
                     className="input"
                     style={{ minHeight: 90 }}
+                    maxLength={MAX_WHY}
                     aria-describedby={`why-ayuda-${o.id}`}
                     value={whys[o.id] ?? ""}
                     onChange={(e) => setWhys((w) => ({ ...w, [o.id]: e.target.value }))}
                   />
-                  <div id={`why-ayuda-${o.id}`} className="text-sm text-neutral-700 mt-1">Ejemplo: «Me gusta porque vende cosas que todo el mundo usa y paga dividendo cada año.» {len < MIN_WHY ? `Mínimo ${MIN_WHY} letras (llevas ${len}).` : "Listo."}</div>
+                  <div id={`why-ayuda-${o.id}`} className="text-sm text-neutral-700 mt-1">Ejemplo: «Me gusta porque vende cosas que todo el mundo usa y paga dividendo cada año.» {len < MIN_WHY ? `Mínimo ${MIN_WHY} letras (llevas ${len}).` : len > MAX_WHY * 0.9 ? `${len} de ${MAX_WHY} letras como máximo.` : "Listo."}</div>
                 </div>
                 <div className="field">
                   <label htmlFor={`exit-${o.id}`} className="text-sm text-[var(--color-text)]">¿Qué te haría vender? (opcional)</label>
-                  <input id={`exit-${o.id}`} className="input" value={exits[o.id] ?? ""} onChange={(e) => setExits((x) => ({ ...x, [o.id]: e.target.value }))} />
+                  <input id={`exit-${o.id}`} className="input" maxLength={MAX_EXIT} value={exits[o.id] ?? ""} onChange={(e) => setExits((x) => ({ ...x, [o.id]: e.target.value }))} />
                   <div className="text-sm text-neutral-700 mt-1">Un precio, un dato o un plazo. Ejemplo: «Si baja un 20 %» o «dentro de un año».</div>
                 </div>
               </div>
@@ -313,8 +335,8 @@ export function DecisionForm({ portfolioId, userId, options, allocation, minChoi
           })}
           <div className="field">
             <label htmlFor="argumento" className="text-sm text-[var(--color-text)]">Tu idea general: ¿qué has aprendido de la lección y cómo la aplicas?</label>
-            <textarea id="argumento" className="input" style={{ minHeight: 100 }} aria-describedby="argumento-ayuda" value={argument} onChange={(e) => setArgument(e.target.value)} />
-            <div id="argumento-ayuda" className="text-sm text-neutral-700 mt-1">{argument.trim().length < MIN_ARGUMENT ? `Mínimo ${MIN_ARGUMENT} letras (llevas ${argument.trim().length}).` : "Listo."}</div>
+            <textarea id="argumento" className="input" style={{ minHeight: 100 }} maxLength={MAX_ARGUMENT} aria-describedby="argumento-ayuda" value={argument} onChange={(e) => setArgument(e.target.value)} />
+            <div id="argumento-ayuda" className="text-sm text-neutral-700 mt-1">{argument.trim().length < MIN_ARGUMENT ? `Mínimo ${MIN_ARGUMENT} letras (llevas ${argument.trim().length}).` : argument.length > MAX_ARGUMENT * 0.9 ? `${argument.length} de ${MAX_ARGUMENT} letras como máximo.` : "Listo."}</div>
           </div>
         </div>
       )}
@@ -352,7 +374,7 @@ export function DecisionForm({ portfolioId, userId, options, allocation, minChoi
         </div>
       )}
 
-      {state?.error && (
+      {state?.error && dismissed !== state && (
         <p ref={errorRef} tabIndex={-1} role="alert" className="m-0 text-base font-medium p-3 border border-divider rounded-[10px]" style={{ background: "var(--color-amber-100)", color: "var(--color-amber-700)" }}>
           {state.error} <span className="font-normal">Tus respuestas siguen aquí: puedes volver a intentarlo.</span>
         </p>
@@ -361,7 +383,9 @@ export function DecisionForm({ portfolioId, userId, options, allocation, minChoi
 
       <div className="sticky bottom-3 z-10 card card-snug gap-2" style={{ boxShadow: "var(--shadow-md)" }}>
         {step === 1 && !single && (
-          <div className="text-sm flex flex-wrap items-center gap-x-2 gap-y-1" role="status">
+          <div className="text-sm flex flex-wrap items-center gap-x-2 gap-y-1">
+            {/* Aviso hablado solo cuando cambia el estado (te pasas / todo repartido), no en cada tecla */}
+            <span className="sr-only" role="status">{over ? "Te pasas de tu importe" : picked.length > 0 && remaining <= 0.01 ? "Todo repartido" : ""}</span>
             <span>Repartido <b className="tabular-nums">{eur(total)}</b> de <b className="tabular-nums">{eur(allocation)}</b></span>
             {over ? (
               <span className="tag tag-gold">Te pasas {eur(-remaining)}</span>
