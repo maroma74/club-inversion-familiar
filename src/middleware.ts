@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isDirectRunHost } from "@/lib/host";
 
 /**
  * Content-Security-Policy con nonce por petición. Next.js lee el nonce de la cabecera CSP de la petición
@@ -28,6 +29,7 @@ export function middleware(req: NextRequest) {
   requestHeaders.set("Content-Security-Policy", csp);
   const res = NextResponse.next({ request: { headers: requestHeaders } });
   res.headers.set("Content-Security-Policy", csp);
+  if (isDirectRunHost(req.headers)) res.headers.set("X-Robots-Tag", "noindex, nofollow");
   return res;
 }
 
