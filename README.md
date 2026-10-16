@@ -77,6 +77,8 @@ Si la versión trae migraciones nuevas, aplícalas antes con `npm run db:deploy`
 
 **Dominio propio.** Cloud Run no admite dominios personalizados en `europe-southwest1`, así que el dominio está en **Firebase Hosting** (sitio `clubdeinversionfamiliar`, mismo proyecto, gratis) con una regla que reenvía todas las rutas al servicio de Cloud Run. El DNS está en Cloudflare apuntando a Firebase. La configuración de Hosting no tiene archivos, solo esta regla y cabeceras de caché (`private, no-store` para las páginas e `immutable` para `/_next/static/**`), y se publica por la API de Hosting (versión → FINALIZED → release). Firebase Hosting solo reenvía a Cloud Run la cookie llamada `__session`, por eso la sesión (y el modo «ver como miembro») van en esa única cookie; no hace falta tocarla al publicar versiones nuevas de la app, basta con `gcloud run deploy`.
 
+**La URL directa de Cloud Run no se indexa.** Cuando la petición llega por `*.run.app` en vez de por el dominio del club, el middleware añade `X-Robots-Tag: noindex, nofollow` y `/robots.txt` devuelve `Disallow: /`; por el dominio propio no cambia nada. Se distingue con `x-forwarded-host` (donde Firebase Hosting deja el dominio original) y, sin él, con `Host`; la lógica está en `src/lib/host.ts`, con pruebas.
+
 Variables en Cloud Run: `APP_URL=https://clubdeinversionfamiliar.com`, `ALLOW_FAMILY_SIGNUP=false` (el club es privado: solo se entra con código o invitación), `EMAIL_FROM`; secretos `DATABASE_URL`, `AUTH_SECRET` y `RESEND_API_KEY`.
 
 Ajustes de consumo: `--min-instances 0` (no cuesta nada sin visitas), `--max-instances 2`, 512 MiB y 1 CPU solo durante las peticiones. La imagen vive en Artifact Registry (`club`).
