@@ -52,3 +52,6 @@ tsconfig.tsbuildinfo
 
 # Playwright MCP (capturas y logs)
 .playwright-mcp/
+
+# Informes de revisión de diseño generados en local
+.impeccable/critique/

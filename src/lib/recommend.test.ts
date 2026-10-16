@@ -33,7 +33,7 @@ test("con PER se añade un quinto bloque con el peso configurado y todo sigue su
   const v = r.blocks[4];
   assert.equal(v.weight, w);
   assert.equal(v.score, 1.5);
-  assert.match(v.note, /PER 18\.2/);
+  assert.match(v.note, /PER 18,2/); // formato español: coma decimal
   assert.match(v.note, /percentil 12/);
   assert.ok(Math.abs(sum(r) - 1) < 1e-9);
   // los técnicos se reescalan en proporción
