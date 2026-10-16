@@ -27,30 +27,39 @@ export default async function AcademiaPage() {
           const tag = c.completed ? "tag-accent" : c.unlocked ? "tag-outline" : "tag-neutral";
           const href = c.nextLesson ? `/academia/${c.slug}/${c.nextLesson.slug}` : `/academia/${c.slug}/${c.lessons[0]?.slug ?? ""}`;
           return (
-            <div key={c.id} className="card blueprint gap-2.5" style={{ padding: 20, opacity: c.unlocked ? 1 : 0.6 }}>
+            <div key={c.id} className="card gap-2.5" style={c.unlocked ? undefined : { background: "var(--color-surface-2)" }}>
               <div className="flex justify-between items-center gap-2">
                 <div className="card-kicker">Nivel {c.level} · {c.levelName}</div>
                 <span className={`tag ${tag}`}>{status}</span>
               </div>
               <div className="font-heading text-[24px] leading-[1.1]">{c.title}</div>
-              <p className="card-body text-[14px] [text-wrap:pretty]">{c.description}</p>
-              <div className="text-xs text-neutral-700 flex flex-col gap-0.5">
-                {c.lessons.map((l) => (
-                  <div key={l.id} className="flex gap-2">
-                    <span className="w-3.5 text-accent-700">{l.done ? "✓" : l.isNext && c.unlocked ? "→" : ""}</span>
-                    <span>{l.title}</span>
+              <p className="card-body text-sm [text-wrap:pretty]">{c.description}</p>
+              {c.unlocked ? (
+                <>
+                  <div className="text-xs text-neutral-700 flex flex-col gap-0.5">
+                    {c.lessons.map((l) => (
+                      <div key={l.id} className="flex gap-2">
+                        <span className="w-3.5 text-accent-700">
+                          {l.done ? <><span aria-hidden="true">✓</span><span className="sr-only">superada: </span></> : l.isNext ? <><span aria-hidden="true">→</span><span className="sr-only">siguiente: </span></> : null}
+                        </span>
+                        <span>{l.title}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="bar mt-1"><span style={{ width: `${c.lessons.length ? (c.doneCount / c.lessons.length) * 100 : 0}%` }} /></div>
-              <div className="flex justify-between items-center">
-                <span className="card-meta">{c.doneCount} de {c.lessons.length} lecciones</span>
-                {c.unlocked ? (
-                  <Link href={href} className={c.current ? "btn-primary" : "btn-secondary"}>{c.completed ? "Repasar" : "Continuar"}</Link>
-                ) : (
-                  <button className="btn-secondary" disabled>Bloqueado</button>
-                )}
-              </div>
+                  <div className="bar mt-1" role="progressbar" aria-label={`Progreso de ${c.title}`} aria-valuemin={0} aria-valuemax={c.lessons.length} aria-valuenow={c.doneCount} aria-valuetext={`${c.doneCount} de ${c.lessons.length} lecciones`}>
+                    <span style={{ width: `${c.lessons.length ? (c.doneCount / c.lessons.length) * 100 : 0}%` }} />
+                  </div>
+                  <div className="flex justify-between items-center gap-2 flex-wrap">
+                    <span className="card-meta">{c.doneCount} de {c.lessons.length} lecciones</span>
+                    <Link href={href} className={c.current ? "btn-primary" : "btn-secondary"}>{c.completed ? "Repasar" : c.doneCount === 0 ? "Empezar" : "Continuar"}</Link>
+                  </div>
+                </>
+              ) : (
+                <p className="m-0 text-sm text-neutral-700 flex items-center gap-2">
+                  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="7" width="10" height="7" rx="2" /><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" /></svg>
+                  Se abre al completar el Nivel {c.level - 1}.
+                </p>
+              )}
             </div>
           );
         })}

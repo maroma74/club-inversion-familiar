@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { getCoursesWithProgress } from "@/lib/academy";
 
 export type QuizResult = {
-  results: { questionId: string; correct: boolean; correctIndex: number; feedback: string }[];
+  results: { questionId: string; correct: boolean; correctIndex: number; feedback: string; hint: string }[];
   score: number;
   total: number;
   passed: boolean;
@@ -27,12 +27,17 @@ export async function submitQuizAction(lessonId: string, answers: Record<string,
   const score = questions.filter((q) => answers[q.id] === q.correctIndex).length;
   const passed = score === questions.length;
   // Las respuestas correctas solo se revelan al aprobar; si no, se indica qué preguntas fallan y se puede reintentar.
-  const results = questions.map((q) => ({ questionId: q.id, correct: answers[q.id] === q.correctIndex, correctIndex: passed ? q.correctIndex : -1, feedback: passed ? q.feedback : "" }));
+  // Si falla, cada pregunta mal recibe una pista (sin la respuesta) para que el reintento sea releer y pensar, no probar al azar.
+  const results = questions.map((q) => {
+    const correct = answers[q.id] === q.correctIndex;
+    return { questionId: q.id, correct, correctIndex: passed ? q.correctIndex : -1, feedback: passed ? q.feedback : "", hint: correct ? "" : "Casi. Vuelve a leer la idea clave de la lección y prueba con otra opción." };
+  });
   const existing = await prisma.lessonProgress.findUnique({ where: { userId_lessonId: { userId: user.id, lessonId } } });
   const firstTime = passed && !existing?.completedAt;
   await prisma.lessonProgress.upsert({
     where: { userId_lessonId: { userId: user.id, lessonId } },
-    update: { score, attempts: { increment: 1 }, ...(passed && !existing?.completedAt ? { completedAt: new Date() } : {}) },
+    // La mejor puntuación se conserva: un intento posterior peor no debe rebajar una lección ya aprobada.
+    update: { score: Math.max(score, existing?.score ?? 0), attempts: { increment: 1 }, ...(passed && !existing?.completedAt ? { completedAt: new Date() } : {}) },
     create: { userId: user.id, lessonId, score, attempts: 1, completedAt: passed ? new Date() : null },
   });
   for (const p of ["/inicio", "/academia", "/inversiones", "/familia"]) revalidatePath(p);
