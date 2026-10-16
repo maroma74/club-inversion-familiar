@@ -14,7 +14,18 @@ export const fmtDate = (d: Date | string) =>
     typeof d === "string" ? new Date(d) : d,
   );
 
-export const monthLabel = (ym: string) => {
+/** «hoy», «ayer», «hace 3 días»; a partir de dos semanas, la fecha completa. */
+export const fmtRelative = (d: Date | string) => {
+  const date = typeof d === "string" ? new Date(d) : d;
+  const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((start(new Date()) - start(date)) / 86_400_000);
+  if (days <= 0) return "hoy";
+  if (days === 1) return "ayer";
+  if (days < 14) return `hace ${days} días`;
+  return fmtDate(date);
+};
+
+export const monthLabel =(ym: string) => {
   const [y, m] = ym.split("-").map(Number);
   return new Intl.DateTimeFormat("es-ES", { month: "short", year: "2-digit" }).format(
     new Date(y, m - 1, 1),

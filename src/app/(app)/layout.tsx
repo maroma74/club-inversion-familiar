@@ -34,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
+      <a href="#contenido" className="skip-link">Saltar al contenido</a>
       <MobileNav
         isAdmin={user.role === "ADMIN"}
         alertHref={alertHref}
@@ -72,7 +73,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </aside>
-      <main className="app-main flex-1 min-w-0 max-w-[1240px]">
+      <main id="contenido" tabIndex={-1} className="app-main flex-1 min-w-0 max-w-[1240px] outline-none">
         {user.realRole === "ADMIN" && <ViewAsBar previewAsMember={user.previewAsMember} />}
         {children}
       </main>

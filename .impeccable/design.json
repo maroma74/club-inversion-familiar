@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-16T00:00:00Z",
+  "title": "Design System: Club de Inversión Familiar",
+  "extensions": {
+    "colorMeta": {
+      "emerald": { "role": "primary", "displayName": "Esmeralda del Club", "canonical": "#10b981", "tonalRamp": ["#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7", "#d1fae5"] },
+      "amber": { "role": "secondary", "displayName": "Ámbar de Logros", "canonical": "#e5a016", "tonalRamp": ["#3b2a06", "#7c5309", "#a5700c", "#e5a016", "#f5b82e", "#fcd34d", "#fde68a", "#fef3c7"] },
+      "navy": { "role": "neutral", "displayName": "Navy del Club", "canonical": "#0e2138", "tonalRamp": ["#0a1829", "#0e2138", "#162e4a", "#1b3759", "#334155", "#64748b", "#cbd5e1", "#f8fafc"] },
+      "paper": { "role": "neutral", "displayName": "Papel Frío", "canonical": "#f8fafc", "tonalRamp": ["#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f8fafc"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Título de página (h1), Plus Jakarta Sans 800." },
+      "figure": { "displayName": "Cifra", "purpose": "Importes y rentabilidades en JetBrains Mono tabular." }
+    },
+    "shadows": [
+      { "name": "sm", "value": "0 1px 2px rgba(14,33,56,0.06)", "purpose": "Tarjetas y celdas en reposo." },
+      { "name": "md", "value": "0 4px 14px rgba(14,33,56,0.08)", "purpose": "Elementos destacados." },
+      { "name": "lg", "value": "0 16px 40px rgba(14,33,56,0.18)", "purpose": "Diálogos." },
+      { "name": "action-glow", "value": "0 4px 12px rgba(16,185,129,0.3)", "purpose": "Botón primario." }
+    ],
+    "motion": [
+      { "name": "control-transition", "value": "0.15s", "purpose": "Fondo, color y sombra de botones." },
+      { "name": "drawer-in", "value": "0.18s ease-out", "purpose": "Menú móvil desplegable." },
+      { "name": "alert-pulse", "value": "1.4s ease-out infinite", "purpose": "Punto de cartera abierta; fijo con reducir movimiento." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "767px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal, píldora con degradado esmeralda.",
+      "html": "<button class=\"ds-btn-primary\">Enviar decisión</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-family: 'Plus Jakarta Sans Variable', system-ui, sans-serif; font-weight: 700; font-size: 14px; line-height: 1.2; color: #fff; background: linear-gradient(135deg, #10b981, #059669); border: 1px solid transparent; padding: 8px 14px; border-radius: 999px; box-shadow: 0 4px 12px rgba(16,185,129,0.3); transition: background .15s, box-shadow .15s; } .ds-btn-primary:hover { background: linear-gradient(135deg, #34d399, #10b981); } .ds-btn-primary:active { background: #047857; } .ds-btn-primary:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Acción secundaria con borde fino.",
+      "html": "<button class=\"ds-btn-secondary\">Cancelar</button>",
+      "css": ".ds-btn-secondary { cursor: pointer; font-family: 'Plus Jakarta Sans Variable', system-ui, sans-serif; font-weight: 700; font-size: 14px; color: #0e2138; background: #fff; border: 1px solid rgba(14,33,56,0.12); padding: 8px 14px; border-radius: 999px; transition: background .15s; } .ds-btn-secondary:hover { background: #f1f5f9; } .ds-btn-secondary:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Contenedor base con borde fino y sombra suave.",
+      "html": "<div class=\"ds-card\"><span class=\"ds-kicker\">Cartera del mes</span><h4 class=\"ds-card-title\">Octubre</h4><p class=\"ds-card-body\">Lee la lección y reparte tu importe.</p></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 7px; padding: 20px; border-radius: 12px; background: #fff; border: 1px solid rgba(14,33,56,0.12); box-shadow: 0 1px 2px rgba(14,33,56,0.06); color: #0e2138; font-family: Inter, system-ui, sans-serif; } .ds-kicker { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #047857; font-weight: 600; } .ds-card-title { margin: 0; font-family: 'Plus Jakarta Sans Variable', system-ui, sans-serif; font-weight: 700; font-size: 17px; line-height: 1.2; } .ds-card-body { margin: 0; font-size: 13px; color: #64748b; }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo de texto redondeado con halo esmeralda al enfocar.",
+      "html": "<input class=\"ds-input\" placeholder=\"Importe en €\" />",
+      "css": ".ds-input { width: 100%; min-height: 38px; padding: 7px 12px; font: inherit; font-size: 14px; color: #0e2138; caret-color: #10b981; background: #fff; border: 1px solid rgba(14,33,56,0.12); border-radius: 10px; } .ds-input:hover { border-color: #94a3b8; } .ds-input:focus-visible { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.18); outline: none; }"
+    },
+    {
+      "name": "Tag",
+      "kind": "chip",
+      "refersTo": "tag-accent",
+      "description": "Etiqueta en píldora; variante dorada para gamificación.",
+      "html": "<span class=\"ds-tag\">Nivel 2</span> <span class=\"ds-tag ds-tag-gold\">Líder</span>",
+      "css": ".ds-tag { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; letter-spacing: .02em; padding: 3px 10px; border-radius: 999px; background: #d1fae5; color: #065f46; } .ds-tag-gold { background: #fef3c7; color: #a5700c; }"
+    },
+    {
+      "name": "Nav Link",
+      "kind": "nav",
+      "refersTo": "sidebar",
+      "description": "Enlace de la barra lateral navy, estado activo en esmeralda.",
+      "html": "<div class=\"ds-sidebar\"><a class=\"ds-nav\" data-active=\"true\"><span class=\"ds-nav-num\">01</span> Inicio</a><a class=\"ds-nav\"><span class=\"ds-nav-num\">02</span> Academia</a></div>",
+      "css": ".ds-sidebar { background: #0e2138; padding: 12px; width: 232px; display: flex; flex-direction: column; gap: 4px; font-family: Inter, system-ui, sans-serif; } .ds-nav { display: flex; gap: 8px; padding: 8px 10px; border: 1px solid transparent; border-radius: 10px; color: rgba(248,250,252,0.82); font-size: 14px; cursor: pointer; } .ds-nav:hover { background: rgba(248,250,252,0.08); color: #fff; } .ds-nav[data-active='true'] { background: rgba(16,185,129,0.18); border-color: rgba(16,185,129,0.5); color: #fff; } .ds-nav-num { color: #34d399; font-family: 'JetBrains Mono Variable', monospace; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La Sala de Mandos Familiar",
+    "overview": "Un panel de control donde toda la familia ve de un vistazo cómo van sus carteras. La estructura es seria y ordenada pero el trato es amable: formas redondeadas, píldoras, sombras suaves. Es un lugar para aprender, no un terminal de bróker, así que nada grita ni apremia.",
+    "keyCharacteristics": [
+      "Redondeado y amable: botones, etiquetas y selectores en píldora; tarjetas a 12px.",
+      "Cifras siempre en JetBrains Mono con números tabulares.",
+      "Un acento de acción (esmeralda) y un acento de juego (ámbar); no se mezclan roles.",
+      "Profundidad ligera: bordes finos y sombras suaves teñidas de navy.",
+      "Móvil y escritorio con el mismo peso; objetivos táctiles de 42–44px en móvil."
+    ],
+    "rules": [
+      { "name": "The Two Accents Rule", "body": "Esmeralda significa «hacer / va bien»; ámbar significa «juego / mira esto». Nunca se intercambian ni se usan juntos como decoración.", "section": "colors" },
+      { "name": "The Tailwind Remap Rule", "body": "La paleta de Tailwind está remapeada en @theme a esta marca: indigo es esmeralda y red son neutros.", "section": "colors" },
+      { "name": "The Mono Numbers Rule", "body": "Todo importe, porcentaje y cotización va en JetBrains Mono con tabular-nums.", "section": "typography" },
+      { "name": "The Soft Lift Rule", "body": "Las sombras son suaves y teñidas de navy; la elevación grande solo para diálogos.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar esmeralda para acción y estados positivos, y ámbar solo para gamificación y avisos.",
+      "Do poner cifras en JetBrains Mono con números tabulares.",
+      "Do mantener botones y etiquetas en píldora y tarjetas a 12px.",
+      "Do respetar prefers-reduced-motion en cualquier animación nueva.",
+      "Do usar 16px en campos de móvil y 42–44px de alto táctil."
+    ],
+    "donts": [
+      "Don't mezclar los dos acentos como decoración ni usar ámbar para acciones.",
+      "Don't usar nombres de Tailwind (indigo, red) como si fueran su color original.",
+      "Don't usar sombras negras duras ni elevaciones grandes fuera de diálogos.",
+      "Don't usar emojis en la interfaz."
+    ]
+  }
+}

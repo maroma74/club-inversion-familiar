@@ -43,18 +43,18 @@ function AlertMark() {
 export function NavLinks({ isAdmin, alertHref = null }: { isAdmin: boolean; alertHref?: string | null }) {
   const path = usePathname();
   return (
-    <nav className="flex flex-col px-3 py-1 gap-0.5 flex-1">
+    <nav aria-label="Principal" className="flex flex-col px-3 py-1 gap-0.5 flex-1">
       {GROUPS.map((g) => (
         <div key={g.header} className="flex flex-col gap-0.5">
-          <div className="nav-header text-[10px] tracking-[0.12em] uppercase font-semibold" style={{ padding: "14px 10px 4px" }}>{g.header}</div>
+          <div className="nav-header text-[11px] tracking-[0.12em] uppercase font-semibold" style={{ padding: "14px 10px 4px" }}>{g.header}</div>
           {g.items
             .filter((i) => !i.admin || isAdmin)
             .map((i) => (
-              <Link key={i.href} href={i.href} data-active={isActive(path, i.href) ? "true" : "false"} data-alert={alertHref === i.href ? "true" : "false"} className="nav-link flex items-center gap-2.5 w-full text-left text-[14px] no-underline whitespace-nowrap border border-transparent" style={{ padding: "8px 10px" }}>
+              <Link key={i.href} href={i.href} aria-current={isActive(path, i.href) ? "page" : undefined} data-active={isActive(path, i.href) ? "true" : "false"} data-alert={alertHref === i.href ? "true" : "false"} className="nav-link flex items-center gap-2.5 w-full text-left text-[14px] no-underline whitespace-nowrap border border-transparent" style={{ padding: "8px 10px" }}>
                 <span className="nav-num font-mono text-[11px] w-[20px]">{i.num}</span>
                 <span className="flex-1 font-medium">{i.label}</span>
                 {alertHref === i.href && <AlertMark />}
-                {i.note && <span className="text-[10px] opacity-60">{i.note}</span>}
+                {i.note && <span className="text-[11px] opacity-70">{i.note}</span>}
               </Link>
             ))}
         </div>
@@ -121,14 +121,14 @@ export function MobileNav({ isAdmin, familyName, userName, userMeta, userAvatar,
               </div>
               <button type="button" onClick={() => setOpen(false)} className="btn-ghost text-[13px]" aria-label="Cerrar el menú">Cerrar</button>
             </div>
-            <nav className="flex-1 overflow-y-auto px-3 pb-3">
+            <nav aria-label="Principal" className="flex-1 overflow-y-auto px-3 pb-3">
               {GROUPS.map((g) => (
                 <div key={g.header} className="flex flex-col gap-0.5">
-                  <div className="nav-header text-[10px] tracking-[0.12em] uppercase font-semibold" style={{ padding: "14px 10px 4px" }}>{g.header}</div>
+                  <div className="nav-header text-[11px] tracking-[0.12em] uppercase font-semibold" style={{ padding: "14px 10px 4px" }}>{g.header}</div>
                   {g.items
                     .filter((i) => !i.admin || isAdmin)
                     .map((i) => (
-                      <Link key={i.href} href={i.href} data-active={isActive(path, i.href) ? "true" : "false"} data-alert={alertHref === i.href ? "true" : "false"} className="nav-link flex items-center gap-3 w-full text-left text-[16px] no-underline border border-transparent" style={{ padding: "12px 12px" }}>
+                      <Link key={i.href} href={i.href} aria-current={isActive(path, i.href) ? "page" : undefined} data-active={isActive(path, i.href) ? "true" : "false"} data-alert={alertHref === i.href ? "true" : "false"} className="nav-link flex items-center gap-3 w-full text-left text-[16px] no-underline border border-transparent" style={{ padding: "12px 12px" }}>
                         <span className="nav-num font-mono text-[12px] w-[22px]">{i.num}</span>
                         <span className="flex-1 font-medium">{i.label}</span>
                         {alertHref === i.href && <AlertMark />}

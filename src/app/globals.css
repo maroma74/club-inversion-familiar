@@ -254,9 +254,10 @@ figcaption { font-size: 11px; margin-top: 4px; color: var(--color-text-muted); }
   padding: 8px 14px; border-radius: 999px; transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
 .btn:disabled, .btn-primary:disabled, .btn-secondary:disabled, .btn-ghost:disabled, .btn-danger:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn-primary { background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border-color: transparent; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
-.btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, #34d399, #10b981); color: #ffffff; }
-.btn-primary:active:not(:disabled) { background: #047857; }
+/* Texto blanco sobre esmeralda profundo: 5,5:1 o más (AA). El esmeralda #10b981 queda para detalles, no para fondos con texto. */
+.btn-primary { background: linear-gradient(135deg, #047857, #065f46); color: #ffffff; border-color: transparent; box-shadow: 0 4px 12px rgba(4, 120, 87, 0.3); }
+.btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, #065f46, #064e3b); color: #ffffff; }
+.btn-primary:active:not(:disabled) { background: #064e3b; }
 .btn-primary.blueprint { box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); border-radius: 999px; }
 .btn-secondary { background: var(--color-surface); }
 .btn-secondary:hover:not(:disabled) { background: var(--color-surface-2); }
@@ -286,7 +287,7 @@ textarea.input { min-height: 90px; resize: vertical; }
 .seg { display: inline-flex; overflow: hidden; border: 1px solid var(--color-divider); border-radius: 999px; background: var(--color-surface); }
 .seg-opt { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; font-weight: 500; }
 .seg-opt + .seg-opt { border-left: 1px solid var(--color-divider); }
-.seg-opt:has(input:checked), .seg-opt[data-on="true"] { background: var(--color-accent); color: #ffffff; }
+.seg-opt:has(input:checked), .seg-opt[data-on="true"] { background: #047857; color: #ffffff; }
 .seg-opt:not(:has(input:checked)):hover { background: var(--color-surface-2); }
 
 /* — tarjetas — */
@@ -295,6 +296,10 @@ textarea.input { min-height: 90px; resize: vertical; }
   padding: 20px; border-radius: var(--radius);
   background: var(--color-surface); border: 1px solid var(--color-divider); box-shadow: var(--shadow-sm);
 }
+/* Rellenos de tarjeta: clases (no estilos en línea) para que la regla móvil de .card los reduzca a 16px */
+.card-roomy { padding: 24px; }
+.card-snug { padding: 16px 18px; }
+.card-table { padding: 6px 12px 12px; }
 .card-title { font-family: var(--font-heading); font-weight: 700; font-size: 17px; line-height: 1.2; }
 .card-body { margin: 0; font-size: 13px; color: var(--color-text-muted); flex: 1; }
 .card-meta { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--color-text-muted); }
@@ -344,7 +349,11 @@ table thead th { font-size: 11px; letter-spacing: 0.08em; text-transform: upperc
 .sidebar .nav-link:hover { background: rgba(248, 250, 252, 0.08); color: #ffffff; }
 .sidebar .nav-link[data-active="true"] { background: rgba(16, 185, 129, 0.18); color: #ffffff; border-color: rgba(16, 185, 129, 0.5); }
 .sidebar .nav-num { color: var(--brand-emerald-light); }
-.sidebar .nav-header { color: rgba(248, 250, 252, 0.5); }
+.sidebar .nav-header { color: rgba(248, 250, 252, 0.7); }
+
+/* Enlace «Saltar al contenido»: solo visible al enfocarlo con el teclado */
+.skip-link { position: absolute; left: 12px; top: -64px; z-index: 100; padding: 10px 16px; border-radius: 999px; background: #ffffff; color: var(--brand-navy); font-weight: 700; text-decoration: none; box-shadow: var(--shadow-md); }
+.skip-link:focus { top: 12px; }
 .sidebar .btn-ghost { color: #ffffff; }
 .sidebar .btn-ghost:hover { background: rgba(248, 250, 252, 0.1); }
 
