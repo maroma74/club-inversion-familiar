@@ -12,6 +12,15 @@ export function WatchlistForm({ kind = "STOCK" }: { kind?: "STOCK" | "ETF" | "CR
   const [name, setName] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
 
+  // El campo se vacía solo cuando se ha añadido de verdad; si falla, se conserva lo escrito.
+  useEffect(() => {
+    if (state?.ok) {
+      setSymbol("");
+      setName("");
+      setQ("");
+    }
+  }, [state]);
+
   useEffect(() => {
     if (q.trim().length < 2) {
       setHits([]);
@@ -42,15 +51,10 @@ export function WatchlistForm({ kind = "STOCK" }: { kind?: "STOCK" | "ETF" | "CR
 
   return (
     <form
-      action={(fd) => {
-        action(fd);
-        setSymbol("");
-        setName("");
-        setQ("");
-      }}
-      className="flex items-start gap-2"
+      action={action}
+      className="flex flex-wrap items-start gap-2"
     >
-      <div className="relative">
+      <div className="relative w-full sm:w-auto">
         <input
           name="symbol"
           value={symbol}
@@ -60,19 +64,19 @@ export function WatchlistForm({ kind = "STOCK" }: { kind?: "STOCK" | "ETF" | "CR
             setName("");
           }}
           placeholder={kind === "ETF" ? "Añadir: MSCI World, VWCE.DE, SXR8.DE…" : kind === "CRYPTO" ? "Añadir: Bitcoin, ETH-EUR, SOL…" : kind === "COMMODITY" ? "Añadir: oro, petróleo, café, GC=F…" : "Añadir: Inditex, SAN.MC, NVDA…"}
-          className="input w-64 uppercase"
+          className="input w-full sm:w-64 uppercase" aria-label="Buscar un valor para seguir"
           autoComplete="off"
           required
         />
         <input type="hidden" name="name" value={name} />
         <input type="hidden" name="kind" value={kind} />
         {hits.length > 0 && q && (
-          <ul className="absolute z-10 mt-1 w-80 bg-white border border-slate-200 rounded-lg shadow-lg max-h-56 overflow-auto text-sm">
+          <ul className="absolute z-10 mt-1 w-full sm:w-80 border border-divider rounded-lg max-h-56 overflow-auto text-sm">
             {hits.map((h) => (
               <li key={h.symbol}>
                 <button
                   type="button"
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50"
+                  className="w-full text-left px-3 py-2 min-h-[44px] hover:bg-[var(--color-surface-2)]"
                   onClick={() => {
                     setSymbol(h.symbol);
                     setName(h.name);
@@ -80,14 +84,14 @@ export function WatchlistForm({ kind = "STOCK" }: { kind?: "STOCK" | "ETF" | "CR
                     setHits([]);
                   }}
                 >
-                  <b>{h.symbol}</b> <span className="text-slate-600">{h.name}</span> <span className="text-xs text-slate-400">{h.exchange}</span>
+                  <b>{h.symbol}</b> <span className="text-neutral-700">{h.name}</span> <span className="text-xs text-neutral-700">{h.exchange}</span>
                 </button>
               </li>
             ))}
           </ul>
         )}
-        {state?.error && <p className="text-xs text-red-600 mt-1">{state.error}</p>}
-        {state?.ok && !pending && <p className="text-xs text-green-600 mt-1">{state.ok}</p>}
+        {state?.error && <p role="alert" className="m-0 mt-1 text-sm font-medium">{state.error}</p>}
+        {state?.ok && !pending && <p role="status" className="m-0 mt-1 text-sm text-accent-700">{state.ok}</p>}
       </div>
       <button className="btn-secondary" disabled={pending}>{pending ? "Añadiendo…" : "Seguir"}</button>
     </form>

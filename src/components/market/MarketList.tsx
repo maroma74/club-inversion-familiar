@@ -11,13 +11,14 @@ import { eur, num, signed } from "@/lib/format";
 import { Sparkline } from "@/components/Sparkline";
 import { PageHeader } from "@/components/ui";
 import { AutoRefresh } from "@/app/(app)/inversiones/AutoRefresh";
-import { addDefaultWatchlistAction, removeWatchlistAction } from "@/app/actions/watchlist";
+import { addDefaultWatchlistAction } from "@/app/actions/watchlist";
 import { WatchlistForm } from "@/app/(app)/acciones/WatchlistForm";
 import { getClubRecommendations } from "@/lib/club";
+import { RemoveWatchlistButton } from "./RemoveWatchlistButton";
 import { ActionBadge } from "@/components/ClubRecommendationCard";
 
 const Change = ({ v }: { v: number | null }) =>
-  v === null ? <span className="text-slate-400">—</span> : <span className={`tabular-nums font-medium ${v >= 0 ? "text-green-600" : "text-red-600"}`}>{signed(v * 100, 2)} %</span>;
+  v === null ? <span className="text-neutral-700">—</span> : <span className={`tabular-nums font-medium ${v >= 0 ? "text-accent-700" : "text-ink"}`}>{signed(v * 100, 2)} %</span>;
 
 /** Decimales según la magnitud: una criptomoneda de céntimos necesita más que una acción. */
 const decimals = (n: number) => (n >= 1000 ? 0 : n >= 1 ? 2 : n >= 0.01 ? 4 : 6);
@@ -111,19 +112,19 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
           const q = indices[i];
           return (
             <Link key={idx.symbol} href={`${c.base}/${encodeURIComponent(idx.symbol)}`} className="card py-3 hover:border-indigo-300">
-              <div className="text-xs text-slate-500">{idx.name}</div>
+              <div className="text-xs text-neutral-700">{idx.name}</div>
               <div className="text-lg font-bold tabular-nums">{q.price ? q.price.toLocaleString("es-ES", { maximumFractionDigits: 0 }) : "—"}</div>
-              <div className="text-xs"><Change v={q.price ? q.change1d : null} /> <span className="text-slate-400">hoy</span></div>
+              <div className="text-xs"><Change v={q.price ? q.change1d : null} /> <span className="text-neutral-700">hoy</span></div>
             </Link>
           );
         })}
       </div>}
 
       <div className="card p-0 overflow-hidden mb-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-slate-100">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-divider">
           <div>
             <h2 className="font-semibold">{c.listTitle}</h2>
-            <p className="text-xs text-slate-500">{watchlist.length} valores seguidos{extra.length ? ` · ${extra.length} más por estar en cartera` : ""}. Pulsa un valor para ver su análisis técnico y la Recomendación del Club.</p>
+            <p className="text-xs text-neutral-700">{watchlist.length} valores seguidos{extra.length ? ` · ${extra.length} más por estar en cartera` : ""}. Pulsa un valor para ver su análisis técnico y la Recomendación del Club.</p>
           </div>
           <div className="flex items-center gap-2">
             <Link href={`${c.base}/ranking`} className="btn-secondary py-1 text-xs">Ranking del Club</Link>
@@ -131,7 +132,7 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
           </div>
         </div>
         {watchlist.length < 3 && (
-          <div className="px-5 py-4 text-sm text-slate-600 bg-indigo-50/50 border-b border-slate-100 flex flex-wrap items-center gap-3">
+          <div className="px-5 py-4 text-sm text-slate-600 bg-indigo-50/50 border-b border-divider flex flex-wrap items-center gap-3">
             <p>{watchlist.length === 0 ? c.empty : c.empty.replace("La lista está vacía.", "La lista tiene pocos valores.")}</p>
             <form action={addDefaultWatchlistAction}>
               <input type="hidden" name="kind" value={kind} />
@@ -142,7 +143,7 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
         {symbols.length === 0 ? null : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-xs text-slate-500 bg-slate-50">
+              <thead className="text-xs text-neutral-700 bg-[var(--color-surface-2)]">
                 <tr>
                   <th className="text-left px-5 py-2 font-medium">Valor</th>
                   <th className="text-right px-2 py-2 font-medium">Precio</th>
@@ -169,40 +170,40 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
                   const pos52 = q.high52 && q.low52 && q.high52 > q.low52 ? (q.price - q.low52) / (q.high52 - q.low52) : null;
                   const rec = club.get(q.symbol);
                   return (
-                    <tr key={q.symbol} className="border-t border-slate-100 hover:bg-slate-50">
+                    <tr key={q.symbol} className="border-t border-divider hover:bg-[var(--color-surface-2)]">
                       <td className="px-5 py-2">
-                        <Link href={`${c.base}/${encodeURIComponent(q.symbol)}`} className="font-medium text-indigo-700 hover:underline">{names.get(q.symbol) ?? q.name}</Link>
-                        {owners && <span className="badge bg-indigo-100 text-indigo-700 ml-2" title={owners.join(", ")}>en cartera</span>}
-                        <div className="text-xs text-slate-400">{q.symbol} · {findCommodity(q.symbol)?.group ?? q.exchange}{q.error ? ` · ${q.error}` : ""}</div>
+                        <Link href={`${c.base}/${encodeURIComponent(q.symbol)}`} className="font-medium text-accent-700 hover:underline">{names.get(q.symbol) ?? q.name}</Link>
+                        {owners && <span className="tag tag-accent ml-2" title={owners.join(", ")}>en cartera</span>}
+                        <div className="text-xs text-neutral-700">{q.symbol} · {findCommodity(q.symbol)?.group ?? q.exchange}{q.error ? ` · ${q.error}` : ""}</div>
                       </td>
                       <td className="px-2 py-2 text-right tabular-nums font-medium whitespace-nowrap">
                         {q.price ? fmtPrice(q.price, q.currency, fine) : "—"}
-                        {q.price && q.currency !== "EUR" ? <div className="text-xs text-slate-400">{eur(q.priceEur, fine ? decimals(q.priceEur) : 2)}</div> : null}
+                        {q.price && q.currency !== "EUR" ? <div className="text-xs text-neutral-700">{eur(q.priceEur, fine ? decimals(q.priceEur) : 2)}</div> : null}
                       </td>
                       <td className="px-2 py-2 text-right whitespace-nowrap"><Change v={q.price ? q.change1d : null} /></td>
                       <td className="px-2 py-2 whitespace-nowrap">
                         {rec ? (
                           <Link href={`${c.base}/${encodeURIComponent(q.symbol)}`} title={`${rec.bias} · confianza ${rec.confidence}`} className="inline-flex items-center gap-1.5">
                             <ActionBadge action={rec.action} small />
-                            <span className={`text-xs tabular-nums font-medium ${rec.total >= 0.3 ? "text-green-600" : rec.total <= -0.3 ? "text-red-600" : "text-slate-500"}`}>{signed(rec.total, 2)}</span>
-                            {rec.daysToEarnings !== null && rec.daysToEarnings >= 0 && rec.daysToEarnings <= 10 && <span className="text-[10px] text-amber-700" title={`Resultados el ${rec.earningsDate}`}>📅</span>}
+                            <span className={`text-xs tabular-nums font-medium ${rec.total >= 0.3 ? "text-accent-700" : rec.total <= -0.3 ? "text-ink" : "text-neutral-700"}`}>{signed(rec.total, 2)}</span>
+                            {rec.daysToEarnings !== null && rec.daysToEarnings >= 0 && rec.daysToEarnings <= 10 && <span className="tag tag-gold" title={`Resultados el ${rec.earningsDate}`}>Resultados en {rec.daysToEarnings} d</span>}
                           </Link>
                         ) : (
-                          <span className="text-xs text-slate-400">N/D</span>
+                          <span className="text-xs text-neutral-700">N/D</span>
                         )}
                       </td>
                       {showPer && (
                         <td className="px-2 py-2 whitespace-nowrap">
                           {(() => {
                             const per = perMap.get(q.symbol.toUpperCase());
-                            if (!per || per.signal === "N/D" || per.per === null) return <span className="text-xs text-slate-400" title={per?.reason ?? "Solo acciones de EE. UU. con resultados en la SEC"}>N/D</span>;
+                            if (!per || per.signal === "N/D" || per.per === null) return <span className="text-xs text-neutral-700" title={per?.reason ?? "Solo acciones de EE. UU. con resultados en la SEC"}>N/D</span>;
                             return (
                               <Link href={`${c.base}/${encodeURIComponent(q.symbol)}#per-title`} className="no-underline text-inherit" title={per.reason}>
                                 <span className="inline-flex items-center gap-1.5">
                                   <PerBadge signal={per.signal} small />
                                   <span className="text-xs tabular-nums font-medium">P{per.percentile?.toFixed(0)}</span>
                                 </span>
-                                <div className="text-[11px] text-slate-400 tabular-nums">PER {per.per.toLocaleString("es-ES", { maximumFractionDigits: 1 })}×{per.valueTrap ? " · posible trampa" : ""}</div>
+                                <div className="text-[11px] text-neutral-700 tabular-nums">PER {per.per.toLocaleString("es-ES", { maximumFractionDigits: 1 })}×{per.valueTrap ? " · posible trampa" : ""}</div>
                               </Link>
                             );
                           })()}
@@ -214,20 +215,15 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
                       <td className="px-2 py-2 hidden lg:table-cell">
                         {pos52 !== null ? (
                           <div className="w-28 ml-auto">
-                            <div className="h-1.5 bg-slate-100 rounded-full relative"><div className="absolute top-0 h-1.5 w-1.5 rounded-full bg-indigo-600" style={{ left: `calc(${Math.min(Math.max(pos52, 0), 1) * 100}% - 3px)` }} /></div>
-                            <div className="flex justify-between text-[10px] text-slate-400 mt-0.5 tabular-nums"><span>{shortNum(q.low52!)}</span><span>{shortNum(q.high52!)}</span></div>
+                            <div className="h-1.5 bg-[var(--color-neutral-300)] rounded-full relative"><div className="absolute top-0 h-1.5 w-1.5 rounded-full bg-accent-600" style={{ left: `calc(${Math.min(Math.max(pos52, 0), 1) * 100}% - 3px)` }} /></div>
+                            <div className="flex justify-between text-[11px] text-neutral-700 mt-0.5 tabular-nums"><span>{shortNum(q.low52!)}</span><span>{shortNum(q.high52!)}</span></div>
                           </div>
-                        ) : <span className="text-slate-400">—</span>}
+                        ) : <span className="text-neutral-700">—</span>}
                       </td>
-                      {!crypto && <td className="px-2 py-2 text-xs text-slate-500 hidden lg:table-cell">{MARKET_STATE[q.marketState] ?? q.marketState}</td>}
+                      {!crypto && <td className="px-2 py-2 text-xs text-neutral-700 hidden lg:table-cell">{MARKET_STATE[q.marketState] ?? q.marketState}</td>}
                       <td className="px-5 py-2 text-right whitespace-nowrap">
-                        <Link href={`/operaciones?activo=${encodeURIComponent(q.symbol)}#operar`} className="text-xs text-indigo-600 hover:underline mr-3">Operar</Link>
-                        {listSymbols.has(q.symbol) && (
-                          <form action={removeWatchlistAction} className="inline">
-                            <input type="hidden" name="symbol" value={q.symbol} />
-                            <button className="text-xs text-slate-400 hover:text-red-600" title="Dejar de seguir">Quitar</button>
-                          </form>
-                        )}
+                        <Link href={`/operaciones?activo=${encodeURIComponent(q.symbol)}#operar`} className="btn-ghost min-h-[44px] md:min-h-0">Operar</Link>
+                        {listSymbols.has(q.symbol) && <RemoveWatchlistButton symbol={q.symbol} label={names.get(q.symbol) ?? q.name} />}
                       </td>
                     </tr>
                   );
@@ -237,7 +233,7 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
           </div>
         )}
       </div>
-      <p className="text-xs text-slate-400">{c.footer}</p>
+      <p className="text-xs text-neutral-700">{c.footer}</p>
     </>
   );
 }
