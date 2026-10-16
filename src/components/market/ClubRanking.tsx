@@ -5,13 +5,13 @@ import { familyLeaderboard } from "@/lib/portfolio";
 import { symbolKind } from "@/lib/kinds";
 import { getClubRecommendations } from "@/lib/club";
 import { COMMODITY_DISCLAIMER, CRYPTO_DISCLAIMER, DISCLAIMER } from "@/lib/recommend";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, num, signed } from "@/lib/format";
 import { fp } from "@/lib/fmtPrice";
 import { PageHeader } from "@/components/ui";
 import { ActionBadge } from "@/components/ClubRecommendationCard";
 import { CopyButton } from "@/components/CopyButton";
 
-const sg = (v: number) => (v > 0 ? `+${v.toFixed(2)}` : v.toFixed(2));
+const sg = (v: number) => signed(v, 2);
 
 export async function ClubRanking({ kind }: { kind: WatchKind }) {
   const user = await requireUser();
@@ -38,10 +38,10 @@ export async function ClubRanking({ kind }: { kind: WatchKind }) {
     "",
     "| Ticker | Recomendación | Puntuación | Confianza | R/B |",
     "|---|---|---|---|---|",
-    ...rows.map((r) => `| ${r.ticker} | ${r.action} (${r.bias}) | ${sg(r.total)} | ${r.confidence} | ${r.plan.rr === null ? "N/D" : `1:${r.plan.rr.toFixed(1)}`} |`),
+    ...rows.map((r) => `| ${r.ticker} | ${r.action} (${r.bias}) | ${sg(r.total)} | ${r.confidence} | ${r.plan.rr === null ? "N/D" : `1:${num(r.plan.rr, 1)}`} |`),
     "",
-    `**Mejores oportunidades:** ${topOpportunities.map((r) => `${r.ticker} (${sg(r.total)})`).join(", ") || "ninguna con señal de compra"}`,
-    `**Reducir o salir:** ${exits.map((r) => `${r.ticker} (${sg(r.total)})`).join(", ") || "ninguno"}`,
+    `**Lecturas más favorables:** ${topOpportunities.map((r) => `${r.ticker} (${sg(r.total)})`).join(", ") || "ninguna con señal de compra"}`,
+    `**Lecturas más desfavorables:** ${exits.map((r) => `${r.ticker} (${sg(r.total)})`).join(", ") || "ninguno"}`,
     "",
     DISCLAIMER,
     ...(crypto ? [CRYPTO_DISCLAIMER] : []),
@@ -57,13 +57,15 @@ export async function ClubRanking({ kind }: { kind: WatchKind }) {
         </div>
       </PageHeader>
 
+      <p className="m-0 mb-4 text-sm text-neutral-700 max-w-[70ch]">Son lecturas automáticas para aprender a analizar, no órdenes de compra ni de venta: tú decides y lo explicas en el diario.</p>
+
       {failed.length > 0 && <p className="mb-4 text-xs text-amber-700">Sin datos suficientes para: {failed.join(", ")}.</p>}
 
       <div className="grid md:grid-cols-2 gap-4 mb-6">
         <div className="card border-green-200">
-          <h2 className="font-semibold mb-2">{buys.length ? "Mejores oportunidades de compra" : "Mejor puntuados (sin señal de compra firme: vigilar entrada)"}</h2>
+          <h2 className="font-semibold mb-2">{buys.length ? "Lecturas más favorables" : "Las mejor puntuadas (ninguna con lectura favorable firme)"}</h2>
           {topOpportunities.length === 0 ? (
-            <p className="text-sm text-slate-500">Ningún valor alcanza señal de compra ahora mismo.</p>
+            <p className="text-sm text-slate-500">Ningún valor tiene una lectura favorable firme ahora mismo.</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {topOpportunities.map((r) => (
@@ -71,7 +73,7 @@ export async function ClubRanking({ kind }: { kind: WatchKind }) {
                   <ActionBadge action={r.action} small />
                   <div>
                     <Link href={`${base}/${encodeURIComponent(r.ticker)}`} className="font-medium text-indigo-700 hover:underline">{r.ticker}</Link> <span className="text-slate-600">{r.name}</span> · {sg(r.total)} · {r.bias}
-                    <div className="text-xs text-slate-500">Entrada {r.plan.entryLow !== null && r.plan.entryHigh !== null ? `${fp(r.plan.entryLow)}–${fp(r.plan.entryHigh)}` : "N/D"} · stop {r.plan.stop !== null ? fp(r.plan.stop) : "N/D"} · objetivo {r.plan.target1 !== null ? fp(r.plan.target1) : "N/D"} · R/B {r.plan.rr === null ? "N/D" : `1:${r.plan.rr.toFixed(1)}`}</div>
+                    <div className="text-xs text-slate-500">Entrada {r.plan.entryLow !== null && r.plan.entryHigh !== null ? `${fp(r.plan.entryLow)}–${fp(r.plan.entryHigh)}` : "N/D"} · stop {r.plan.stop !== null ? fp(r.plan.stop) : "N/D"} · objetivo {r.plan.target1 !== null ? fp(r.plan.target1) : "N/D"} · R/B {r.plan.rr === null ? "N/D" : `1:${num(r.plan.rr, 1)}`}</div>
                   </div>
                 </li>
               ))}
@@ -79,9 +81,9 @@ export async function ClubRanking({ kind }: { kind: WatchKind }) {
           )}
         </div>
         <div className="card border-red-200">
-          <h2 className="font-semibold mb-2">Reducir o salir</h2>
+          <h2 className="font-semibold mb-2">Lecturas más desfavorables</h2>
           {exits.length === 0 ? (
-            <p className="text-sm text-slate-500">Ningún valor con señal de venta o sesgo bajista.</p>
+            <p className="text-sm text-slate-500">Ningún valor con lectura desfavorable ni sesgo bajista.</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {exits.map((r) => (
@@ -128,11 +130,11 @@ export async function ClubRanking({ kind }: { kind: WatchKind }) {
                   <td className={`px-2 py-2 text-right tabular-nums font-semibold ${r.total >= 1 ? "text-green-700" : r.total <= -1 ? "text-red-700" : r.total >= 0.3 ? "text-green-600" : r.total <= -0.3 ? "text-red-600" : "text-slate-700"}`}>{sg(r.total)}</td>
                   <td className="px-2 py-2 text-xs text-slate-500 tabular-nums hidden md:table-cell">{r.blocks.map((b) => sg(b.score)).join(" / ")}</td>
                   <td className="px-2 py-2">{r.confidence}</td>
-                  <td className="px-2 py-2 text-right tabular-nums">{r.plan.rr === null ? "N/D" : `1:${r.plan.rr.toFixed(1)}`}</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{r.plan.rr === null ? "N/D" : `1:${num(r.plan.rr, 1)}`}</td>
                   <td className="px-2 py-2 text-xs text-slate-500 hidden lg:table-cell">{r.since ? fmtDate(r.since) : "—"}{r.previousAction ? ` (antes ${r.previousAction})` : ""}</td>
                   {!crypto && !commodity && (
                     <td className={`px-5 py-2 text-xs hidden lg:table-cell ${r.daysToEarnings !== null && r.daysToEarnings >= 0 && r.daysToEarnings <= 10 ? "text-amber-700 font-medium" : "text-slate-500"}`}>
-                      {kind === "ETF" ? (r.profile.expenseRatio !== null ? `${(r.profile.expenseRatio * 100).toFixed(2)} %` : "N/D") : r.earningsDate ?? "N/D"}
+                      {kind === "ETF" ? (r.profile.expenseRatio !== null ? `${num(r.profile.expenseRatio * 100)} %` : "N/D") : r.earningsDate ?? "N/D"}
                     </td>
                   )}
                 </tr>

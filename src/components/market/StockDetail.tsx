@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { fetchCryptoHistory, fetchHistory, isRange, RANGE_LABEL, rangeSessions, type Range, type WatchKind } from "@/lib/stocks";
 import { analyze, type Verdict } from "@/lib/technical";
 import { getClubRecommendation } from "@/lib/club";
-import { eur } from "@/lib/format";
+import { eur, num, signed } from "@/lib/format";
 import { fp, priceDecimals } from "@/lib/fmtPrice";
 import { findCommodity } from "@/lib/commodities";
 import { ClubRecommendationCard } from "@/components/ClubRecommendationCard";
@@ -16,7 +16,7 @@ const RANGES: Range[] = ["3m", "6m", "1y", "2y", "5y"];
 
 const tone = (v: Verdict) => (v === "alcista" ? "border-accent-400 bg-accent-100" : v === "bajista" ? "border-neutral-800" : "border-divider");
 const dot = (v: Verdict) => (v === "alcista" ? "▲" : v === "bajista" ? "▼" : "•");
-const Pct = ({ v, d = 1 }: { v: number | null; d?: number }) => (v === null ? <span className="text-neutral-500">—</span> : <span className="tabular-nums font-medium" style={{ color: v >= 0 ? "var(--color-accent-700)" : "var(--color-text)" }}>{v >= 0 ? "+" : "−"}{(Math.abs(v) * 100).toFixed(d)} %</span>);
+const Pct = ({ v, d = 1 }: { v: number | null; d?: number }) => (v === null ? <span className="text-neutral-500">—</span> : <span className="tabular-nums font-medium" style={{ color: v >= 0 ? "var(--color-accent-700)" : "var(--color-text)" }}>{signed(v * 100, d)} %</span>);
 
 export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind, perRange }: { symbol: string; range?: string; kind: WatchKind; perRange?: string }) {
   await requireUser();
@@ -66,15 +66,15 @@ export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind, pe
           <h1 className="mt-1 mb-0.5">{crypto ? hist.name.replace(/\s+(EUR|USD)$/i, "") : commodity ? (info?.name ?? hist.name) : hist.name} <span className="text-neutral-600 font-normal">{hist.symbol}</span></h1>
           <div className="flex items-baseline gap-3 flex-wrap">
             <span className="figure text-[36px]">{fmt(a.last)}</span>
-            <span className="text-[15px]" style={{ color: a.change1d >= 0 ? "var(--color-accent-700)" : "var(--color-text)" }}>{a.change1d >= 0 ? "▲" : "▼"} {a.change1d >= 0 ? "+" : "−"}{Math.abs(a.last - a.prevClose).toLocaleString("es-ES", { maximumFractionDigits: 2 })} ({a.change1d >= 0 ? "+" : "−"}{(Math.abs(a.change1d) * 100).toFixed(2)} %)</span>
+            <span className="text-[15px]" style={{ color: a.change1d >= 0 ? "var(--color-accent-700)" : "var(--color-text)" }}>{a.change1d >= 0 ? "▲" : "▼"} {a.change1d >= 0 ? "+" : "−"}{Math.abs(a.last - a.prevClose).toLocaleString("es-ES", { maximumFractionDigits: 2 })} ({signed(a.change1d * 100, 2)} %)</span>
             <span className="text-xs text-neutral-700">cierre anterior {fmt(a.prevClose)} · {crypto ? "mercado 24/7, datos casi en tiempo real" : commodity ? `${info?.unit ?? "USD"} · datos con retraso` : "datos con hasta 15 min de retraso"}</span>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           <Link href={base} className="btn-ghost">← {title}</Link>
           <Link href={`${base}/ranking`} className="btn-secondary">Ranking del Club</Link>
-          {!isIndex && <DiaryDialog label="Añadir al diario" symbol={hist.symbol} side="NOTE" />}
-          {!isIndex && <Link href={`/operaciones?activo=${encodeURIComponent(hist.symbol)}#operar`} className="btn-primary blueprint">Operar</Link>}
+          {!isIndex && <DiaryDialog label="Escribir mi razón" symbol={hist.symbol} side="NOTE" className="btn-primary" />}
+          {!isIndex && <Link href={`/operaciones?activo=${encodeURIComponent(hist.symbol)}#operar`} className="btn-secondary">Operar, tras explicarlo</Link>}
         </div>
       </header>
 
@@ -138,14 +138,14 @@ export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind, pe
               <Row k={`Media 50 ${unit}`} v={fmt(a.sma50)} extra={<Pct v={distance(a.sma50)} />} />
               <Row k={`Media 200 ${unit}`} v={fmt(a.sma200)} extra={<Pct v={distance(a.sma200)} />} />
               <Row k="EMA 9 / EMA 21" v={`${fmt(a.ema9)} / ${fmt(a.ema21)}`} />
-              <Row k="RSI (14)" v={a.rsi === null ? "—" : a.rsi.toFixed(1)} extra={<span className="text-xs text-slate-500">{a.rsi === null ? "" : a.rsi > 70 ? "sobrecompra" : a.rsi < 30 ? "sobreventa" : "neutral"}</span>} />
+              <Row k="RSI (14)" v={a.rsi === null ? "—" : num(a.rsi, 1)} extra={<span className="text-xs text-slate-500">{a.rsi === null ? "" : a.rsi > 70 ? "sobrecompra" : a.rsi < 30 ? "sobreventa" : "neutral"}</span>} />
               <Row k="MACD / señal" v={a.macd === null || a.macdSignal === null ? "—" : `${fp(a.macd)} / ${fp(a.macdSignal)}`} extra={<span className={`text-xs ${(a.macdHist ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}>hist. {a.macdHist !== null ? fp(a.macdHist) : "—"}</span>} />
               <Row k="Estocástico %K / %D" v={a.stochK === null || a.stochD === null ? "—" : `${a.stochK.toFixed(0)} / ${a.stochD.toFixed(0)}`} extra={<span className="text-xs text-slate-500">{a.stochK === null ? "" : a.stochK > 80 ? "sobrecompra" : a.stochK < 20 ? "sobreventa" : ""}</span>} />
               <Row k="ADX (+DI / −DI)" v={a.adx === null ? "—" : a.adx.toFixed(0)} extra={<span className="text-xs text-slate-500">{a.plusDI !== null && a.minusDI !== null ? `${a.plusDI.toFixed(0)} / ${a.minusDI.toFixed(0)}` : ""}</span>} />
               <Row k="Bollinger (20, 2σ)" v={`${fmt(a.bbLower)} – ${fmt(a.bbUpper)}`} extra={<span className="text-xs text-slate-500">{a.bbPosition === null ? "" : `${(a.bbPosition * 100).toFixed(0)} % del canal${a.bbSqueeze ? " · squeeze" : ""}`}</span>} />
-              <Row k="ATR (14)" v={fmt(a.atr14)} extra={<span className="text-xs text-slate-500">{a.atr14 ? `${((a.atr14 / a.last) * 100).toFixed(1)} % diario` : ""}</span>} />
+              <Row k="ATR (14)" v={fmt(a.atr14)} extra={<span className="text-xs text-slate-500">{a.atr14 ? `${num((a.atr14 / a.last) * 100, 1)} % diario` : ""}</span>} />
               <Row k="Volatilidad 30 d (anual.)" v={a.volatility30 === null ? "—" : `${(a.volatility30 * 100).toFixed(0)} %`} extra={<span className="text-xs text-slate-500">{a.volatility30 === null ? "" : a.volatility30 > (crypto ? 0.9 : commodity ? 0.55 : 0.4) ? "alta" : a.volatility30 > (crypto ? 0.5 : commodity ? 0.3 : 0.2) ? "media" : "baja"}</span>} />
-              <Row k="Máxima caída (periodo)" v={`${(a.maxDrawdown * 100).toFixed(1)} %`} />
+              <Row k="Máxima caída (periodo)" v={`${num(a.maxDrawdown * 100, 1)} %`} />
               <Row k="Volumen" v={a.volume.toLocaleString("es-ES", { notation: a.volume > 1e9 ? "compact" : "standard", maximumFractionDigits: 1 })} extra={<span className="text-xs text-slate-500">{a.volumeAvg20 ? `${(a.volume / a.volumeAvg20).toFixed(1)}× media 20 d` : ""}{a.volumeProjected ? " · proyectado a 24 h" : ""}</span>} />
               <Row k={`OBV (20 ${unit})`} v={a.obvSlope === null ? "—" : a.obvSlope > 0.02 ? "subiendo" : a.obvSlope < -0.02 ? "bajando" : "plano"} />
               <Row k="Fibonacci (52 sem.)" v="" extra={<span className="text-xs text-slate-500">{a.fib.map((x) => `${x.level} ${fp(x.price)}`).join(" · ")}</span>} />

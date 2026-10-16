@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getPerAnalysis } from "@/lib/perService";
 import { isPerRange, PER_CONFIG, PER_RANGES, type PerRangeKey } from "@/lib/perConfig";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, signed } from "@/lib/format";
 import { PerCharts } from "./PerCharts";
 
 const n1 = (v: number) => v.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -82,8 +82,8 @@ export async function PerPanel({ symbol, perRange, hrefFor }: { symbol: string; 
               <Stat label="PER actual" value={`${n1(a.stats.current)}×`} hint={`a ${fmtDate(a.stats.currentDate)}`} />
               <Stat label={`Media (${periodLabel})`} value={`${n1(a.stats.mean)}×`} hint={`mediana ${n1(a.stats.median)}×`} />
               <Stat label="Percentil" value={`${a.stats.percentile.toFixed(0)}`} hint="0 = el más barato del periodo, 100 = el más caro" />
-              <Stat label="Frente a la media" value={`${a.stats.deviationPct >= 0 ? "+" : "−"}${Math.abs(a.stats.deviationPct).toFixed(1)} %`} hint={`rango ${n1(a.stats.min)}× a ${n1(a.stats.max)}×`} />
-              <Stat label="BPA últimos 12 meses" value={a.growth ? `${n2(a.growth.current)} $` : "N/D"} hint={a.growth?.growthPct != null ? `${a.growth.growthPct >= 0 ? "+" : "−"}${Math.abs(a.growth.growthPct).toFixed(1)} % frente a hace un año` : a.growth?.growing === true ? "creciendo frente a hace un año" : a.growth?.growing === false ? "cayendo frente a hace un año" : "sin dato de hace un año"} />
+              <Stat label="Frente a la media" value={`${signed(a.stats.deviationPct, 1)} %`} hint={`rango ${n1(a.stats.min)}× a ${n1(a.stats.max)}×`} />
+              <Stat label="BPA últimos 12 meses" value={a.growth ? `${n2(a.growth.current)} $` : "N/D"} hint={a.growth?.growthPct != null ? `${signed(a.growth.growthPct, 1)} % frente a hace un año` : a.growth?.growing === true ? "creciendo frente a hace un año" : a.growth?.growing === false ? "cayendo frente a hace un año" : "sin dato de hace un año"} />
               <Stat label="Zona barata (P25)" value={`${n1(a.stats.p25)}×`} hint={`por debajo: percentil ≤ ${PER_CONFIG.cheapPercentile}`} />
               <Stat label="Zona cara (P75)" value={`${n1(a.stats.p75)}×`} hint={`por encima: percentil ≥ ${PER_CONFIG.expensivePercentile}`} />
               <Stat label="Datos" value={`${a.stats.n}`} hint="semanas con PER válido" />

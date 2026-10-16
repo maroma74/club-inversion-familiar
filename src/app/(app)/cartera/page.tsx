@@ -6,7 +6,7 @@ import { getCurrentPortfolio, isDeadlinePassed, monthLabelLong, STATUS_LABEL } f
 import { Markdown } from "@/components/Markdown";
 import { getPrices } from "@/lib/prices";
 import { getClubRecommendations } from "@/lib/club";
-import { eur, fmtDate } from "@/lib/format";
+import { eur, fmtDate, signed } from "@/lib/format";
 import { DecisionForm } from "./DecisionForm";
 
 const analysisHref = (kind: string, symbol: string) => (kind === "COMMODITY" ? `/materias-primas/${encodeURIComponent(symbol)}` : kind === "CRYPTO" ? `/cripto/${encodeURIComponent(symbol)}` : kind === "ETF" ? `/etf/${encodeURIComponent(symbol)}` : `/acciones/${encodeURIComponent(symbol)}`);
@@ -60,7 +60,7 @@ export default async function CarteraPage() {
   const optionView = p.options.map((o) => {
     const q = prices.get(o.symbol.toUpperCase());
     const r = recs.get(o.symbol.toUpperCase());
-    return { o, price: q ? q.priceEur : null, signal: r ? signalText(r.action) : null, score: r ? `${r.total > 0 ? "+" : ""}${r.total.toFixed(2)}` : null, href: analysisHref(o.kind, o.symbol) };
+    return { o, price: q ? q.priceEur : null, signal: r ? signalText(r.action) : null, score: r ? signed(r.total, 2) : null, href: analysisHref(o.kind, o.symbol) };
   });
 
   // Cuántas personas eligieron cada opción (para comparar, no para copiar)

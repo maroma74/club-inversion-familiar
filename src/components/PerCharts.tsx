@@ -16,8 +16,8 @@ const tickDate = (d: string) => {
 const num = (v: unknown, d = 2) => (typeof v === "number" ? v.toLocaleString("es-ES", { minimumFractionDigits: d, maximumFractionDigits: d }) : "—");
 const AXIS_W = 58; // mismo ancho de eje en los tres gráficos: así las fechas quedan alineadas
 const MARGIN = { left: 4, right: 14, top: 6, bottom: 0 };
-const tick = { fontSize: 11 };
-const tooltipStyle = { borderRadius: 10, border: "1px solid rgba(14,33,56,0.12)", fontSize: 12 };
+const tick = { fontSize: 11, fill: "var(--color-text-muted)" };
+const tooltipStyle = { background: "var(--color-surface)", color: "var(--color-text)", border: "1px solid var(--color-divider)", borderRadius: 10, fontSize: 12 };
 
 /**
  * Tres gráficos apilados que comparten el eje de fechas: precio, BPA de los últimos 12 meses (barras) y PER con su media
@@ -39,7 +39,7 @@ export function PerCharts({ points, band, currency }: { points: Point[]; band: B
             <XAxis dataKey="date" hide />
             <YAxis width={AXIS_W} tick={tick} domain={["auto", "auto"]} tickFormatter={(v) => num(v, v >= 100 ? 0 : 2)} />
             <Tooltip labelFormatter={(l) => fmtDate(String(l))} formatter={(v) => [`${num(v)} ${currency}`, "Precio"]} contentStyle={tooltipStyle} />
-            <Line type="monotone" dataKey="price" name="Precio" stroke="#0e2138" strokeWidth={1.8} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="price" name="Precio" stroke="var(--chart-ink)" strokeWidth={1.8} dot={false} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -54,7 +54,7 @@ export function PerCharts({ points, band, currency }: { points: Point[]; band: B
             <Tooltip labelFormatter={(l) => fmtDate(String(l))} formatter={(v) => [`${num(v)} ${currency}`, "BPA TTM"]} contentStyle={tooltipStyle} />
             <Bar dataKey="eps" name="BPA TTM" isAnimationActive={false}>
               {points.map((p) => (
-                <Cell key={p.date} fill={(p.eps ?? 0) >= 0 ? "#10b981" : "#b91c1c"} fillOpacity={0.75} />
+                <Cell key={p.date} fill={(p.eps ?? 0) >= 0 ? "#10b981" : "#e5a016"} fillOpacity={0.75} />
               ))}
             </Bar>
           </BarChart>
@@ -73,20 +73,20 @@ export function PerCharts({ points, band, currency }: { points: Point[]; band: B
               <>
                 {/* Por debajo del percentil 25: zona donde ha estado barata; por encima del 75, cara */}
                 <ReferenceArea y1={0} y2={band.p25} fill="#10b981" fillOpacity={0.1} ifOverflow="extendDomain" />
-                <ReferenceArea y1={band.p75} y2={Math.ceil((perMax || 10) * 1.1)} fill="#0e2138" fillOpacity={0.07} ifOverflow="extendDomain" />
+                <ReferenceArea y1={band.p75} y2={Math.ceil((perMax || 10) * 1.1)} fill="var(--chart-ink)" fillOpacity={0.07} ifOverflow="extendDomain" />
                 <ReferenceLine y={band.mean} stroke="#e5a016" strokeDasharray="6 4" strokeWidth={1.4} />
                 <ReferenceLine y={band.p25} stroke="#059669" strokeDasharray="2 3" />
-                <ReferenceLine y={band.p75} stroke="#475569" strokeDasharray="2 3" />
+                <ReferenceLine y={band.p75} stroke="var(--chart-muted)" strokeDasharray="2 3" />
               </>
             )}
-            <Line type="monotone" dataKey="per" name="PER" stroke="#0e2138" strokeWidth={1.8} dot={false} connectNulls={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="per" name="PER" stroke="var(--chart-ink)" strokeWidth={1.8} dot={false} connectNulls={false} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
         {band && (
           <ul className="list-none m-0 mt-1 p-0 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-700" aria-label="Leyenda del gráfico del PER">
             <li className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-5 border-t-2 border-dashed" style={{ borderColor: "#e5a016" }} />Media {num(band.mean, 1)}×</li>
             <li className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-3 h-3 rounded-sm" style={{ background: "rgba(16,185,129,0.25)", border: "1px dotted #059669" }} />Zona barata: por debajo de {num(band.p25, 1)}× (P25)</li>
-            <li className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-3 h-3 rounded-sm" style={{ background: "rgba(14,33,56,0.14)", border: "1px dotted #475569" }} />Zona cara: por encima de {num(band.p75, 1)}× (P75)</li>
+            <li className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-3 h-3 rounded-sm" style={{ background: "color-mix(in srgb, var(--chart-ink) 14%, transparent)", border: "1px dotted var(--chart-muted)" }} />Zona cara: por encima de {num(band.p75, 1)}× (P75)</li>
           </ul>
         )}
       </div>

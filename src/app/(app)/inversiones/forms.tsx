@@ -1,5 +1,6 @@
 "use client";
 
+import { num } from "@/lib/format";
 import { useActionState, useEffect, useState } from "react";
 import { addTradeAction, reconcileAction, setManualPriceAction } from "@/app/actions/invest";
 
@@ -50,7 +51,7 @@ export function TradeForm({ holdings, initialSymbol }: { holdings: { symbol: str
       const cur = SUPPORTED.includes(q.currency) ? q.currency : "EUR";
       setCurrency(cur);
       setPrice(cur === q.currency ? String(Math.round(q.price * 10000) / 10000) : String(Math.round(q.priceEur * 10000) / 10000));
-      setQuoteNote(`Cotiza en ${q.currency}: ${q.price.toFixed(2)} ${q.currency} ≈ ${q.priceEur.toFixed(2)} €. Ajusta el precio al que realmente compraste.`);
+      setQuoteNote(`Cotiza en ${q.currency}: ${num(q.price)} ${q.currency} ≈ ${num(q.priceEur)} €. Ajusta el precio al que realmente compraste.`);
     } catch {
       setQuoteNote("Sin cotización automática: introduce el precio y la divisa a mano.");
     }

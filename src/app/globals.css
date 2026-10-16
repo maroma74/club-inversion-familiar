@@ -66,6 +66,11 @@
   --shadow-sm: 0 1px 2px rgba(14, 33, 56, 0.06);
   --shadow-md: 0 4px 14px rgba(14, 33, 56, 0.08);
   --shadow-lg: 0 16px 40px rgba(14, 33, 56, 0.18);
+
+  /* Tinta de los gráficos: oscura en claro, clara en oscuro, para que la serie principal siempre se vea */
+  --chart-ink: #0e2138;
+  --chart-ink-2: #162e4a;
+  --chart-muted: #64748b;
 }
 
 /* Modo oscuro: por preferencia del sistema o forzado con data-theme */
@@ -97,6 +102,9 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --chart-ink: #f1f5f9;
+  --chart-ink-2: #cbd5e1;
+  --chart-muted: #94a3b8;
 }
 
 /* Paleta de Tailwind remapeada a la marca: las clases existentes adoptan la identidad. */

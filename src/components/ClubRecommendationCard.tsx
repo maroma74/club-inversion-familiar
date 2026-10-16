@@ -3,10 +3,12 @@ import { safeHref } from "@/lib/validation";
 import type { ClubRecommendation } from "@/lib/club";
 import { COMMODITY_DISCLAIMER, CRYPTO_DISCLAIMER, DISCLAIMER, recommendationMarkdown } from "@/lib/recommend";
 import { CopyButton } from "./CopyButton";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, num, signed } from "@/lib/format";
 import { priceDecimals } from "@/lib/fmtPrice";
 
 /** Etiqueta de acción con el estilo del sistema: COMPRAR relleno acento, MANTENER borde acento, VENDER fondo oscuro. */
+const READING: Record<string, string> = { COMPRAR: "Favorable", MANTENER: "Neutral", VENDER: "Desfavorable" };
+
 export function ActionBadge({ action, small = false }: { action: string; small?: boolean }) {
   const style =
     action === "COMPRAR"
@@ -16,7 +18,7 @@ export function ActionBadge({ action, small = false }: { action: string; small?:
         : { background: "var(--color-amber-100)", color: "var(--color-amber-700)", border: "1px solid #e5a016" };
   return (
     <span className="inline-flex items-center font-heading" style={{ ...style, fontSize: small ? 11 : 16, letterSpacing: "0.04em", padding: small ? "2px 10px" : "5px 16px", lineHeight: 1.3, borderRadius: 999, fontWeight: 800 }}>
-      {action}
+      {READING[action] ?? action}
     </span>
   );
 }
@@ -29,7 +31,7 @@ const LESSON_BY_BLOCK: Record<string, string> = {
 };
 
 const f = (v: number | null, d?: number) => (v === null ? "N/D" : v.toLocaleString("es-ES", { minimumFractionDigits: d ?? priceDecimals(v), maximumFractionDigits: d ?? priceDecimals(v) }));
-const sg = (v: number) => (v > 0 ? `+${v.toFixed(2)}` : v < 0 ? `−${Math.abs(v).toFixed(2)}` : "0,00");
+const sg = (v: number) => signed(v, 2);
 const toneOf = (v: number) => (v > 0 ? "var(--color-accent-700)" : "var(--color-text)");
 
 /** Ficha completa de la Recomendación del Club con el formato acordado. */
@@ -39,7 +41,7 @@ export function ClubRecommendationCard({ r }: { r: ClubRecommendation }) {
     <section className="card blueprint gap-4" style={{ padding: 24, borderColor: "var(--color-accent)" }}>
       <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <div className="card-kicker text-[11px] font-medium">Recomendación del Club de inversión</div>
+          <div className="card-kicker text-[11px] font-medium">Lectura del Club de inversión · para aprender</div>
           <div className="text-[14px] mt-1"><b>[{r.ticker}] – {r.name}</b> | Precio: {f(r.price)} {cur} | Fecha datos: {fmtDate(r.dataDate)}</div>
           {r.isCommodity && r.commodity ? (
             <div className="text-xs text-neutral-700 mt-0.5">Materia prima · {r.commodity.group} · futuro continuo en {r.commodity.exchange} · {r.commodity.unit}</div>
@@ -49,10 +51,10 @@ export function ClubRecommendationCard({ r }: { r: ClubRecommendation }) {
               {r.fearGreed && <> · Miedo y codicia: <b className="text-ink">{r.fearGreed.value} ({r.fearGreed.labelEs.toLowerCase()})</b></>}
             </div>
           ) : r.profile.isFund ? (
-            <div className="text-xs text-neutral-700 mt-0.5">Fondo cotizado · Gestora: {r.profile.fundFamily ?? "N/D"} · TER: {r.profile.expenseRatio === null ? "N/D" : `${(r.profile.expenseRatio * 100).toFixed(2)} %`} · Beta: {r.beta === null ? "N/D" : r.beta.toFixed(2)}</div>
+            <div className="text-xs text-neutral-700 mt-0.5">Fondo cotizado · Gestora: {r.profile.fundFamily ?? "N/D"} · TER: {r.profile.expenseRatio === null ? "N/D" : `${num(r.profile.expenseRatio * 100)} %`} · Beta: {r.beta === null ? "N/D" : num(r.beta)}</div>
           ) : (
             <div className="text-xs text-neutral-700 mt-0.5">
-              Sector: {r.sector ?? "N/D"}{r.industry ? ` (${r.industry})` : ""} · Beta: {r.beta === null ? "N/D" : r.beta.toFixed(2)} · Próximos resultados: {r.earningsDate ? fmtDate(r.earningsDate) : "N/D"}
+              Sector: {r.sector ?? "N/D"}{r.industry ? ` (${r.industry})` : ""} · Beta: {r.beta === null ? "N/D" : num(r.beta)} · Próximos resultados: {r.earningsDate ? fmtDate(r.earningsDate) : "N/D"}
               {r.daysToEarnings !== null && r.daysToEarnings >= 0 && <b className="text-ink"> (en {r.daysToEarnings} días)</b>}
             </div>
           )}
@@ -60,10 +62,15 @@ export function ClubRecommendationCard({ r }: { r: ClubRecommendation }) {
         <CopyButton text={recommendationMarkdown(r)} label="Copiar ficha" />
       </div>
 
+      <p className="m-0 text-sm [text-wrap:pretty] max-w-[70ch]">
+        Es una <b>lectura automática para aprender</b>, no una orden: tú decides y explicas tu porqué en el diario.
+      </p>
+
       <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm text-neutral-700">Lectura técnica:</span>
         <ActionBadge action={r.action} />
         <span className="text-[15px]">{r.bias}</span>
-        <span className="text-[13px] text-neutral-700">Confianza: <b className="text-ink">{r.confidence}</b> · Horizonte: <b className="text-ink">{r.horizon}</b>{r.since ? ` · desde ${fmtDate(r.since)}${r.previousAction ? ` (antes ${r.previousAction})` : ""}` : ""}</span>
+        <span className="text-sm text-neutral-700">Confianza: <b className="text-ink">{r.confidence}</b> · Horizonte: <b className="text-ink">{r.horizon}</b>{r.since ? ` · desde ${fmtDate(r.since)}${r.previousAction ? ` (antes ${r.previousAction})` : ""}` : ""}</span>
       </div>
 
       <div className="overflow-x-auto">
@@ -81,23 +88,23 @@ export function ClubRecommendationCard({ r }: { r: ClubRecommendation }) {
             <tr className="font-bold">
               <td style={{ borderTop: "1px solid var(--color-divider)" }}>Total ponderado</td>
               <td className="text-right tabular-nums" style={{ borderTop: "1px solid var(--color-divider)", color: toneOf(r.total) }}>{sg(r.total)}</td>
-              <td colSpan={2} className="font-normal text-[13px] text-neutral-700" style={{ borderTop: "1px solid var(--color-divider)" }}>{r.notes.join(" ") || "—"}</td>
+              <td colSpan={2} className="font-normal text-sm text-neutral-700" style={{ borderTop: "1px solid var(--color-divider)" }}>{r.notes.join(" ") || "—"}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))" }}>
-        <div>
-          <h5 className="m-0 mb-1.5 text-[18px]">Plan de operación</h5>
+        <details className="min-w-0">
+          <summary className="cursor-pointer font-heading text-lg mb-1.5">Plan de operación de ejemplo <span className="text-sm font-normal text-neutral-700">(para practicar)</span></summary>
           <div className="grid gap-x-4 gap-y-1 text-[14px]" style={{ gridTemplateColumns: "auto 1fr" }}>
             <span className="text-neutral-700">Zona de entrada</span><b>{r.plan.entryLow !== null && r.plan.entryHigh !== null ? `${f(r.plan.entryLow)} – ${f(r.plan.entryHigh)} ${cur}` : "no abrir posiciones nuevas"}</b>
             <span className="text-neutral-700">Stop loss</span><span><b>{f(r.plan.stop)} {r.plan.stop !== null ? cur : ""}</b> <span className="text-xs text-neutral-700">({r.plan.stopReason})</span></span>
             <span className="text-neutral-700">Objetivo 1 / 2</span><b>{f(r.plan.target1)} / {f(r.plan.target2)} {cur}</b>
-            <span className="text-neutral-700">Riesgo/beneficio</span><b>{r.plan.rr === null ? "N/D" : `1:${r.plan.rr.toFixed(1)}`}</b>
+            <span className="text-neutral-700">Riesgo/beneficio</span><b>{r.plan.rr === null ? "N/D" : `1:${num(r.plan.rr, 1)}`}</b>
             <span className="text-neutral-700">Invalidación</span><span>{r.plan.invalidation}</span>
           </div>
-        </div>
+        </details>
         <div>
           <h5 className="m-0 mb-1.5 text-[18px]">Tesis en 3 líneas</h5>
           <ol className="m-0 pl-5 text-[14px] flex flex-col gap-0.5">
@@ -114,8 +121,8 @@ export function ClubRecommendationCard({ r }: { r: ClubRecommendation }) {
 
       {r.history.length > 1 && (
         <div className="text-xs text-neutral-700">
-          Historial: {r.history.slice(-10).map((h) => `${h.date.slice(5)} ${h.action[0]}${h.score >= 0 ? "+" : "−"}${Math.abs(h.score).toFixed(1)}`).join(" · ")}
-          <span className="text-neutral-600"> (C = comprar, M = mantener, V = vender)</span>
+          Historial: {r.history.slice(-10).map((h) => `${h.date.slice(5)} ${h.action[0]}${h.score >= 0 ? "+" : "−"}${num(Math.abs(h.score), 1)}`).join(" · ")}
+          <span className="text-neutral-600"> (C = favorable, M = neutral, V = desfavorable)</span>
         </div>
       )}
 
@@ -150,7 +157,7 @@ function CommodityBlock({ c }: { c: NonNullable<ClubRecommendation["commodity"]>
 const compactEur = (n: number) => `${new Intl.NumberFormat("es-ES", { notation: "compact", maximumFractionDigits: 1 }).format(n)} €`;
 const compactNum = (n: number) => new Intl.NumberFormat("es-ES", { notation: "compact", maximumFractionDigits: 2 }).format(n);
 const priceEur = (n: number) => `${n.toLocaleString("es-ES", { minimumFractionDigits: n < 1 ? 4 : 2, maximumFractionDigits: n < 1 ? 4 : 2 })} €`;
-const signedPct = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)} %`;
+const signedPct = (v: number) => `${signed(v, 1)} %`;
 
 /** Ficha de la criptomoneda: capitalización, oferta, máximo histórico y descripción (CoinGecko). */
 function CryptoBlock({ r }: { r: ClubRecommendation }) {
@@ -196,16 +203,16 @@ function CompanyAndNews({ r }: { r: ClubRecommendation }) {
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-700 mb-2">
             {p.fundFamily && <span>Gestora: <b className="text-ink">{p.fundFamily}</b></span>}
             {p.fundCategory && <span>Categoría: <b className="text-ink">{p.fundCategory}</b></span>}
-            {p.expenseRatio !== null && <span>TER: <b className="text-ink">{(p.expenseRatio * 100).toFixed(2)} %</b></span>}
+            {p.expenseRatio !== null && <span>TER: <b className="text-ink">{num(p.expenseRatio * 100)} %</b></span>}
             {p.totalAssets !== null && <span>Patrimonio: <b className="text-ink">{compact(p.totalAssets, r.currency)}</b></span>}
-            {p.dividendYield !== null && <span>Dividendo: <b className="text-ink">{(p.dividendYield * (p.dividendYield > 1 ? 1 : 100)).toFixed(2)} %</b></span>}
+            {p.dividendYield !== null && <span>Dividendo: <b className="text-ink">{num(p.dividendYield * (p.dividendYield > 1 ? 1 : 100))} %</b></span>}
           </div>
           {p.topHoldings.length > 0 && (
             <div className="mb-2">
               <div className="text-[11px] tracking-[0.08em] uppercase text-neutral-700 mb-1">Principales posiciones</div>
               <ul className="text-xs text-neutral-800 grid grid-cols-2 gap-x-3 gap-y-0.5 list-none m-0 p-0">
                 {p.topHoldings.slice(0, 10).map((h) => (
-                  <li key={h.symbol || h.name} className="flex justify-between gap-2"><span className="truncate">{h.name}</span><span className="tabular-nums">{(h.weight * 100).toFixed(1)} %</span></li>
+                  <li key={h.symbol || h.name} className="flex justify-between gap-2"><span className="truncate">{h.name}</span><span className="tabular-nums">{num(h.weight * 100, 1)} %</span></li>
                 ))}
               </ul>
             </div>
@@ -218,7 +225,7 @@ function CompanyAndNews({ r }: { r: ClubRecommendation }) {
                   <div key={s.sector} className="flex items-center gap-2 text-xs text-neutral-800">
                     <span className="w-28 truncate">{s.sector}</span>
                     <div className="bar flex-1"><span style={{ width: `${Math.min(s.weight * 100, 100)}%` }} /></div>
-                    <span className="w-12 text-right tabular-nums">{(s.weight * 100).toFixed(1)} %</span>
+                    <span className="w-12 text-right tabular-nums">{num(s.weight * 100, 1)} %</span>
                   </div>
                 ))}
               </div>
@@ -232,8 +239,8 @@ function CompanyAndNews({ r }: { r: ClubRecommendation }) {
           <h5 className="m-0 mb-1.5 text-[18px]">La empresa</h5>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-700 mb-2">
             {p.marketCap !== null && <span>Capitalización: <b className="text-ink">{compact(p.marketCap, r.currency)}</b></span>}
-            {p.trailingPE !== null && <span>PER: <b className="text-ink">{p.trailingPE.toFixed(1)}</b>{p.forwardPE !== null ? ` (est. ${p.forwardPE.toFixed(1)})` : ""}</span>}
-            {p.dividendYield !== null && <span>Dividendo: <b className="text-ink">{(p.dividendYield * (p.dividendYield > 1 ? 1 : 100)).toFixed(2)} %</b></span>}
+            {p.trailingPE !== null && <span>PER: <b className="text-ink">{num(p.trailingPE, 1)}</b>{p.forwardPE !== null ? ` (est. ${num(p.forwardPE, 1)})` : ""}</span>}
+            {p.dividendYield !== null && <span>Dividendo: <b className="text-ink">{num(p.dividendYield * (p.dividendYield > 1 ? 1 : 100))} %</b></span>}
             {p.employees !== null && <span>Empleados: <b className="text-ink">{p.employees.toLocaleString("es-ES")}</b></span>}
             {p.country && <span>País: <b className="text-ink">{p.country}</b></span>}
             {safeHref(p.website) && <a href={safeHref(p.website)} target="_blank" rel="noopener noreferrer">Web</a>}

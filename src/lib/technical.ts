@@ -1,3 +1,4 @@
+import { num as fmtNum } from "@/lib/format";
 import { fp } from "./fmtPrice";
 /** Indicadores de análisis técnico calculados sobre velas diarias. Uso educativo: no es asesoramiento financiero. */
 
@@ -226,7 +227,7 @@ export function obv(candles: Candle[]): number[] {
 export function fibonacci(high: number, low: number, uptrend: boolean) {
   const range = high - low;
   const ratios = [0.236, 0.382, 0.5, 0.618, 0.786];
-  return ratios.map((r) => ({ level: `${(r * 100).toFixed(1)} %`, price: uptrend ? high - range * r : low + range * r }));
+  return ratios.map((r) => ({ level: `${fmtNum((r * 100), 1)} %`, price: uptrend ? high - range * r : low + range * r }));
 }
 
 /** Soporte y resistencia por pivotes: mínimos/máximos locales de los últimos `lookback` días. */
@@ -327,7 +328,7 @@ export function analyze(rawCandles: Candle[], opts: AnalyzeOptions = {}): Analys
   // Tendencia de fondo: precio vs SMA200
   if (at(s200) !== null) {
     const d = last / at(s200)! - 1;
-    push("sma200", "Tendencia de largo plazo", d > 0 ? "alcista" : "bajista", `El precio está un ${(Math.abs(d) * 100).toFixed(1)} % ${d > 0 ? "por encima" : "por debajo"} de la media de 200 sesiones (${fp(at(s200)!)}). ${d > 0 ? "Tendencia de fondo alcista." : "Tendencia de fondo bajista."}`);
+    push("sma200", "Tendencia de largo plazo", d > 0 ? "alcista" : "bajista", `El precio está un ${fmtNum((Math.abs(d) * 100), 1)} % ${d > 0 ? "por encima" : "por debajo"} de la media de 200 sesiones (${fp(at(s200)!)}). ${d > 0 ? "Tendencia de fondo alcista." : "Tendencia de fondo bajista."}`);
   }
   // Medio plazo: SMA50 y cruce dorado / de la muerte
   if (at(s50) !== null && at(s200) !== null) {
@@ -370,12 +371,12 @@ export function analyze(rawCandles: Candle[], opts: AnalyzeOptions = {}): Analys
   if (at(volAvg) !== null && at(volAvg)! > 0) {
     const ratio = volume / at(volAvg)!;
     const dayUp = last >= prevClose;
-    if (ratio > 1.5) push("vol", `Volumen ${ratio.toFixed(1)}× la media`, dayUp ? "alcista" : "bajista", `Volumen muy superior a la media de 20 sesiones en un día ${dayUp ? "de subida: el movimiento tiene respaldo" : "de caída: la presión vendedora es fuerte"}.`);
+    if (ratio > 1.5) push("vol", `Volumen ${fmtNum(ratio, 1)}× la media`, dayUp ? "alcista" : "bajista", `Volumen muy superior a la media de 20 sesiones en un día ${dayUp ? "de subida: el movimiento tiene respaldo" : "de caída: la presión vendedora es fuerte"}.`);
   }
   // 52 semanas
   const from52h = last / high52 - 1;
-  if (from52h > -0.03) push("52h", "Cerca de máximos anuales", "alcista", `A un ${(Math.abs(from52h) * 100).toFixed(1)} % del máximo de 52 semanas (${fp(high52)}). Los valores en máximos suelen seguir fuertes, pero vigila el RSI.`);
-  else if (last / low52 - 1 < 0.05) push("52l", "Cerca de mínimos anuales", "bajista", `A un ${((last / low52 - 1) * 100).toFixed(1)} % del mínimo de 52 semanas (${fp(low52)}).`);
+  if (from52h > -0.03) push("52h", "Cerca de máximos anuales", "alcista", `A un ${fmtNum((Math.abs(from52h) * 100), 1)} % del máximo de 52 semanas (${fp(high52)}). Los valores en máximos suelen seguir fuertes, pero vigila el RSI.`);
+  else if (last / low52 - 1 < 0.05) push("52l", "Cerca de mínimos anuales", "bajista", `A un ${fmtNum(((last / low52 - 1) * 100), 1)} % del mínimo de 52 semanas (${fp(low52)}).`);
 
   const score = signals.reduce((a, s) => a + (s.verdict === "alcista" ? 1 : s.verdict === "bajista" ? -1 : 0), 0);
   const overall: Verdict = score >= 2 ? "alcista" : score <= -2 ? "bajista" : "neutral";

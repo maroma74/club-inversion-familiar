@@ -1,3 +1,4 @@
+import { signed } from "@/lib/format";
 import { prisma } from "./prisma";
 import { familyHistory, familyLeaderboard, type PortfolioSummary } from "./portfolio";
 import { computeBadges, type MemberProgress } from "./badges";
@@ -143,7 +144,7 @@ export function leagueStats(ranking: PortfolioSummary[], history: HistoryRow[]):
         .filter((x): x is { name: string; delta: number } => x !== null)
         .sort((a, b) => b.delta - a.delta);
       if (deltas.length > 0) {
-        stats.push({ id: "momentum", icon: "🔥", label: "Mejor racha (30 días)", value: `${deltas[0].delta >= 0 ? "+" : ""}${(deltas[0].delta * 100).toFixed(2)} pts`, who: deltas[0].name, detail: `Desde ${String(base.date)}`, tone: deltas[0].delta >= 0 ? "good" : "bad" });
+        stats.push({ id: "momentum", icon: "🔥", label: "Mejor racha (30 días)", value: `${signed(deltas[0].delta * 100, 2)} pts`, who: deltas[0].name, detail: `Desde ${String(base.date)}`, tone: deltas[0].delta >= 0 ? "good" : "bad" });
       }
     }
   }

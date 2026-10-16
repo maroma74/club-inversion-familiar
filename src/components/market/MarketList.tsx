@@ -7,7 +7,7 @@ import { DEFAULT_COMMODITY_WATCHLIST, findCommodity } from "@/lib/commodities";
 import { getPerSummaries } from "@/lib/perService";
 import { PerBadge } from "@/components/PerPanel";
 import type { PerSummary } from "@/lib/per";
-import { eur } from "@/lib/format";
+import { eur, num, signed } from "@/lib/format";
 import { Sparkline } from "@/components/Sparkline";
 import { PageHeader } from "@/components/ui";
 import { AutoRefresh } from "@/app/(app)/inversiones/AutoRefresh";
@@ -17,7 +17,7 @@ import { getClubRecommendations } from "@/lib/club";
 import { ActionBadge } from "@/components/ClubRecommendationCard";
 
 const Change = ({ v }: { v: number | null }) =>
-  v === null ? <span className="text-slate-400">—</span> : <span className={`tabular-nums font-medium ${v >= 0 ? "text-green-600" : "text-red-600"}`}>{v >= 0 ? "+" : ""}{(v * 100).toFixed(2)} %</span>;
+  v === null ? <span className="text-slate-400">—</span> : <span className={`tabular-nums font-medium ${v >= 0 ? "text-green-600" : "text-red-600"}`}>{signed(v * 100, 2)} %</span>;
 
 /** Decimales según la magnitud: una criptomoneda de céntimos necesita más que una acción. */
 const decimals = (n: number) => (n >= 1000 ? 0 : n >= 1 ? 2 : n >= 0.01 ? 4 : 6);
@@ -25,7 +25,7 @@ const fmtPrice = (n: number, currency: string, crypto = false) => {
   const d = crypto ? decimals(n) : 2;
   return currency === "EUR" ? eur(n, d) : `${n.toLocaleString("es-ES", { minimumFractionDigits: d, maximumFractionDigits: d })} ${currency}`;
 };
-const shortNum = (n: number) => (n >= 100 ? n.toFixed(0) : n >= 1 ? n.toFixed(2) : n.toFixed(4));
+const shortNum = (n: number) => (n >= 100 ? num(n, 0) : n >= 1 ? num(n, 2) : num(n, 4));
 
 const MARKET_STATE: Record<string, string> = { REGULAR: "Abierto", PRE: "Preapertura", POST: "Cierre ampliado", CLOSED: "Cerrado", PREPRE: "Cerrado", POSTPOST: "Cerrado" };
 
@@ -184,7 +184,7 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
                         {rec ? (
                           <Link href={`${c.base}/${encodeURIComponent(q.symbol)}`} title={`${rec.bias} · confianza ${rec.confidence}`} className="inline-flex items-center gap-1.5">
                             <ActionBadge action={rec.action} small />
-                            <span className={`text-xs tabular-nums font-medium ${rec.total >= 0.3 ? "text-green-600" : rec.total <= -0.3 ? "text-red-600" : "text-slate-500"}`}>{rec.total > 0 ? "+" : ""}{rec.total.toFixed(2)}</span>
+                            <span className={`text-xs tabular-nums font-medium ${rec.total >= 0.3 ? "text-green-600" : rec.total <= -0.3 ? "text-red-600" : "text-slate-500"}`}>{signed(rec.total, 2)}</span>
                             {rec.daysToEarnings !== null && rec.daysToEarnings >= 0 && rec.daysToEarnings <= 10 && <span className="text-[10px] text-amber-700" title={`Resultados el ${rec.earningsDate}`}>📅</span>}
                           </Link>
                         ) : (

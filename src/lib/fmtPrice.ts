@@ -8,7 +8,7 @@ export const priceDecimals = (n: number) => {
 };
 
 /** Precio como texto con los decimales adecuados a su magnitud. */
-export const fp = (n: number) => n.toFixed(priceDecimals(n));
+export const fp = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: priceDecimals(n), maximumFractionDigits: priceDecimals(n) });
 
 /** Redondea un nivel de precio (entrada, stop, objetivo) sin destruir las monedas de céntimos. */
 export const rp = (n: number) => Number(n.toFixed(priceDecimals(n)));

@@ -8,6 +8,15 @@ export const eur = (n: number, digits = 2) =>
     .format(n)
     .replace("-", "−"); // menos verdadero, igual que en los porcentajes
 
+/** Número con coma decimal y un número fijo de decimales: «12,34». */
+export const num = (n: number, digits = 2) => n.toLocaleString("es-ES", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+
+/** Número con signo explícito y menos verdadero: «+0,45», «−1,20», «0,00». */
+export const signed = (n: number, digits = 2) => {
+  const rounded = Math.round(n * 10 ** digits) / 10 ** digits;
+  return `${rounded > 0 ? "+" : rounded < 0 ? "\u2212" : ""}${num(Math.abs(rounded), digits)}`;
+};
+
 /** Porcentaje con signo, coma decimal y menos verdadero: «+12,34 %», «−3,10 %», «0,0 %». */
 export const pct = (n: number, digits = 1) => {
   const rounded = Math.round(n * 100 * 10 ** digits) / 10 ** digits;

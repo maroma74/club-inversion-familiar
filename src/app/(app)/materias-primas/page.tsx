@@ -4,7 +4,7 @@ import { fetchStockQuotes } from "@/lib/stocks";
 import { familyLeaderboard } from "@/lib/portfolio";
 import { findCommodity, isCommodity } from "@/lib/commodities";
 import { priceDecimals } from "@/lib/fmtPrice";
-import { eur, pct } from "@/lib/format";
+import { eur, pct, signed } from "@/lib/format";
 import { Kpi, PageHeader } from "@/components/ui";
 import { AutoRefresh } from "../inversiones/AutoRefresh";
 import { MarketList } from "@/components/market/MarketList";
@@ -41,7 +41,7 @@ export default async function MateriasPrimasPage() {
               <Kpi
                 label={c?.name ?? q.symbol}
                 value={q.price ? usd(q.price) : "—"}
-                hint={q.price ? `${q.change1d >= 0 ? "+" : "−"}${(Math.abs(q.change1d) * 100).toFixed(2)} % hoy · ${eur(q.priceEur, 2)} · ${c?.unit.replace("USD ", "") ?? ""}` : "Sin datos"}
+                hint={q.price ? `${signed(q.change1d * 100, 2)} % hoy · ${eur(q.priceEur, 2)} · ${c?.unit.replace("USD ", "") ?? ""}` : "Sin datos"}
                 tone={q.price ? (q.change1d >= 0 ? "good" : "neutral") : "neutral"}
               />
             </Link>

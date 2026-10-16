@@ -3,6 +3,7 @@
  * Implementa el marco multi-bloque (tendencia 30 %, momentum 25 %, volumen 20 %, volatilidad/estructura 25 %),
  * puntuando cada bloque de -2 a +2 solo con los datos disponibles. Uso educativo, no es asesoramiento financiero.
  */
+import { num as fmtNum } from "@/lib/format";
 import type { Analysis } from "./technical";
 import { fp, priceDecimals, rp } from "./fmtPrice";
 
@@ -150,9 +151,9 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
   if (a.volumeAvg20 !== null && a.volumeAvg20 > 0) {
     vAvail++;
     const ratio = a.volume / a.volumeAvg20;
-    if (ratio >= 1.5) { vol += dayUp ? 1 : -1; vNotes.push(`volumen ${ratio.toFixed(1)}× media confirma ${dayUp ? "subida" : "caída"}`); }
-    else if (ratio >= 1) { vol += dayUp ? 0.25 : -0.25; vNotes.push(`volumen ${ratio.toFixed(1)}× media`); }
-    else { vNotes.push(`volumen bajo (${ratio.toFixed(1)}× media)`); }
+    if (ratio >= 1.5) { vol += dayUp ? 1 : -1; vNotes.push(`volumen ${fmtNum(ratio, 1)}× media confirma ${dayUp ? "subida" : "caída"}`); }
+    else if (ratio >= 1) { vol += dayUp ? 0.25 : -0.25; vNotes.push(`volumen ${fmtNum(ratio, 1)}× media`); }
+    else { vNotes.push(`volumen bajo (${fmtNum(ratio, 1)}× media)`); }
     if (a.volumeAvg50 !== null && a.volumeAvg50 > 0) vol += a.volumeAvg20 > a.volumeAvg50 * 1.1 ? 0.25 : 0;
   } else missing.push("Volumen medio");
   if (a.obvSlope !== null && a.priceSlope20 !== null) {
@@ -181,8 +182,8 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
     sAvail++;
     const atrPct = a.atr14 / p;
     // Una criptomoneda se mueve de forma normal entre un 2 y un 5 % al día: el listón de «muy volátil» es más alto.
-    if (atrPct > (extras.isCrypto ? 0.07 : extras.isCommodity ? 0.05 : 0.045)) { str -= 0.5; sNotes.push(`ATR ${(atrPct * 100).toFixed(1)} % diario (muy volátil)`); }
-    else sNotes.push(`ATR ${(atrPct * 100).toFixed(1) } % diario`);
+    if (atrPct > (extras.isCrypto ? 0.07 : extras.isCommodity ? 0.05 : 0.045)) { str -= 0.5; sNotes.push(`ATR ${fmtNum((atrPct * 100), 1)} % diario (muy volátil)`); }
+    else sNotes.push(`ATR ${fmtNum((atrPct * 100), 1) } % diario`);
   } else missing.push("ATR");
   const distRes = a.resistance !== null ? a.resistance / p - 1 : null;
   const distSup = a.support !== null ? 1 - a.support / p : null;
@@ -213,7 +214,7 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
       label: "Valoración (PER)",
       weight: val.weight,
       score: r2(val.score),
-      note: `PER ${val.per === null ? "N/D" : val.per.toFixed(1)} · percentil ${val.percentile === null ? "N/D" : val.percentile.toFixed(0)} de ${val.rangeLabel} · ${val.signal.toLowerCase()}${val.valueTrap ? " · posible trampa de valor" : ""}`,
+      note: `PER ${val.per === null ? "N/D" : fmtNum(val.per, 1)} · percentil ${val.percentile === null ? "N/D" : val.percentile.toFixed(0)} de ${val.rangeLabel} · ${val.signal.toLowerCase()}${val.valueTrap ? " · posible trampa de valor" : ""}`,
       available: 1,
       total: 1,
     });
@@ -264,7 +265,7 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
   if (action === "COMPRAR" && (rr === null || rr < 2)) {
     action = "MANTENER";
     bias = "sesgo alcista / vigilar entrada";
-    notes.push(`Regla 5: ratio riesgo/beneficio ${rr === null ? "N/D" : `1:${rr.toFixed(1)}`} inferior a 1:2; se degrada a MANTENER hasta mejorar la entrada.`);
+    notes.push(`Regla 5: ratio riesgo/beneficio ${rr === null ? "N/D" : `1:${fmtNum(rr, 1)}`} inferior a 1:2; se degrada a MANTENER hasta mejorar la entrada.`);
   }
   if (action === "VENDER") bias = "reducir o salir";
 
@@ -291,7 +292,7 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
   thesis.push(`Momentum ${mom > 0.5 ? "positivo" : mom < -0.5 ? "negativo" : "neutral"} (${mNotes.slice(0, 2).join(", ") || "N/D"}) y volumen ${vol > 0.25 ? "que confirma" : vol < -0.25 ? "que no acompaña" : "neutro"}.`);
   thesis.push(
     action === "COMPRAR"
-      ? `Estructura favorable: ${sNotes.slice(0, 2).join(", ") || "sin notas"}; objetivo ${(target1 !== null ? fp(target1) : "N/D")} con stop ${(stop !== null ? fp(stop) : "N/D")} (R/B 1:${rr?.toFixed(1) ?? "N/D"}).`
+      ? `Estructura favorable: ${sNotes.slice(0, 2).join(", ") || "sin notas"}; objetivo ${(target1 !== null ? fp(target1) : "N/D")} con stop ${(stop !== null ? fp(stop) : "N/D")} (R/B 1:${rr != null ? fmtNum(rr, 1) : "N/D"}).`
       : action === "VENDER"
         ? `Estructura deteriorada: ${sNotes.slice(0, 2).join(", ") || "sin notas"}; conviene reducir y esperar a recuperar ${a.sma50 !== null ? `la SMA50 (${fp(a.sma50)})` : "las medias"}.`
         : `Sin ventaja clara ahora: ${sNotes.slice(0, 2).join(", ") || "estructura neutra"}; esperar ${total > 0 ? "un retroceso a la zona de entrada" : "una señal de giro"}.`,
@@ -311,7 +312,7 @@ export function recommend(a: Analysis, meta: { ticker: string; name: string; cur
   if (primaryDown) risks.push("Tendencia principal bajista: los rebotes pueden ser trampas alcistas.");
   if (a.bbSqueeze) risks.push("Squeeze de Bollinger: el próximo movimiento puede ser violento en cualquier dirección.");
   if (a.maxDrawdown < -0.3) risks.push(`Caída máxima del ${(a.maxDrawdown * 100).toFixed(0)} % en el periodo: el valor ha sufrido retrocesos profundos.`);
-  if (extras.beta !== null && extras.beta !== undefined && extras.beta > 1.3) risks.push(`Beta ${extras.beta.toFixed(2)}: amplifica los movimientos del mercado.`);
+  if (extras.beta !== null && extras.beta !== undefined && extras.beta > 1.3) risks.push(`Beta ${fmtNum(extras.beta, 2)}: amplifica los movimientos del mercado.`);
   if (extras.newsTone === "desfavorable" && action !== "VENDER") risks.push("Flujo de noticias desfavorable: la lectura técnica puede deteriorarse si se confirman los titulares.");
   if (extras.newsTone === "favorable" && action === "VENDER") risks.push("Flujo de noticias favorable: un rebote por titulares podría invalidar la señal de venta.");
   if (!earningsDate && !extras.isFund && !extras.isCrypto && !extras.isCommodity) risks.push("Fecha de resultados: N/D; comprobar el calendario antes de operar.");

@@ -6,14 +6,14 @@ import { followWatchlistAction } from "@/app/actions/watchlist";
 import { MarketList } from "@/components/market/MarketList";
 import { familyLeaderboard } from "@/lib/portfolio";
 import { isCrypto } from "@/lib/prices";
-import { eur, pct } from "@/lib/format";
+import { eur, pct, signed } from "@/lib/format";
 import { Sparkline } from "@/components/Sparkline";
 import { Kpi, PageHeader } from "@/components/ui";
 import { AutoRefresh } from "../inversiones/AutoRefresh";
 
 const compact = (n: number) => new Intl.NumberFormat("es-ES", { notation: "compact", maximumFractionDigits: 1, style: "currency", currency: "EUR" }).format(n);
 const price = (n: number) => eur(n, n >= 100 ? 0 : n >= 1 ? 2 : 4);
-const Change = ({ v }: { v: number }) => <span className={`tabular-nums font-medium ${v >= 0 ? "text-green-600" : "text-red-600"}`}>{v >= 0 ? "+" : ""}{v.toFixed(1)} %</span>;
+const Change = ({ v }: { v: number }) => <span className={`tabular-nums font-medium ${v >= 0 ? "text-green-600" : "text-red-600"}`}>{signed(v, 1)} %</span>;
 
 export default async function CriptoPage() {
   const user = await requireUser();
@@ -47,7 +47,7 @@ export default async function CriptoPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Kpi label="Cripto de la familia" value={eur(cryptoValue)} hint={familyValue > 0 ? `${((cryptoValue / familyValue) * 100).toFixed(0)} % del patrimonio de la liga` : "Sin posiciones"} />
         <Kpi label="Resultado en cripto" value={eur(cryptoValue - cryptoInvested)} hint={cryptoInvested > 0 ? pct((cryptoValue - cryptoInvested) / cryptoInvested) : "—"} tone={cryptoValue - cryptoInvested >= 0 ? "good" : "bad"} />
-        <Kpi label="Bitcoin" value={market.coins[0] ? price(market.coins[0].price) : "—"} hint={market.coins[0] ? `${market.coins[0].change24h >= 0 ? "+" : ""}${market.coins[0].change24h.toFixed(1)} % en 24 h` : ""} tone={market.coins[0] ? (market.coins[0].change24h >= 0 ? "good" : "bad") : "neutral"} />
+        <Kpi label="Bitcoin" value={market.coins[0] ? price(market.coins[0].price) : "—"} hint={market.coins[0] ? `${signed(market.coins[0].change24h, 1)} % en 24 h` : ""} tone={market.coins[0] ? (market.coins[0].change24h >= 0 ? "good" : "bad") : "neutral"} />
         <div className="card">
           <div className="text-xs uppercase tracking-wide text-slate-500">Miedo y codicia</div>
           {fg ? (
