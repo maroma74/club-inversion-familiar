@@ -7,6 +7,7 @@ import { getPortfolioFull, isDeadlinePassed, monthLabelLong, STATUS_LABEL } from
 import { eur, fmtDate } from "@/lib/format";
 import { closeAction, deletePortfolioAction, removeOptionAction, reopenAction } from "@/app/actions/monthly";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { ShareProposalForm } from "../../repositorio/forms";
 import { AddOptionForm, AllocationsForm, PortfolioDetailsForm, PublishForm } from "../forms";
 
 export default async function GestionDetallePage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,6 +19,7 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
   const decidedIds = p.decisions.map((d) => d.userId);
   const locked = p.status === "CLOSED";
   const total = p.allocations.reduce((a, x) => a + x.amount, 0);
+  const shared = await prisma.proposal.findUnique({ where: { sourcePortfolioId: p.id }, select: { signed: true, theme: true, risk: true } });
   const publishBlock = p.options.length === 0 ? "Añade al menos una opción de inversión." : total <= 0 ? "Asigna un importe a algún miembro." : p.options.length < p.minChoices ? "Hay menos opciones que el mínimo a elegir." : null;
 
   return (
@@ -86,6 +88,17 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
             <AllocationsForm portfolioId={p.id} decidedIds={decidedIds} members={members.map((m) => ({ id: m.id, name: firstName(m.name), amount: p.allocations.find((a) => a.userId === m.id)?.amount ?? 0 }))} />
           )}
         </div>
+      </section>
+
+      <section className="card blueprint gap-3" style={{ padding: 24 }}>
+        <div className="card-kicker">Repositorio de propuestas</div>
+        <p className="m-0 text-[13px] text-neutral-700 max-w-[68ch]">Si esta propuesta puede ayudar a otros presidentes sin ideas, compártela. La copia del repositorio no se actualiza sola: si cambias el título, la lección o las opciones, vuelve a pulsar «Guardar y compartir».{shared ? " Ahora mismo está compartida." : ""}</p>
+        <ShareProposalForm
+          portfolioId={p.id}
+          familyName={admin.family.name}
+          initial={{ shared: Boolean(shared), signed: shared?.signed ?? true, theme: shared?.theme ?? "", risk: shared?.risk ?? 0 }}
+          snapshot={{ title: p.title, lesson: p.lesson, minChoices: p.minChoices, maxChoices: p.maxChoices, options: p.options.map((o) => ({ symbol: o.symbol, name: o.name, kind: o.kind, note: o.note })) }}
+        />
       </section>
 
       <section className="flex flex-col gap-3">

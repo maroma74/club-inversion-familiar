@@ -18,6 +18,7 @@ model Family {
   users            User[]
   invitations      Invitation[]
   manualPrices     ManualPrice[]
+  proposals        Proposal[]
 }
 
 model User {
@@ -256,6 +257,44 @@ model JournalEntry {
 }
 
 /// Cartera mensual: el presidente decide cuánto recibe cada miembro y entre qué valores pueden elegir; los miembros investigan, argumentan y deciden.
+/// Repositorio de propuestas de cartera: plantillas con texto neutro (sin meses ni periodos) que cualquier presidente
+/// puede usar para crear la cartera de un mes. Las hay del club (semilla, source CLUB) y compartidas por presidentes
+/// (source FAMILY), firmadas con el nombre de su familia o anónimas.
+model Proposal {
+  id                String           @id @default(cuid())
+  slug              String?          @unique // identificador estable de las propuestas del club
+  source            String // CLUB | FAMILY
+  familyId          String? // familia autora; nunca se expone si la propuesta es anónima
+  family            Family?          @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  signed            Boolean          @default(false) // true: se muestra «Familia X»; false: anónima
+  sourcePortfolioId String?          @unique // cartera de la que se copió (solo FAMILY): permite actualizar o retirar
+  title             String
+  theme             String // categoría (Núcleo global, Dividendos, Tecnología…)
+  risk              Int // 1 (bajo) a 5 (muy alto)
+  lesson            String // texto de la lección, en neutro
+  minChoices        Int              @default(1)
+  maxChoices        Int              @default(1)
+  uses              Int              @default(0) // veces que se ha usado para crear una cartera
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  options           ProposalOption[]
+
+  @@index([source, theme])
+}
+
+model ProposalOption {
+  id         String   @id @default(cuid())
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  symbol     String
+  name       String
+  kind       String   @default("STOCK") // STOCK | ETF | CRYPTO | COMMODITY
+  note       String? // qué investigar
+  order      Int      @default(0)
+
+  @@unique([proposalId, symbol])
+}
+
 model MonthlyPortfolio {
   id          String   @id @default(cuid())
   familyId    String

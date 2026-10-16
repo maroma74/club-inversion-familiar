@@ -23,7 +23,10 @@ export default async function GestionPage() {
           <h1 className="mt-1 mb-1">Carteras mensuales</h1>
           <p className="m-0 text-neutral-700 max-w-[64ch] [text-wrap:pretty]">Cada mes decides cuánto recibe cada miembro, entre qué valores pueden elegir y cuántos, y escribes la lección que acompaña a la propuesta. Al publicar, se reparte la paga y los miembros pueden investigar, argumentar y decidir.</p>
         </div>
-        <Link href="/cartera" className="btn-secondary">Ver como miembro</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/cartera/repositorio" className="btn-primary">Repositorio de propuestas</Link>
+          <Link href="/cartera" className="btn-secondary">Ver como miembro</Link>
+        </div>
       </header>
 
       <section className="flex flex-col gap-2.5">
@@ -52,6 +55,7 @@ export default async function GestionPage() {
 
       <section className="card blueprint gap-3" style={{ padding: 24 }}>
         <div className="card-kicker">Nueva cartera</div>
+        <p className="m-0 text-[13px] text-neutral-700">¿Sin ideas? <Link href="/cartera/repositorio" className="text-accent-700 underline">Elige una propuesta del repositorio</Link>: ya trae lección y opciones, y puedes adaptarla.</p>
         <p className="m-0 text-[13px] text-neutral-700">Se crea como borrador con el importe por defecto ({admin.family.monthlyAllowance.toFixed(2)} €) para cada miembro; después añades las opciones y ajustas los importes antes de publicar.</p>
         <PortfolioDetailsForm initial={{ month, title: "", lesson: "", minChoices: 1, maxChoices: 1, deadline: "" }} />
       </section>
