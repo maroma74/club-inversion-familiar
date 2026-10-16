@@ -28,10 +28,17 @@ export function TradeForm({ holdings, initialSymbol }: { holdings: { symbol: str
   const [name, setName] = useState("");
   const [hits, setHits] = useState<Hit[]>([]);
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
+  const [sellSymbol, setSellSymbol] = useState("");
+  const [qty, setQty] = useState("");
   const [currency, setCurrency] = useState("EUR");
   const [price, setPrice] = useState("");
   const [quoteNote, setQuoteNote] = useState("");
   const today = new Date().toISOString().slice(0, 10);
+  const held = holdings.find((h) => h.symbol === sellSymbol);
+  const qtyN = Number(qty.replace(",", "."));
+  const priceN = Number(price.replace(",", "."));
+  const total = Number.isFinite(qtyN) && Number.isFinite(priceN) && qtyN > 0 && priceN > 0 ? qtyN * priceN : null;
+  const overHeld = side === "SELL" && !!held && Number.isFinite(qtyN) && qtyN > held.quantity + 1e-9;
 
   /** Al elegir un activo, consulta su cotización para fijar la divisa y sugerir el precio actual. */
   async function loadQuote(sym: string) {
@@ -77,26 +84,27 @@ export function TradeForm({ holdings, initialSymbol }: { holdings: { symbol: str
   return (
     <form action={action} className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
-        <button type="button" onClick={() => setSide("BUY")} className={side === "BUY" ? "btn-primary" : "btn-secondary"}>Comprar</button>
-        <button type="button" onClick={() => setSide("SELL")} className={side === "SELL" ? "btn-primary" : "btn-secondary"}>Vender</button>
+        <button type="button" aria-pressed={side === "BUY"} onClick={() => setSide("BUY")} className={side === "BUY" ? "btn-primary" : "btn-secondary"}>Comprar</button>
+        <button type="button" aria-pressed={side === "SELL"} onClick={() => setSide("SELL")} className={side === "SELL" ? "btn-primary" : "btn-secondary"}>Vender</button>
       </div>
       <input type="hidden" name="side" value={side} />
       <input type="hidden" name="name" value={name} />
 
       {side === "SELL" && holdings.length > 0 ? (
         <div>
-          <label className="label">Activo</label>
-          <select name="symbol" className="input" required defaultValue="">
+          <label className="label" htmlFor="op-activo">Activo</label>
+          <select id="op-activo" name="symbol" className="input" required value={sellSymbol} onChange={(e) => setSellSymbol(e.target.value)}>
             <option value="" disabled>Elige una posición</option>
             {holdings.map((h) => (
-              <option key={h.symbol} value={h.symbol}>{h.symbol} · {h.name} ({h.quantity} uds.)</option>
+              <option key={h.symbol} value={h.symbol}>{h.symbol} · {h.name} ({h.quantity.toLocaleString("es-ES", { maximumFractionDigits: 6 })} uds.)</option>
             ))}
           </select>
         </div>
       ) : (
         <div className="relative">
-          <label className="label">Activo (símbolo o nombre)</label>
+          <label className="label" htmlFor="op-simbolo">Activo (símbolo o nombre)</label>
           <input
+            id="op-simbolo"
             name="symbol"
             className="input uppercase"
             required
@@ -139,12 +147,12 @@ export function TradeForm({ holdings, initialSymbol }: { holdings: { symbol: str
 
       <div className="grid grid-cols-[1fr_1fr_auto_1fr] gap-2">
         <div>
-          <label className="label">Cantidad</label>
-          <input name="quantity" type="number" step="any" min="0" required className="input" />
+          <label className="label" htmlFor="op-cantidad">Cantidad</label>
+          <input id="op-cantidad" name="quantity" type="number" step="any" min="0" max={side === "SELL" && held ? held.quantity : undefined} required className="input" value={qty} onChange={(e) => setQty(e.target.value)} aria-describedby={side === "SELL" && held ? "op-cantidad-ayuda" : undefined} />
         </div>
         <div>
-          <label className="label">Precio ({SYMBOLS[currency]})</label>
-          <input name="price" type="number" step="any" min="0" required className="input" value={price} onChange={(e) => setPrice(e.target.value)} />
+          <label className="label" htmlFor="op-precio">Precio ({SYMBOLS[currency]})</label>
+          <input id="op-precio" name="price" type="number" step="any" min="0" required className="input" value={price} onChange={(e) => setPrice(e.target.value)} />
         </div>
         <div>
           <label className="label">Divisa</label>
@@ -159,8 +167,20 @@ export function TradeForm({ holdings, initialSymbol }: { holdings: { symbol: str
           <input name="fees" type="number" step="any" min="0" defaultValue={0} className="input" />
         </div>
       </div>
-      {quoteNote && <p className="text-xs text-slate-500">{quoteNote}</p>}
-      {currency !== "EUR" && <p className="text-xs text-slate-500">El precio en {currency} se convierte a euros con el tipo de cambio del día de la operación.</p>}
+      {side === "SELL" && held && (
+        <p id="op-cantidad-ayuda" className="m-0 text-sm text-neutral-700 flex flex-wrap items-center gap-2">
+          Tienes {held.quantity.toLocaleString("es-ES", { maximumFractionDigits: 6 })} uds. de {held.symbol}.
+          <button type="button" className="btn-ghost" onClick={() => setQty(String(held.quantity))}>Vender todo</button>
+          {overHeld && <span className="tag tag-gold">Más de lo que tienes</span>}
+        </p>
+      )}
+      {total !== null && (
+        <p className="m-0 text-sm" aria-live="polite">
+          {side === "BUY" ? "Pondrás" : "Recibirás"} unos <b className="tabular-nums">{total.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {SYMBOLS[currency]}</b> (cantidad × precio, sin comisión).
+        </p>
+      )}
+      {quoteNote && <p className="text-sm text-neutral-700">{quoteNote}</p>}
+      {currency !== "EUR" && <p className="text-sm text-neutral-700">El precio en {currency} se convierte a euros con el tipo de cambio del día de la operación.</p>}
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="label">Fecha</label>
@@ -172,9 +192,14 @@ export function TradeForm({ holdings, initialSymbol }: { holdings: { symbol: str
           <BrokerOptions />
         </div>
       </div>
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
-      {state?.ok && <p className="text-sm text-green-600">{state.ok}</p>}
-      <button className="btn-primary w-full" disabled={pending}>{pending ? "Guardando…" : side === "BUY" ? "Registrar compra" : "Registrar venta"}</button>
+      {state?.error && <p role="alert" className="m-0 text-base font-medium p-3 border border-divider rounded-[10px]" style={{ background: "var(--color-amber-100)", color: "var(--color-amber-700)" }}>{state.error}</p>}
+      {state?.ok && (
+        <p role="status" className="m-0 text-sm text-accent-700">
+          {state.ok}.{" "}
+          {side === "BUY" && <>Te queda pendiente contar por qué la hiciste: <a href="/inicio">escríbelo en tu diario</a>.</>}
+        </p>
+      )}
+      <button className="btn-primary w-full" disabled={pending || overHeld}>{pending ? "Guardando…" : side === "BUY" ? "Registrar compra" : "Registrar venta"}</button>
     </form>
   );
 }
@@ -184,8 +209,8 @@ export function ReconcileForm() {
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
       <button className="btn-secondary py-1 text-xs" disabled={pending}>{pending ? "Recalculando…" : "Recalcular aportaciones propias"}</button>
-      {state?.ok && <span className="text-xs text-green-600">{state.ok}</span>}
-      {state?.error && <span className="text-xs text-red-600">{state.error}</span>}
+      {state?.ok && <span role="status" className="text-sm text-accent-700">{state.ok}</span>}
+      {state?.error && <span role="alert" className="text-sm font-medium">{state.error}</span>}
     </form>
   );
 }
@@ -203,8 +228,8 @@ export function ManualPriceForm() {
         <input name="price" type="number" step="any" min="0" className="input" required />
       </div>
       <button className="btn-secondary" disabled={pending}>Fijar</button>
-      {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
-      {state?.ok && <p className="text-xs text-green-600">{state.ok}</p>}
+      {state?.error && <p role="alert" className="m-0 text-sm font-medium">{state.error}</p>}
+      {state?.ok && <p role="status" className="m-0 text-sm text-accent-700">{state.ok}</p>}
     </form>
   );
 }

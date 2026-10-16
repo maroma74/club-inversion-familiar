@@ -167,7 +167,8 @@ Paleta navy sobrio con esmeralda de acción y ámbar de logros; neutros fríos a
 - **Body** (400, 15px, 1.55): texto general; 16px en lecciones (`.md`) con ancho cómodo.
 - **Compact** (400–500, 14px) y **Caption** (400, 12px): datos secundarios y notas; no usar 13px.
 - **Label** (600, 11px, 0.1em, mayúsculas): kickers y cabeceras de tabla.
-- **Figure** (700, JetBrains Mono, `clamp(24px, 8vw, 36px)`): grandes cifras de rentabilidad.
+- **Figure** (700, JetBrains Mono, `clamp(24px, 8vw, 36px)`): grandes cifras de rentabilidad. Pasos usados en la Liga: **40px** (rentabilidad de cada miembro) y **26px** (estadísticas y KPIs).
+- **Números con signo:** porcentajes e importes con coma decimal y menos verdadero (U+2212): «+12,34 %», «−3,10 %». El signo, no solo el color, indica ganancia o pérdida.
 
 ### Named Rules
 **The Mono Numbers Rule.** Todo importe, porcentaje y cotización va en JetBrains Mono con `tabular-nums`, alineado a la derecha en tablas.

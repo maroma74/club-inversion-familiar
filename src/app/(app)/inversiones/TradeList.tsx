@@ -33,6 +33,7 @@ function amounts(t: TradeRow, usdPerEur: number | null) {
 
 export function TradeList({ trades, usdPerEur = null }: { trades: TradeRow[]; usdPerEur?: number | null }) {
   const [editing, setEditing] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
   if (trades.length === 0) return <p className="text-sm text-slate-500">Aún no has registrado ninguna operación.</p>;
   return (
     <div className="overflow-x-auto"><table className="w-full text-sm">
@@ -57,7 +58,7 @@ export function TradeList({ trades, usdPerEur = null }: { trades: TradeRow[]; us
             <tr key={t.id} className="border-t border-slate-100">
               <td className="py-1.5 text-slate-500 whitespace-nowrap">{fmtDate(t.date)}</td>
               <td className="py-1.5">
-                <span className={`badge ${t.side === "BUY" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{t.side === "BUY" ? "Compra" : "Venta"}</span> <b>{t.symbol}</b>
+                <span className="tag tag-neutral">{t.side === "BUY" ? "Compra" : "Venta"}</span> <b>{t.symbol}</b>
                 <div className="text-xs text-slate-400">{t.broker ?? "Entidad sin indicar"}</div>
               </td>
               <td className="py-1.5 text-right tabular-nums whitespace-nowrap">
@@ -70,18 +71,28 @@ export function TradeList({ trades, usdPerEur = null }: { trades: TradeRow[]; us
                   const { totalEur, totalUsd } = amounts(t, usdPerEur);
                   return (
                     <>
-                      <div className={`font-medium ${t.side === "BUY" ? "text-red-600" : "text-green-600"}`}>{t.side === "BUY" ? "−" : "+"}{eur(totalEur)}</div>
+                      <div className="font-medium"><span className="sr-only">{t.side === "BUY" ? "Sale " : "Entra "}</span>{t.side === "BUY" ? "−" : "+"}{eur(totalEur)}</div>
                       <div className="text-xs text-slate-500">{totalUsd === null ? "— $" : usd(totalUsd)}{t.currency !== "USD" && usdPerEur !== null ? <span className="text-slate-400" title="Convertido al cambio EUR/USD actual"> (aprox.)</span> : null}</div>
                     </>
                   );
                 })()}
               </td>
-              <td className="py-1.5 text-right whitespace-nowrap">
-                <button type="button" onClick={() => setEditing(t.id)} className="text-xs text-indigo-600 hover:underline mr-3">Editar</button>
-                <form action={deleteTradeAction} className="inline">
-                  <input type="hidden" name="id" value={t.id} />
-                  <button className="text-xs text-slate-400 hover:text-red-600">Borrar</button>
-                </form>
+              <td className="py-1.5 text-right">
+                {confirming === t.id ? (
+                  <form action={deleteTradeAction} className="flex flex-col items-end gap-1.5 max-w-[220px] ml-auto" role="alertdialog" aria-label="Confirmar borrado">
+                    <input type="hidden" name="id" value={t.id} />
+                    <p className="m-0 text-sm text-right [text-wrap:pretty]">¿Borrar esta {t.side === "BUY" ? "compra" : "venta"} de {t.symbol}? Se recalculará tu rentabilidad y no se puede deshacer.</p>
+                    <div className="flex gap-2">
+                      <button type="button" className="btn-secondary" onClick={() => setConfirming(null)} autoFocus>No, conservarla</button>
+                      <button className="btn-primary">Sí, borrar</button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="flex justify-end gap-1 whitespace-nowrap">
+                    <button type="button" onClick={() => setEditing(t.id)} className="btn-ghost" style={{ minHeight: 36 }}>Editar</button>
+                    <button type="button" onClick={() => setConfirming(t.id)} className="btn-ghost" style={{ minHeight: 36 }} aria-label={`Borrar ${t.side === "BUY" ? "compra" : "venta"} de ${t.symbol}`}>Borrar</button>
+                  </div>
+                )}
               </td>
             </tr>
           ),
@@ -139,8 +150,8 @@ function EditTradeForm({ trade, onDone }: { trade: TradeRow; onDone: () => void 
           <BrokerOptions />
         </div>
       </div>
-      {state?.error && <p className="text-xs text-red-600">{state.error}</p>}
-      {state?.ok && <p className="text-xs text-green-600">{state.ok}</p>}
+      {state?.error && <p role="alert" className="m-0 text-sm font-medium">{state.error}</p>}
+      {state?.ok && <p role="status" className="m-0 text-sm text-accent-700">{state.ok}</p>}
       <div className="flex gap-2 justify-end">
         <button type="button" onClick={onDone} className="btn-secondary py-1 text-xs">{state?.ok ? "Cerrar" : "Cancelar"}</button>
         <button className="btn-primary py-1 text-xs" disabled={pending}>{pending ? "Guardando…" : "Guardar cambios"}</button>

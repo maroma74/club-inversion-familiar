@@ -4,10 +4,16 @@ export const eur = (n: number, digits = 2) =>
     currency: "EUR",
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
-  }).format(n);
+  })
+    .format(n)
+    .replace("-", "−"); // menos verdadero, igual que en los porcentajes
 
-export const pct = (n: number, digits = 1) =>
-  `${n >= 0 ? "+" : ""}${(n * 100).toFixed(digits)} %`;
+/** Porcentaje con signo, coma decimal y menos verdadero: «+12,34 %», «−3,10 %», «0,0 %». */
+export const pct = (n: number, digits = 1) => {
+  const rounded = Math.round(n * 100 * 10 ** digits) / 10 ** digits;
+  const sign = rounded > 0 ? "+" : rounded < 0 ? "−" : "";
+  return `${sign}${Math.abs(rounded).toLocaleString("es-ES", { minimumFractionDigits: digits, maximumFractionDigits: digits })} %`;
+};
 
 export const fmtDate = (d: Date | string) =>
   new Intl.DateTimeFormat("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" }).format(

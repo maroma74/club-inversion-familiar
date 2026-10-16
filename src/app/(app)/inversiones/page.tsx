@@ -32,13 +32,13 @@ export default async function InversionesPage() {
     <div className="flex flex-col gap-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="card-kicker text-[11px] capitalize">{monthLabel}{stale ? " · algunas cotizaciones sin actualizar" : ""}</div>
+          <div className="card-kicker flex flex-wrap items-center gap-2"><span>{monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}</span>{stale && <span className="tag tag-gold">Algunas cotizaciones sin actualizar</span>}</div>
           <h1 className="mt-1 mb-1">Liga de inversión familiar</h1>
-          <p className="m-0 text-neutral-700 max-w-[62ch] [text-wrap:pretty]">Paga mensual: {eur(user.family.monthlyAllowance)} por persona. Gana quien consiga mayor rentabilidad sobre lo aportado.</p>
+          <p className="m-0 text-neutral-700 max-w-[62ch] [text-wrap:pretty]">Paga mensual: {eur(user.family.monthlyAllowance)} por persona. La liga compara la rentabilidad sobre lo aportado: sirve para aprender, así que lo importante es poder explicar tus decisiones.</p>
         </div>
         <div className="flex items-center gap-3">
-          <AutoRefresh />
-          <Link href="/operaciones#operar" className="btn-primary blueprint">+ Operar</Link>
+          <AutoRefresh renderedAt={new Date().getTime()} />
+          <Link href="/operaciones#operar" className="btn-primary">+ Operar</Link>
         </div>
       </header>
 
@@ -46,17 +46,20 @@ export default async function InversionesPage() {
         {ranking.map((r, i) => {
           const p = progress.get(r.userId);
           return (
-            <div key={r.userId} className="card blueprint gap-1.5" style={{ padding: 18, borderColor: r.userId === user.id ? "var(--color-accent)" : "var(--color-divider)" }}>
-              <div className="flex justify-between items-baseline">
-                <div className="font-heading text-[20px] flex items-center gap-2"><span className="medal">{i + 1}</span><Avatar id={r.userId} name={r.userName} updatedAt={r.avatarUpdatedAt} size={32} />{r.userName}</div>
-                {i === 0 && r.contributed > 0 && <span className="tag tag-gold">Líder</span>}
+            <div key={r.userId} className="card card-snug gap-1.5" style={{ borderColor: r.userId === user.id ? "var(--color-accent)" : "var(--color-divider)" }}>
+              <div className="flex justify-between items-baseline gap-2">
+                <div className="font-heading text-xl flex items-center gap-2 min-w-0"><span className="tag tag-neutral shrink-0">{i + 1}.º</span><Avatar id={r.userId} name={r.userName} updatedAt={r.avatarUpdatedAt} size={32} /><span className="truncate">{r.userName}</span></div>
+                {i === 0 && r.contributed > 0 && <span className="tag tag-gold shrink-0">Líder</span>}
               </div>
               <div className="figure text-[40px]" style={{ color: tone(r.pnl) }}>{pct(r.returnPct, 2)}</div>
               <div className="text-xs text-neutral-700 leading-[1.5]">
                 Valor {eur(r.totalValue)} · aportado {eur(r.contributed)}
                 <br />
-                Ganancia {eur(r.pnl)} · efectivo {eur(r.cash)}
+                {r.pnl >= 0 ? "Ganancia" : "Pérdida"} {eur(Math.abs(r.pnl))} · efectivo {eur(r.cash)}
               </div>
+              {r.userId === user.id && r.pnl < 0 && (
+                <div className="text-sm text-neutral-700 [text-wrap:pretty]">Ahora vale menos de lo que aportaste. Es normal mientras se aprende: lo que cuenta es entender por qué.</div>
+              )}
               {p && (
                 <div className="border-t border-divider mt-1.5 pt-2 text-xs">
                   <div className="flex justify-between"><span className="font-medium">Nivel {p.level} · {p.levelName}</span><span className="text-neutral-700">{p.points} pts</span></div>
@@ -77,7 +80,7 @@ export default async function InversionesPage() {
               <div key={s.id}>
                 <div className="text-[11px] tracking-[0.08em] uppercase text-neutral-700">{s.label}</div>
                 <div className="figure text-[26px] mt-0.5" style={{ color: s.tone === "good" ? "var(--color-accent-700)" : "var(--color-text)" }}>{s.value}</div>
-                <div className="text-[14px] font-medium">{s.who}</div>
+                <div className="text-sm font-medium">{s.who}</div>
                 {s.detail && <div className="text-xs text-neutral-700">{s.detail}</div>}
               </div>
             ))}
@@ -86,7 +89,7 @@ export default async function InversionesPage() {
       )}
 
       <section className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))" }}>
-        <div className="card blueprint gap-2 min-w-0 md:[grid-column:span_2]" style={{ padding: 20 }}>
+        <div className="card gap-2 min-w-0 md:[grid-column:span_2]">
           <h4 className="m-0">Evolución de la rentabilidad</h4>
           {history.length < 2 ? (
             <p className="m-0 text-sm text-neutral-700">Se guarda una foto de cada cartera cada vez que alguien abre la liga. Vuelve en unos días para ver la evolución.</p>
@@ -94,14 +97,14 @@ export default async function InversionesPage() {
             <LeagueChart data={history} members={members} />
           )}
         </div>
-        <div className="card blueprint gap-2.5 min-w-0" style={{ padding: 20 }}>
+        <div className="card gap-2.5 min-w-0">
           <h4 className="m-0">Noticias de vuestros valores</h4>
           {news.length === 0 ? (
             <p className="m-0 text-sm text-neutral-700">No hay noticias disponibles ahora mismo.</p>
           ) : (
             news.map((n) => (
               <div key={n.id} className="pt-2 border-t border-divider">
-                <a href={safeHref(n.link)} target="_blank" rel="noopener noreferrer" className="text-ink no-underline font-medium text-[14px] leading-[1.35] block hover:text-accent-700">{n.title}</a>
+                <a href={safeHref(n.link)} target="_blank" rel="noopener noreferrer" className="text-ink no-underline font-medium text-sm leading-[1.35] block hover:text-accent-700">{n.title}<span className="sr-only"> (se abre en otra pestaña)</span></a>
                 <div className="text-xs text-neutral-700 mt-0.5">{n.publisher} · {timeAgo(n.publishedAt)} · {n.symbols.join(", ")}</div>
               </div>
             ))
@@ -113,13 +116,13 @@ export default async function InversionesPage() {
         <section className="flex flex-col gap-3">
           <div className="flex justify-between items-baseline gap-3 flex-wrap">
             <h3 className="m-0">Tus logros</h3>
-            <span className="text-[13px] text-neutral-700">{me.badgesEarned} de {me.badges.length} · Nivel {me.level} {me.levelName} · {me.nextLevelAt ? `siguiente nivel a ${me.nextLevelAt} pts` : "nivel máximo"}</span>
+            <span className="text-sm text-neutral-700">{me.badgesEarned} de {me.badges.length} · Nivel {me.level} {me.levelName} · {me.nextLevelAt ? `siguiente nivel a ${me.nextLevelAt} pts` : "nivel máximo"}</span>
           </div>
           <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 180px), 1fr))" }}>
             {me.badges.map((b) => (
-              <div key={b.id} style={{ border: `1px solid ${b.earned ? "var(--color-accent-400)" : "var(--color-divider)"}`, padding: "10px 12px", opacity: b.earned ? 1 : 0.55 }}>
-                <div className="text-[10px] tracking-[0.1em] uppercase" style={{ color: b.earned ? "var(--color-accent-700)" : "var(--color-neutral-600)" }}>{b.earned ? "Conseguido" : "Pendiente"}</div>
-                <div className="font-heading text-[17px]">{b.label}</div>
+              <div key={b.id} className="card card-snug gap-1" style={{ borderColor: b.earned ? "var(--color-accent-400)" : "var(--color-divider)" }}>
+                <div className="text-[11px] tracking-[0.1em] uppercase" style={{ color: b.earned ? "var(--color-accent-700)" : "var(--color-neutral-700)" }}>{b.earned ? "Conseguido" : "Pendiente"}</div>
+                <div className="font-heading text-lg">{b.label}</div>
                 <div className="text-xs text-neutral-700 leading-[1.35]">{b.detail}</div>
               </div>
             ))}
@@ -129,7 +132,7 @@ export default async function InversionesPage() {
 
       <section className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))" }}>
         {ranking.map((r) => (
-          <div key={r.userId} className="card blueprint gap-2" style={{ padding: 20 }}>
+          <div key={r.userId} className="card gap-2">
             <div className="flex items-baseline justify-between gap-2">
               <h4 className="m-0">Cartera de {r.userName}</h4>
               <span className="text-xs text-neutral-700">{r.trades} operaciones · realizado {eur(r.realized)}</span>
@@ -137,7 +140,23 @@ export default async function InversionesPage() {
             {r.holdings.length === 0 ? (
               <p className="m-0 text-sm text-neutral-700">Sin posiciones abiertas. Efectivo disponible: {eur(r.cash)}.</p>
             ) : (
-              <div className="overflow-x-auto"><table className="table">
+              <>
+              <ul className="sm:hidden m-0 p-0 list-none flex flex-col">
+                {r.holdings.map((h) => (
+                  <li key={h.symbol} className="flex items-center justify-between gap-3 py-2 border-t border-divider first:border-t-0">
+                    <div className="min-w-0">
+                      <div className="font-medium"><Link href={analysisPath(h.symbol)} className="text-ink">{h.symbol}</Link></div>
+                      <div className="text-xs text-neutral-700 truncate">{h.name}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="tabular-nums font-medium" style={{ color: tone(h.pnl) }}>{pct(h.pnlPct)}</div>
+                      <div className="text-xs text-neutral-700 tabular-nums">{eur(h.value)}</div>
+                    </div>
+                  </li>
+                ))}
+                <li className="flex justify-between py-2 border-t border-divider text-sm text-neutral-700"><span>Efectivo</span><span className="tabular-nums">{eur(r.cash)}</span></li>
+              </ul>
+              <div className="hidden sm:block overflow-x-auto"><table className="table">
                 <thead><tr><th>Activo</th><th className="text-right">Uds.</th><th className="text-right">Precio</th><th className="text-right">Valor</th><th className="text-right">Rent.</th></tr></thead>
                 <tbody>
                   {r.holdings.map((h) => (
@@ -155,6 +174,7 @@ export default async function InversionesPage() {
                   <tr className="text-xs text-neutral-700"><td colSpan={3}>Efectivo</td><td className="text-right tabular-nums">{eur(r.cash)}</td><td /></tr>
                 </tbody>
               </table></div>
+              </>
             )}
           </div>
         ))}

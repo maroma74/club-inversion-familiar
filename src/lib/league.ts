@@ -71,13 +71,9 @@ export function leagueStats(ranking: PortfolioSummary[], history: HistoryRow[]):
     tone: totalPnl >= 0 ? "good" : "bad",
   });
 
-  // Mejor y peor cartera por rentabilidad
+  // Mejor cartera por rentabilidad (no se señala a quien va último)
   const best = active[0];
   stats.push({ id: "best-portfolio", icon: "🏆", label: "Mejor cartera", value: pct(best.returnPct, 2), who: best.userName, detail: `Ganancia ${eur(best.pnl)} sobre ${eur(best.contributed)}`, tone: best.pnl >= 0 ? "good" : "bad" });
-  if (active.length > 1) {
-    const worst = active[active.length - 1];
-    stats.push({ id: "worst-portfolio", icon: "🐢", label: "Farolillo rojo", value: pct(worst.returnPct, 2), who: worst.userName, detail: `Ganancia ${eur(worst.pnl)} sobre ${eur(worst.contributed)}`, tone: worst.pnl >= 0 ? "good" : "bad" });
-  }
 
   // Mayor ganancia en euros
   const richest = [...active].sort((a, b) => b.pnl - a.pnl)[0];
