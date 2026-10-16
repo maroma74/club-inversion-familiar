@@ -7,6 +7,7 @@ import { requireAdmin, requireUser } from "@/lib/auth";
 import { firstName } from "@/lib/names";
 import { computePortfolio, OWN_CONTRIBUTION_PREFIX, reconcileOwnContributions } from "@/lib/portfolio";
 import { fetchQuote, fxToEurAt, setManualPrice, SUPPORTED_CURRENCIES } from "@/lib/prices";
+import { eur } from "@/lib/format";
 import { dateSchema, MAX_PRICE, MAX_QUANTITY, num, parseMoney, parsePastDay, shortText, symbolSchema } from "@/lib/validation";
 import type { FormState } from "./auth";
 
@@ -72,8 +73,8 @@ async function saveTrade(formData: FormData, tradeId?: string): Promise<FormStat
   const { created } = await reconcileOwnContributions(user.id);
   const mine = created.find((c) => c.symbol === saved.symbol && c.date.getTime() === saved.date.getTime());
   revalidatePaths();
-  const fxNote = d.currency === "EUR" ? "" : ` (${d.price} ${d.currency} = ${(d.price * fxRate).toFixed(2)} €, cambio ${fxRate.toFixed(4)})`;
-  const shortNote = mine ? `. Faltaban ${mine.amount.toFixed(2)} € de efectivo: se han añadido como aportación propia` : "";
+  const fxNote = d.currency === "EUR" ? "" : ` (${d.price} ${d.currency} = ${eur(d.price * fxRate)}, cambio ${fxRate.toFixed(4)})`;
+  const shortNote = mine ? `. Faltaban ${eur(mine.amount)} de efectivo: se han añadido como aportación propia` : "";
   return { ok: `${d.side === "BUY" ? "Compra" : "Venta"} de ${d.quantity} × ${d.symbol} ${tradeId ? "actualizada" : "registrada"}${fxNote}${shortNote}` };
 }
 
@@ -87,7 +88,7 @@ export async function reconcileAction(): Promise<FormState> {
   const r = await reconcileOwnContributions(user.id);
   revalidatePaths();
   const total = r.created.reduce((a, c) => a + c.amount, 0);
-  return { ok: `Aportaciones propias recalculadas: ${r.created.length} anotaciones por ${total.toFixed(2)} € en total (antes había ${r.removed}).` };
+  return { ok: `Aportaciones propias recalculadas: ${r.created.length} anotaciones por ${eur(total)} en total (antes había ${r.removed}).` };
 }
 
 export async function addTradeAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -145,7 +146,7 @@ export async function setManualPriceAction(_prev: FormState, formData: FormData)
   const known = await prisma.trade.findFirst({ where: { symbol, user: { familyId: admin.familyId } }, select: { name: true } });
   await setManualPrice(admin.familyId, symbol, known?.name ?? symbol, price);
   revalidatePaths();
-  return { ok: `Precio de ${symbol} fijado en ${price.toFixed(2)} € para tu familia` };
+  return { ok: `Precio de ${symbol} fijado en ${eur(price)} para tu familia` };
 }
 
 // ---- Acciones de administrador (aportaciones) ----
@@ -156,7 +157,7 @@ export async function setAllowanceAction(_prev: FormState, formData: FormData): 
   if (amount === null) return { error: "Importe no válido (entre 0 y 1.000.000 €)" };
   await prisma.family.update({ where: { id: admin.familyId }, data: { monthlyAllowance: amount } });
   revalidatePath("/familia");
-  return { ok: `Paga mensual fijada en ${amount.toFixed(2)} €` };
+  return { ok: `Paga mensual fijada en ${eur(amount)}` };
 }
 
 /** Registra la paga del mes a todos los miembros activos que todavía no la tengan. */
@@ -165,6 +166,8 @@ export async function payMonthlyAllowanceAction(_prev: FormState, formData: Form
   const ym = String(formData.get("month") ?? "");
   const m = ym.match(/^(\d{4})-(\d{2})$/);
   if (!m || +m[2] < 1 || +m[2] > 12 || +m[1] < 2000 || +m[1] > 2100) return { error: "Mes no válido" };
+  const now = new Date();
+  if (ym > `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`) return { error: "No se puede repartir la paga de un mes que todavía no ha empezado" };
   const date = new Date(+m[1], +m[2] - 1, 1, 12);
   const end = new Date(+m[1], +m[2], 1);
   const family = await prisma.family.findUniqueOrThrow({ where: { id: admin.familyId }, include: { users: { where: { status: "ACTIVE" }, select: { id: true } } } });
@@ -186,7 +189,7 @@ export async function payMonthlyAllowanceAction(_prev: FormState, formData: Form
   if (created < 0) return { error: "No se pudo registrar la paga en este momento. Vuelve a intentarlo." };
   revalidatePath("/familia");
   revalidatePath("/inversiones");
-  return created ? { ok: `Paga de ${family.monthlyAllowance.toFixed(2)} € registrada a ${created} miembro(s) para ${ym}` } : { error: `Todos los miembros ya tienen la paga de ${ym}` };
+  return created ? { ok: `Paga de ${eur(family.monthlyAllowance)} registrada a ${created} ${created === 1 ? "miembro" : "miembros"} para ${ym}` } : { error: `Todos los miembros ya tienen la paga de ${ym}` };
 }
 
 export async function addContributionAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -199,7 +202,7 @@ export async function addContributionAction(_prev: FormState, formData: FormData
   await prisma.contribution.create({ data: { userId, amount: f.amount, date: f.date, note: f.note } });
   await reconcileOwnContributions(userId);
   revalidatePaths();
-  return { ok: `Aportación de ${f.amount.toFixed(2)} € registrada a ${firstName(member.name)}` };
+  return { ok: `Aportación de ${eur(f.amount)} registrada a ${firstName(member.name)}` };
 }
 
 export async function deleteContributionAction(formData: FormData) {
