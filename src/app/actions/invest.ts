@@ -7,6 +7,7 @@ import { requireAdmin, requireUser } from "@/lib/auth";
 import { firstName } from "@/lib/names";
 import { computePortfolio, OWN_CONTRIBUTION_PREFIX, reconcileOwnContributions } from "@/lib/portfolio";
 import { fetchQuote, fxToEurAt, setManualPrice, SUPPORTED_CURRENCIES } from "@/lib/prices";
+import { allowanceNote, allowanceWhere } from "@/lib/allowance";
 import { eur } from "@/lib/format";
 import { dateSchema, MAX_PRICE, MAX_QUANTITY, num, parseMoney, parsePastDay, shortText, symbolSchema } from "@/lib/validation";
 import type { FormState } from "./auth";
@@ -171,13 +172,14 @@ export async function payMonthlyAllowanceAction(_prev: FormState, formData: Form
   const date = new Date(+m[1], +m[2] - 1, 1, 12);
   const end = new Date(+m[1], +m[2], 1);
   const family = await prisma.family.findUniqueOrThrow({ where: { id: admin.familyId }, include: { users: { where: { status: "ACTIVE" }, select: { id: true } } } });
-  const note = `Paga mensual ${ym}`;
+  const note = allowanceNote(ym);
   // Transacción serializable: dos pulsaciones a la vez no pueden registrar la paga dos veces.
   const created = await prisma.$transaction(
     async (tx) => {
       let n = 0;
       for (const u of family.users) {
-        const already = await tx.contribution.findFirst({ where: { userId: u.id, note, date: { gte: date, lt: end } } });
+        // «Ya tiene la paga» incluye la que llegó al publicar una cartera del mes (nota «Paga mensual AAAA-MM · título»).
+        const already = await tx.contribution.findFirst({ where: { userId: u.id, date: { gte: date, lt: end }, ...allowanceWhere(ym) } });
         if (already) continue;
         await tx.contribution.create({ data: { userId: u.id, date, amount: family.monthlyAllowance, note } });
         n++;

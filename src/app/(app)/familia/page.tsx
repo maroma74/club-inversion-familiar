@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { Avatar } from "@/components/Avatar";
 import { firstName } from "@/lib/names";
 import { familyOverview } from "@/lib/league";
+import { allowanceWhere } from "@/lib/allowance";
 import { eur, ymOf } from "@/lib/format";
 import { CopyButton } from "@/components/CopyButton";
 import { AllowanceForm, ContributionForm, PayAllowanceForm } from "./forms";
@@ -19,7 +20,8 @@ export default async function FamiliaPage() {
     prisma.user.findMany({ where: { familyId: user.familyId, status: "ACTIVE" }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, role: true, createdAt: true, avatarUpdatedAt: true } }),
     prisma.contribution.findMany({ where: { user: { familyId: user.familyId } }, orderBy: { date: "desc" }, take: 40, include: { user: { select: { name: true } } } }),
     familyOverview(user.familyId),
-    prisma.contribution.count({ where: { user: { familyId: user.familyId, status: "ACTIVE" }, note: `Paga mensual ${thisMonth}` } }),
+    // Miembros que ya tienen la paga de este mes, por reparto manual o porque se publicó una cartera.
+    prisma.contribution.findMany({ where: { user: { familyId: user.familyId, status: "ACTIVE" }, ...allowanceWhere(thisMonth) }, distinct: ["userId"], select: { userId: true } }).then((rows) => rows.length),
     // Los correos solo se piden (y se muestran) al presidente: el resto de la familia ve nombres de pila.
     isAdmin ? prisma.user.findMany({ where: { familyId: user.familyId, status: "ACTIVE" }, select: { id: true, email: true } }) : Promise.resolve(null),
   ]);

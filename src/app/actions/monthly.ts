@@ -1,5 +1,6 @@
 "use server";
 
+import { allowanceNote } from "@/lib/allowance";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -151,7 +152,7 @@ export async function setAllocationsAction(_prev: FormState, formData: FormData)
       if (p.status === "PUBLISHED") {
         if (alloc.contributionId) await tx.contribution.update({ where: { id: alloc.contributionId }, data: { amount } });
         else if (amount > 0) {
-          const c = await tx.contribution.create({ data: { userId: m.id, date: monthDate(p.month), amount, note: `Paga mensual ${p.month} · ${p.title}` } });
+          const c = await tx.contribution.create({ data: { userId: m.id, date: monthDate(p.month), amount, note: `${allowanceNote(p.month)} · ${p.title}` } });
           await tx.monthlyAllocation.update({ where: { id: alloc.id }, data: { contributionId: c.id } });
         }
         touched.push(m.id);
@@ -184,7 +185,7 @@ export async function publishAction(_prev: FormState, formData: FormData): Promi
     if (lock.count !== 1) return false;
     for (const a of p.allocations) {
       if (a.amount <= 0 || a.contributionId) continue;
-      const c = await tx.contribution.create({ data: { userId: a.userId, date: monthDate(p.month), amount: a.amount, note: `Paga mensual ${p.month} · ${p.title}` } });
+      const c = await tx.contribution.create({ data: { userId: a.userId, date: monthDate(p.month), amount: a.amount, note: `${allowanceNote(p.month)} · ${p.title}` } });
       await tx.monthlyAllocation.update({ where: { id: a.id }, data: { contributionId: c.id } });
     }
     return true;
