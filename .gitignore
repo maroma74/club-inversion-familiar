@@ -49,3 +49,6 @@ prisma/*.db-journal
 /shadow.db
 /club-inversion-familiar-claude-pack.zip
 tsconfig.tsbuildinfo
+
+# Playwright MCP (capturas y logs)
+.playwright-mcp/

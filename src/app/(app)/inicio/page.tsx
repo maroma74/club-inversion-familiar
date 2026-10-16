@@ -88,7 +88,7 @@ export default async function InicioPage() {
       {isNewMember && (
         <section aria-labelledby="primeros-pasos" className="card card-roomy gap-2">
           <h3 id="primeros-pasos" className="m-0">Tus primeros pasos</h3>
-          <ol className="m-0 pl-5 flex flex-col gap-1.5 text-base">
+          <ol className="m-0 pl-6 flex flex-col gap-1.5 text-base list-decimal marker:font-bold marker:text-accent-700">
             <li>Haz tu primera lección en la <Link href="/academia">Academia</Link>.</li>
             <li>Mira una acción o un ETF en <Link href="/acciones">Acciones</Link> y decide si comprarías.</li>
             <li>Escribe en el diario <b>por qué</b> lo harías. Ese porqué es lo que aprenderás a mejorar.</li>
@@ -96,13 +96,19 @@ export default async function InicioPage() {
         </section>
       )}
 
-      <section className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))" }}>
-        <div className="card card-roomy gap-3.5 min-w-0 md:[grid-column:span_2]">
+      <section className="grid gap-5 xl:grid-cols-3">
+        <div className="card card-roomy gap-3.5 min-w-0 xl:col-span-2">
           <div className="card-kicker">Tu aprendizaje{current ? ` · Nivel ${current.level} · ${current.title}` : ""}</div>
           <div className="flex flex-wrap gap-6 items-end justify-between">
             <div className="min-w-0 flex-[1_1_280px]">
-              <h3 className="m-0 mb-1.5">{lessonTitle}</h3>
-              <p className="card-body max-w-[52ch] [text-wrap:pretty]" style={{ flex: "none" }}>{current?.description ?? "Repasa cualquier lección cuando quieras."}</p>
+              {step.kind === "lesson" ? (
+                <h3 className="m-0">Tu camino en la Academia</h3>
+              ) : (
+                <>
+                  <h3 className="m-0 mb-1.5">{lessonTitle}</h3>
+                  <p className="card-body max-w-[52ch] [text-wrap:pretty]" style={{ flex: "none" }}>{current?.description ?? "Repasa cualquier lección cuando quieras."}</p>
+                </>
+              )}
             </div>
             {current && (
               <div className="flex-[0_0_200px]">
@@ -237,7 +243,7 @@ export default async function InicioPage() {
                     <tr key={r.userId}>
                       <td className="font-heading text-base">{i + 1}.º</td>
                       <td><span className="inline-flex items-center gap-2"><Avatar id={r.userId} name={r.userName} updatedAt={r.avatarUpdatedAt} size={32} />{r.userName}</span> <span className="text-xs text-neutral-700">· {p?.levelName ?? "Novato"}</span></td>
-                      <td className="text-right tabular-nums" style={{ color: r.pnl >= 0 ? "var(--color-accent-700)" : "var(--color-text)" }}>{pct(r.returnPct, 2)}</td>
+                      <td className="text-right tabular-nums whitespace-nowrap" style={{ color: r.pnl >= 0 ? "var(--color-accent-700)" : "var(--color-text)" }}>{pct(r.returnPct, 2)}</td>
                       <td className="text-right tabular-nums">{overview.learning.get(r.userId)?.lessonsPassed ?? 0}</td>
                     </tr>
                   );
