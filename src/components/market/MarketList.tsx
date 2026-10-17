@@ -151,18 +151,18 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
                   <th className="text-right px-2 py-2 font-medium">{crypto ? "24 h" : "Hoy"}</th>
                   <th className="text-left px-2 py-2 font-medium">Club de inversión</th>
                   {showPer && (
-                    <th className="text-left px-2 py-2 font-medium whitespace-nowrap" aria-sort={perSort === "per" ? "ascending" : perSort === "per_desc" ? "descending" : "none"}>
+                    <th className="text-left px-2 py-2 font-medium whitespace-nowrap hidden min-[1100px]:table-cell" aria-sort={perSort === "per" ? "ascending" : perSort === "per_desc" ? "descending" : "none"}>
                       <Link href={`${c.base}?orden=${perSort === "per" ? "per_desc" : "per"}`} className="no-underline text-inherit hover:underline" title="Ordenar por PER frente a su historia: de más barata a más cara">
                         PER vs histórico {perSort === "per" ? "▲" : perSort === "per_desc" ? "▼" : ""}
                       </Link>
                     </th>
                   )}
-                  <th className="text-right px-2 py-2 font-medium hidden sm:table-cell">{crypto ? "7 d" : "1 sem."}</th>
-                  <th className="text-right px-2 py-2 font-medium hidden sm:table-cell">{crypto ? "30 d" : "1 mes"}</th>
-                  <th className="px-2 py-2 font-medium hidden md:table-cell">{crypto ? "Últimos 30 días" : "Último mes"}</th>
-                  <th className="text-right px-2 py-2 font-medium hidden lg:table-cell">Rango 52 sem.</th>
-                  {!crypto && <th className="text-left px-2 py-2 font-medium hidden lg:table-cell">Mercado</th>}
-                  <th className="px-5 py-2" />
+                  {/* Las columnas secundarias entran según el ancho real que deja la barra lateral (medido: 1 sem./1 mes desde 1240 px, gráfica desde 1400, rango 52 desde 1536) para que la tabla no obligue a desplazar en portátiles */}
+                  <th className="text-right px-2 py-2 font-medium hidden min-[1240px]:table-cell">{crypto ? "7 d" : "1 sem."}</th>
+                  <th className="text-right px-2 py-2 font-medium hidden min-[1240px]:table-cell">{crypto ? "30 d" : "1 mes"}</th>
+                  <th className="px-2 py-2 font-medium hidden min-[1400px]:table-cell">{crypto ? "Últimos 30 días" : "Último mes"}</th>
+                  <th className="text-right px-2 py-2 font-medium hidden 2xl:table-cell">Rango 52 sem.</th>
+                  <th className="px-3 py-2" />
                 </tr>
               </thead>
               <tbody>
@@ -182,22 +182,23 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
                         {q.price && q.currency !== "EUR" ? <div className="text-xs text-neutral-700">{eur(q.priceEur, fine ? decimals(q.priceEur) : 2)}</div> : null}
                       </td>
                       <td className="px-2 py-2 text-right whitespace-nowrap"><Change v={q.price ? q.change1d : null} /></td>
-                      <td className="px-2 py-2 whitespace-nowrap">
+                      <td className="px-2 py-2">
                         {rec ? (
                           <Link href={`${c.base}/${encodeURIComponent(q.symbol)}`} title={`${rec.bias} · confianza ${rec.confidence}`} className="inline-flex flex-col gap-1 no-underline text-inherit">
-                            <span className="inline-flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                               <ActionBadge action={rec.action} small total={rec.total} />
                               <span className={`text-xs tabular-nums font-medium ${rec.total >= 0.3 ? "text-accent-700" : rec.total <= -0.3 ? "text-ink" : "text-neutral-700"}`}>{signed(rec.total, 2)}</span>
-                              {rec.daysToEarnings !== null && rec.daysToEarnings >= 0 && rec.daysToEarnings <= 10 && <span className="tag tag-gold" title={`Resultados el ${rec.earningsDate}`}>Resultados en {rec.daysToEarnings} d</span>}
                             </span>
                             <ScoreBar total={rec.total} blocks={rec.blocks} />
+                            {/* El aviso de resultados va en su propia línea: en la fila del veredicto ensanchaba la columna y obligaba a desplazar la tabla */}
+                            {rec.daysToEarnings !== null && rec.daysToEarnings >= 0 && rec.daysToEarnings <= 10 && <span className="tag tag-gold self-start whitespace-nowrap" title={`Resultados el ${rec.earningsDate}`}>Resultados en {rec.daysToEarnings} d</span>}
                           </Link>
                         ) : (
                           <span className="text-xs text-neutral-700">N/D</span>
                         )}
                       </td>
                       {showPer && (
-                        <td className="px-2 py-2 whitespace-nowrap">
+                        <td className="px-2 py-2 whitespace-nowrap hidden min-[1100px]:table-cell">
                           {(() => {
                             const per = perMap.get(q.symbol.toUpperCase());
                             if (!per || per.signal === "N/D" || per.per === null) return <span className="text-xs text-neutral-700" title={per?.reason ?? "Sin datos de beneficio por acción para este valor"}>N/D</span>;
@@ -213,10 +214,10 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
                           })()}
                         </td>
                       )}
-                      <td className="px-2 py-2 text-right whitespace-nowrap hidden sm:table-cell"><Change v={q.change1w} /></td>
-                      <td className="px-2 py-2 text-right whitespace-nowrap hidden sm:table-cell"><Change v={q.change1m} /></td>
-                      <td className="px-2 py-2 hidden md:table-cell"><Sparkline data={q.sparkline} positive={(q.change1m ?? 0) >= 0} /></td>
-                      <td className="px-2 py-2 hidden lg:table-cell">
+                      <td className="px-2 py-2 text-right whitespace-nowrap hidden min-[1240px]:table-cell"><Change v={q.change1w} /></td>
+                      <td className="px-2 py-2 text-right whitespace-nowrap hidden min-[1240px]:table-cell"><Change v={q.change1m} /></td>
+                      <td className="px-2 py-2 hidden min-[1400px]:table-cell"><Sparkline data={q.sparkline} positive={(q.change1m ?? 0) >= 0} /></td>
+                      <td className="px-2 py-2 hidden 2xl:table-cell">
                         {pos52 !== null ? (
                           <div className="w-28 ml-auto">
                             <div className="h-1.5 bg-[var(--color-neutral-300)] rounded-full relative"><div className="absolute top-0 h-1.5 w-1.5 rounded-full bg-accent-600" style={{ left: `calc(${Math.min(Math.max(pos52, 0), 1) * 100}% - 3px)` }} /></div>
@@ -224,8 +225,7 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
                           </div>
                         ) : <span className="text-neutral-700">—</span>}
                       </td>
-                      {!crypto && <td className="px-2 py-2 text-xs text-neutral-700 hidden lg:table-cell">{MARKET_STATE[q.marketState] ?? q.marketState}</td>}
-                      <td className="px-5 py-2 text-right whitespace-nowrap">
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
                         <Link href={`/operaciones?activo=${encodeURIComponent(q.symbol)}#operar`} className="btn-ghost min-h-[44px] md:min-h-0">Operar</Link>
                         {listSymbols.has(q.symbol) && user.role === "ADMIN" && <RemoveWatchlistButton symbol={q.symbol} label={names.get(q.symbol) ?? q.name} />}
                       </td>
