@@ -97,6 +97,8 @@ model Invitation {
   revokedAt   DateTime?
   sentAt      DateTime? // último envío por correo
   sentTo      String?   // dirección a la que se envió
+  /// Invitación para crear una familia nueva: quien la usa funda su club y es su presidente.
+  newFamily   Boolean   @default(false)
 
   @@index([familyId, createdAt])
 }
@@ -167,10 +169,14 @@ model AuthAttempt {
 /// Los trimestrales cambian poco: se refresca como mucho una vez al día, nunca en cada carga de página.
 model EpsCache {
   symbol    String   @id
-  provider  String // sec-edgar
+  provider  String // sec-edgar | yahoo-fundamentals
   status    String // OK | UNAVAILABLE (el proveedor funciona pero no tiene el valor)
   reason    String?
-  quarters  Json // QuarterEps[] ya ajustados por splits
+  quarters  Json // QuarterEps[] ya ajustados por splits (SEC)
+  /// Serie de BPA de los últimos 12 meses ya construida (proveedores que no dan trimestres, como Yahoo)
+  ttm       Json?
+  /// Divisa del BPA (USD, EUR, GBP…) para compararlo con el precio
+  currency  String?
   summary   Json? // PerSummary del rango por defecto (para el listado y la recomendación)
   fetchedAt DateTime
 }

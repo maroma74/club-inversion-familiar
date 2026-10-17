@@ -107,7 +107,7 @@ export default async function InvitacionesPage() {
                         {st === "usada" && <div className="text-xs text-slate-400">{firstName(i.usedBy?.name)} · {i.usedAt ? fmtDate(i.usedAt) : ""}</div>}
                         {i.sentAt && st !== "usada" && <div className="text-xs text-slate-400">correo enviado el {fmtDate(i.sentAt)}{i.sentTo && i.sentTo !== i.email ? ` a ${i.sentTo}` : ""}</div>}
                       </td>
-                      <td className="px-2 py-2 hidden md:table-cell">{i.role === "ADMIN" ? "Presidente del club" : "Miembro"}</td>
+                      <td className="px-2 py-2 hidden md:table-cell">{i.newFamily ? <span className="tag tag-accent">Familia nueva</span> : i.role === "ADMIN" ? "Presidente del club" : "Miembro"}</td>
                       <td className="px-2 py-2 text-slate-500 hidden md:table-cell">{i.expiresAt ? fmtDate(i.expiresAt) : "nunca"}</td>
                       <td className="px-2 py-2 text-slate-500 hidden lg:table-cell">{fmtDate(i.createdAt)} · {firstName(i.createdBy.name)}</td>
                       <td className="px-5 py-2 text-right whitespace-nowrap">

@@ -20,7 +20,7 @@ const refresh = () => {
 const invitationSchema = z.object({
   name: nameText(80).optional(),
   email: z.string().trim().toLowerCase().email("Email no válido").optional().or(z.literal("")),
-  role: z.enum(["MEMBER", "ADMIN"]).default("MEMBER"),
+  kind: z.enum(["MEMBER", "ADMIN", "NEW_FAMILY"]).default("MEMBER"),
   note: nameText(200).optional(),
   expiresDays: z.coerce.number().int().min(0).max(365).default(14),
 });
@@ -37,6 +37,12 @@ export async function createInvitationAction(_prev: FormState, formData: FormDat
   if (email && (await prisma.user.findFirst({ where: { email, familyId: admin.familyId }, select: { id: true } }))) return { error: "Ya hay un miembro de tu familia con ese email" };
   const pending = await prisma.invitation.count({ where: { familyId: admin.familyId, usedAt: null, revokedAt: null } });
   if (pending >= 50) return { error: "Demasiadas invitaciones pendientes; anula alguna antes de crear más" };
+  const newFamily = d.kind === "NEW_FAMILY";
+  if (newFamily) {
+    // Cada familia puede tener como mucho 10 invitaciones de familia nueva sin usar: el club crece de forma controlada
+    const pendingNew = await prisma.invitation.count({ where: { familyId: admin.familyId, newFamily: true, usedAt: null, revokedAt: null } });
+    if (pendingNew >= 10) return { error: "Ya tienes 10 invitaciones para familias nuevas sin usar; anula alguna antes de crear más" };
+  }
   const code = await uniqueInviteCode();
   await prisma.invitation.create({
     data: {
@@ -44,14 +50,15 @@ export async function createInvitationAction(_prev: FormState, formData: FormDat
       code,
       name: d.name || null,
       email,
-      role: d.role,
+      role: newFamily ? "ADMIN" : d.kind,
+      newFamily,
       note: d.note || null,
       expiresAt: d.expiresDays > 0 ? new Date(Date.now() + d.expiresDays * 86400000) : null,
       createdById: admin.id,
     },
   });
   refresh();
-  return { ok: `Invitación creada con el código ${code}` };
+  return { ok: newFamily ? `Invitación para una familia nueva creada con el código ${code}` : `Invitación creada con el código ${code}` };
 }
 
 const sendSchema = z.object({ id: z.string().min(1), email: z.string().trim().toLowerCase().email("Indica un email válido").optional().or(z.literal("")) });
@@ -83,6 +90,7 @@ export async function sendInvitationAction(_prev: FormState, formData: FormData)
     code: inv.code,
     link: `${origin}/registro?codigo=${inv.code}`,
     expiresAt: inv.expiresAt,
+    newFamily: inv.newFamily,
   });
   const result = await sendEmail(message);
   if (!result.sent) return { error: result.error };

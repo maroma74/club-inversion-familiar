@@ -40,29 +40,40 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
     return { error: "Ya existe una cuenta con ese email" };
   }
 
-  let familyId: string;
+  // O se entra en una familia existente (familyId) o se funda una nueva (newFamilyName), nunca las dos cosas.
+  let familyId: string | null = null;
+  let newFamilyName: string | null = null;
   let role: string;
   let status = "ACTIVE";
   let invitationCode: string | null = null;
   if (d.mode === "create") {
     if (!(await familySignupAllowed())) return { error: "El registro de familias nuevas está desactivado. Entra con un código de invitación." };
     if (!d.familyName) return { error: "Indica el nombre de la familia" };
-    const family = await prisma.family.create({ data: { name: d.familyName, inviteCode: await uniqueInviteCode() } });
-    familyId = family.id;
+    newFamilyName = d.familyName;
     role = "ADMIN";
   } else {
     const check = await checkJoinCode(d.inviteCode ?? "");
     if (check.kind === "invalid") return { error: check.reason };
-    familyId = check.familyId;
-    if (check.kind === "invitation") {
-      role = check.role;
-      invitationCode = d.inviteCode!.trim().toUpperCase();
+    if (check.kind === "newFamily") {
+      // Invitación de otro club para fundar el tuyo: serás su presidente
+      if (!d.familyName) return { error: "Indica el nombre de tu familia" };
       if (check.email && check.email.toLowerCase() !== d.email) return { error: "Esta invitación está ligada a otro email. Regístrate con el email al que se envió." };
+      newFamilyName = d.familyName;
+      role = "ADMIN";
+      invitationCode = d.inviteCode!.trim().toUpperCase();
     } else {
-      role = "MEMBER";
-      if (check.joinMode === "CODE_APPROVAL") status = "PENDING";
+      familyId = check.familyId;
+      if (check.kind === "invitation") {
+        role = check.role;
+        invitationCode = d.inviteCode!.trim().toUpperCase();
+        if (check.email && check.email.toLowerCase() !== d.email) return { error: "Esta invitación está ligada a otro email. Regístrate con el email al que se envió." };
+      } else {
+        role = "MEMBER";
+        if (check.joinMode === "CODE_APPROVAL") status = "PENDING";
+      }
     }
   }
+  const familyCode = newFamilyName ? await uniqueInviteCode() : null;
 
   const passwordHash = await hashPassword(d.password);
   let userId: string;
@@ -70,7 +81,9 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
     // Alta y consumo de la invitación en una sola transacción: una invitación solo puede usarse una vez
     // aunque lleguen dos registros a la vez con el mismo código.
     userId = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({ data: { name: d.name, email: d.email, passwordHash, familyId, role, status } });
+      // La familia nueva se crea en la misma transacción: si el alta del usuario falla, no queda una familia huérfana
+      const fid = familyId ?? (await tx.family.create({ data: { name: newFamilyName!, inviteCode: familyCode! } })).id;
+      const user = await tx.user.create({ data: { name: d.name, email: d.email, passwordHash, familyId: fid, role, status } });
       if (invitationCode) {
         const r = await tx.invitation.updateMany({
           where: { code: invitationCode, usedAt: null, revokedAt: null, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },

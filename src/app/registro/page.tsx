@@ -24,6 +24,8 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
         check
           ? check.kind === "invalid"
             ? { error: "Código de invitación no válido, usado o caducado. Pide uno nuevo al presidente del club." }
+            : check.kind === "newFamily"
+              ? { familyName: "", invitingFamily: check.invitingFamily, name: check.name ? check.name.split(" ")[0] : null, email: check.email ? maskEmail(check.email) : null, role: "ADMIN", personal: true, newFamily: true }
             : check.kind === "invitation"
               ? { familyName: check.familyName, name: check.name ? check.name.split(" ")[0] : null, email: check.email ? maskEmail(check.email) : null, role: check.role, personal: true }
               : { familyName: check.familyName, name: null, email: null, role: "MEMBER", personal: false, approval: check.joinMode === "CODE_APPROVAL" }

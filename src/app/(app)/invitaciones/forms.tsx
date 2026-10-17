@@ -23,10 +23,11 @@ export function InvitationForm() {
         <input name="email" type="email" className="input" placeholder="lucia@ejemplo.com" />
       </div>
       <div>
-        <label className="label">Rol al entrar</label>
-        <select name="role" className="input" defaultValue="MEMBER">
-          <option value="MEMBER">Miembro</option>
-          <option value="ADMIN">Presidente del club</option>
+        <label className="label">Tipo de invitación</label>
+        <select name="kind" className="input" defaultValue="MEMBER">
+          <option value="MEMBER">Entrar en mi familia como miembro</option>
+          <option value="ADMIN">Entrar en mi familia como presidente</option>
+          <option value="NEW_FAMILY">Crear una familia nueva (será su presidente)</option>
         </select>
       </div>
       <div>

@@ -8,6 +8,9 @@ const n1 = (v: number) => v.toLocaleString("es-ES", { minimumFractionDigits: 1, 
 const n2 = (v: number) => v.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Etiqueta de la señal de valoración con los colores de la marca: Barata esmeralda, Neutral ámbar, Cara azul marino. */
+/** Símbolo con el que se muestra el BPA según la divisa en que publica la empresa. */
+const CURRENCY_SIGN: Record<string, string> = { USD: "$", EUR: "€", GBP: "£", CHF: "CHF" };
+
 export function PerBadge({ signal, small = false }: { signal: string; small?: boolean }) {
   const style =
     signal === "Barata"
@@ -83,7 +86,7 @@ export async function PerPanel({ symbol, perRange, hrefFor }: { symbol: string; 
               <Stat label={`Media (${periodLabel})`} value={`${n1(a.stats.mean)}×`} hint={`mediana ${n1(a.stats.median)}×`} />
               <Stat label="Percentil" value={`${a.stats.percentile.toFixed(0)}`} hint="0 = el más barato del periodo, 100 = el más caro" />
               <Stat label="Frente a la media" value={`${signed(a.stats.deviationPct, 1)} %`} hint={`rango ${n1(a.stats.min)}× a ${n1(a.stats.max)}×`} />
-              <Stat label="BPA últimos 12 meses" value={a.growth ? `${n2(a.growth.current)} $` : "N/D"} hint={a.growth?.growthPct != null ? `${signed(a.growth.growthPct, 1)} % frente a hace un año` : a.growth?.growing === true ? "creciendo frente a hace un año" : a.growth?.growing === false ? "cayendo frente a hace un año" : "sin dato de hace un año"} />
+              <Stat label="BPA últimos 12 meses" value={a.growth ? `${n2(a.growth.current)} ${CURRENCY_SIGN[a.currency] ?? a.currency}` : "N/D"} hint={a.growth?.growthPct != null ? `${signed(a.growth.growthPct, 1)} % frente a hace un año` : a.growth?.growing === true ? "creciendo frente a hace un año" : a.growth?.growing === false ? "cayendo frente a hace un año" : "sin dato de hace un año"} />
               <Stat label="Zona barata (P25)" value={`${n1(a.stats.p25)}×`} hint={`por debajo: percentil ≤ ${PER_CONFIG.cheapPercentile}`} />
               <Stat label="Zona cara (P75)" value={`${n1(a.stats.p75)}×`} hint={`por encima: percentil ≥ ${PER_CONFIG.expensivePercentile}`} />
               <Stat label="Datos" value={`${a.stats.n}`} hint="semanas con PER válido" />
@@ -93,12 +96,12 @@ export async function PerPanel({ symbol, perRange, hrefFor }: { symbol: string; 
           <PerCharts
             points={a.points.map((p) => ({ date: p.date, price: p.price, eps: p.eps, per: p.per }))}
             band={a.stats ? { mean: a.stats.mean, p25: a.stats.p25, p75: a.stats.p75, min: a.stats.min, max: a.stats.max } : null}
-            currency="USD"
+            currency={CURRENCY_SIGN[a.currency] ?? a.currency}
           />
 
           <div className="text-xs text-neutral-700 space-y-1">
             <p className="m-0"><b>Cómo leerlo.</b> La línea de puntos verde y la zona verde marcan el percentil {PER_CONFIG.cheapPercentile}: por debajo, la acción ha estado más barata que en el {100 - PER_CONFIG.cheapPercentile} % del periodo. La zona azul marca el percentil {PER_CONFIG.expensivePercentile}: por encima, más cara que en el {PER_CONFIG.expensivePercentile} % del periodo. Solo se pinta el PER cuando el beneficio es positivo.</p>
-            <p className="m-0">Compara la acción solo con su propia historia, no con otras empresas ni con su sector. Un PER bajo no es una orden de compra: puede ser una trampa de valor. El beneficio es el contable (GAAP) que publica la empresa en la SEC, y puede incluir partidas extraordinarias que distorsionan un año. Datos: SEC EDGAR y Yahoo Finance, actualizados como mucho una vez al día ({a.quarters} trimestres de BPA, últimos datos {fmtDate(a.updatedAt)}).</p>
+            <p className="m-0">Compara la acción solo con su propia historia, no con otras empresas ni con su sector. Un PER bajo no es una orden de compra: puede ser una trampa de valor. El beneficio es el contable que publica la empresa (en la SEC para las de EE. UU.; en sus cuentas, vía Yahoo Finance, para el resto), y puede incluir partidas extraordinarias que distorsionan un año. Datos actualizados como mucho una vez al día ({a.quarters} datos de BPA, últimos {fmtDate(a.updatedAt)}).</p>
           </div>
         </>
       )}

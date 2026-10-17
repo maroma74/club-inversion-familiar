@@ -53,14 +53,17 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
 
 /** Correo de invitación con la marca del club: cabecera navy, botón esmeralda, código y caducidad. */
-export function invitationEmail(opts: { to: string; inviteeName: string | null; familyName: string; presidentName: string; code: string; link: string; expiresAt: Date | null }): EmailMessage {
+export function invitationEmail(opts: { to: string; inviteeName: string | null; familyName: string; presidentName: string; code: string; link: string; expiresAt: Date | null; newFamily?: boolean }): EmailMessage {
   const saludo = opts.inviteeName ? `Hola, ${opts.inviteeName}:` : "Hola:";
   const caduca = opts.expiresAt ? `La invitación caduca el ${opts.expiresAt.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}.` : "La invitación no caduca.";
-  const subject = `Invitación al Club de Inversión Familiar de ${opts.familyName}`;
+  const subject = opts.newFamily ? "Invitación para crear el Club de Inversión de tu familia" : `Invitación al Club de Inversión Familiar de ${opts.familyName}`;
+  const intro = opts.newFamily
+    ? `${opts.presidentName}, de ${opts.familyName}, te invita a crear el club de inversión de tu propia familia: una liga familiar para aprender a invertir con una paga mensual, carteras propuestas por el presidente, una academia y un diario de inversión. Tú serás el presidente de tu club y podrás invitar a tu familia.`
+    : `${opts.presidentName} te invita a unirte al club de inversión de ${opts.familyName}: una liga familiar para aprender a invertir con una paga mensual, carteras propuestas por el presidente, una academia y un diario de inversión.`;
   const text = [
     saludo,
     "",
-    `${opts.presidentName} te invita a unirte al club de inversión de ${opts.familyName}: una liga familiar para aprender a invertir con una paga mensual, carteras propuestas por el presidente, una academia y un diario de inversión.`,
+    intro,
     "",
     `Acepta la invitación aquí: ${opts.link}`,
     `Tu código personal: ${opts.code}`,
@@ -77,11 +80,11 @@ export function invitationEmail(opts: { to: string; inviteeName: string | null; 
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
   <tr><td style="background:#0e2138;padding:22px 28px;">
     <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#10b981;font-weight:700;">Club de Inversión Familiar</div>
-    <div style="font-size:22px;font-weight:800;color:#ffffff;margin-top:6px;">Invitación al club de ${esc(opts.familyName)}</div>
+    <div style="font-size:22px;font-weight:800;color:#ffffff;margin-top:6px;">${opts.newFamily ? "Crea el club de tu familia" : `Invitación al club de ${esc(opts.familyName)}`}</div>
   </td></tr>
   <tr><td style="padding:28px;font-size:15px;line-height:1.6;">
     <p style="margin:0 0 14px;">${esc(saludo)}</p>
-    <p style="margin:0 0 14px;"><strong>${esc(opts.presidentName)}</strong> te invita a unirte al club de inversión de <strong>${esc(opts.familyName)}</strong>: una liga familiar para aprender a invertir con una paga mensual, carteras propuestas por el presidente, una academia y un diario de inversión.</p>
+    <p style="margin:0 0 14px;">${esc(intro)}</p>
     <p style="margin:22px 0;text-align:center;">
       <a href="${esc(opts.link)}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:10px;font-size:15px;">Aceptar la invitación</a>
     </p>

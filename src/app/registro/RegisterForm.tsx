@@ -6,7 +6,7 @@ import { registerAction } from "@/app/actions/auth";
 
 export type Preview =
   | { error: string }
-  | { familyName: string; name: string | null; email: string | null; role: string; personal: boolean; approval?: boolean };
+  | { familyName: string; name: string | null; email: string | null; role: string; personal: boolean; approval?: boolean; newFamily?: boolean; invitingFamily?: string };
 
 export function RegisterForm({ initialCode, preview, allowCreate = true }: { initialCode: string; preview: Preview | null; allowCreate?: boolean }) {
   const [state, action, pending] = useActionState(registerAction, undefined);
@@ -23,7 +23,12 @@ export function RegisterForm({ initialCode, preview, allowCreate = true }: { ini
 
         {ok && (
           <div className="mb-5 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm">
-            {ok.personal ? (
+            {ok.newFamily ? (
+              <>
+                <b>Invitación de {ok.invitingFamily}</b> para crear el club de inversión de tu familia{ok.name ? `, a nombre de ${ok.name}` : ""}. Serás su presidente y podrás invitar a tu familia y a otras.
+                {ok.email && <div className="text-xs text-slate-600 mt-1">Regístrate con el email {ok.email}.</div>}
+              </>
+            ) : ok.personal ? (
               <>
                 <b>Invitación personal</b> para entrar en <b>{ok.familyName}</b>{ok.name ? ` a nombre de ${ok.name}` : ""}{ok.role === "ADMIN" ? " como presidente del club" : ""}.
                 {ok.email && <div className="text-xs text-slate-600 mt-1">Regístrate con el email {ok.email}.</div>}
@@ -51,10 +56,18 @@ export function RegisterForm({ initialCode, preview, allowCreate = true }: { ini
         <form action={action} className="space-y-4">
           <input type="hidden" name="mode" value={mode} />
           {mode === "join" ? (
-            <div>
-              <label className="label" htmlFor="inviteCode">Código de invitación</label>
-              <input id="inviteCode" name="inviteCode" required defaultValue={initialCode} readOnly={!!ok} className={`input uppercase tracking-widest ${ok ? "bg-slate-50 text-slate-500" : ""}`} placeholder="ABCD2345" />
-            </div>
+            <>
+              <div>
+                <label className="label" htmlFor="inviteCode">Código de invitación</label>
+                <input id="inviteCode" name="inviteCode" required defaultValue={initialCode} readOnly={!!ok} className={`input uppercase tracking-widest ${ok ? "bg-slate-50 text-slate-500" : ""}`} placeholder="ABCD2345" />
+              </div>
+              {ok?.newFamily && (
+                <div>
+                  <label className="label" htmlFor="familyName">Nombre de tu familia</label>
+                  <input id="familyName" name="familyName" required className="input" placeholder="Familia García" maxLength={60} />
+                </div>
+              )}
+            </>
           ) : (
             <div>
               <label className="label" htmlFor="familyName">Nombre de la familia</label>
@@ -71,10 +84,11 @@ export function RegisterForm({ initialCode, preview, allowCreate = true }: { ini
           </div>
           <div>
             <label className="label" htmlFor="password">Contraseña</label>
-            <input id="password" name="password" type="password" required minLength={6} className="input" autoComplete="new-password" />
+            <input id="password" name="password" type="password" required minLength={10} maxLength={72} className="input" autoComplete="new-password" />
+            <p className="text-xs text-slate-500 mt-1">Al menos 10 caracteres.</p>
           </div>
           {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
-          <button className="btn-primary w-full" disabled={pending}>{pending ? "Creando…" : mode === "create" ? "Crear familia y entrar" : ok?.approval ? "Solicitar entrada" : "Unirme y entrar"}</button>
+          <button className="btn-primary w-full" disabled={pending}>{pending ? "Creando…" : mode === "create" || ok?.newFamily ? "Crear mi familia y entrar" : ok?.approval ? "Solicitar entrada" : "Unirme y entrar"}</button>
         </form>
         <p className="text-sm text-slate-500 mt-6 text-center">
           ¿Ya tienes cuenta? <Link href="/login" className="text-indigo-600 font-medium">Inicia sesión</Link>

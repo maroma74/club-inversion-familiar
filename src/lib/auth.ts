@@ -136,6 +136,7 @@ export async function uniqueInviteCode() {
 
 export type InvitationCheck =
   | { kind: "invitation"; familyId: string; familyName: string; role: string; name: string | null; email: string | null }
+  | { kind: "newFamily"; invitingFamily: string; name: string | null; email: string | null }
   | { kind: "family"; familyId: string; familyName: string; joinMode: string }
   | { kind: "invalid"; reason: string };
 
@@ -148,6 +149,7 @@ export async function checkJoinCode(raw: string): Promise<InvitationCheck> {
     if (inv.revokedAt) return { kind: "invalid", reason: "Esta invitación ha sido anulada" };
     if (inv.usedAt) return { kind: "invalid", reason: "Esta invitación ya se ha utilizado" };
     if (inv.expiresAt && inv.expiresAt.getTime() < Date.now()) return { kind: "invalid", reason: "Esta invitación ha caducado" };
+    if (inv.newFamily) return { kind: "newFamily", invitingFamily: inv.family.name, name: inv.name, email: inv.email };
     return { kind: "invitation", familyId: inv.familyId, familyName: inv.family.name, role: inv.role, name: inv.name, email: inv.email };
   }
   const family = await prisma.family.findUnique({ where: { inviteCode: code } });

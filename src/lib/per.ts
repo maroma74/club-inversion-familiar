@@ -107,6 +107,27 @@ export function ttmFromQuarters(quarters: QuarterEps[]): TtmPoint[] {
   return out;
 }
 
+// ---------------------------------------------------------------- BPA desde Yahoo (anual y últimos 12 meses)
+
+export type YahooEpsRow = { asOfDate: string; value: number; kind: "annual" | "trailing" };
+
+/**
+ * Serie de BPA de los últimos 12 meses a partir de los datos de Yahoo: los puntos «trailing» ya son TTM y los
+ * anuales lo son a cierre de ejercicio. Se consideran conocidos por el mercado unas semanas después del cierre
+ * (publicación de resultados): 45 días los trimestrales, 60 los anuales. `adjust` deja el BPA en acciones actuales.
+ */
+export function ttmFromYahooRows(rows: YahooEpsRow[], adjust: (value: number, reportedAt: string) => number = (v) => v): TtmPoint[] {
+  const byEnd = new Map<string, TtmPoint>();
+  for (const r of rows) {
+    if (!r.asOfDate || !Number.isFinite(r.value)) continue;
+    const availableFrom = addDays(r.asOfDate, r.kind === "annual" ? 60 : 45);
+    const point = { end: r.asOfDate, availableFrom, eps: adjust(r.value, availableFrom) };
+    const prev = byEnd.get(r.asOfDate);
+    if (!prev || (prev && r.kind === "trailing")) byEnd.set(r.asOfDate, point); // el dato TTM manda sobre el anual del mismo cierre
+  }
+  return [...byEnd.values()].sort((a, b) => a.end.localeCompare(b.end));
+}
+
 // ---------------------------------------------------------------- serie PER
 
 /** PER en cada fecha de precio con el último BPA TTM publicado hasta ese día. BPA ≤ 0 o sin dato → per null. */
@@ -199,7 +220,11 @@ export function epsGrowth(ttm: TtmPoint[]): EpsGrowth | null {
   const s = [...ttm].sort((a, b) => a.end.localeCompare(b.end));
   const cur = s[s.length - 1];
   if (!cur) return null;
-  const prev = s.length >= 5 ? s[s.length - 5] : null;
+  // «Hace un año» por fechas, no por posición: la serie puede ser trimestral (SEC) o anual (Yahoo)
+  // Se admite entre 10 y 15 meses atrás (algunas empresas publican el TTM a fechas irregulares) y se elige el más cercano a 12.
+  const prev = s
+    .filter((p) => { const d = days(p.end, cur.end); return d >= 300 && d <= 460; })
+    .sort((a, b) => Math.abs(days(a.end, cur.end) - 365) - Math.abs(days(b.end, cur.end) - 365))[0] ?? null;
   return {
     current: cur.eps,
     yearAgo: prev ? prev.eps : null,

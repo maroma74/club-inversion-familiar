@@ -274,3 +274,22 @@ test("analyzePer con BPA negativo hoy da N/D y no pinta PER", () => {
   assert.equal(a.points[a.points.length - 1].per, null);
   assert.equal(a.summary.score, null);
 });
+
+test("la serie TTM de Yahoo mezcla anuales y trailing sin duplicar cierres y el crecimiento se mide por fechas", async () => {
+  const { ttmFromYahooRows } = await import("./per");
+  const rows = [
+    { asOfDate: "2023-12-31", value: 0.65, kind: "annual" as const },
+    { asOfDate: "2024-12-31", value: 0.77, kind: "annual" as const },
+    { asOfDate: "2024-12-31", value: 0.768, kind: "trailing" as const },
+    { asOfDate: "2025-06-30", value: 0.83, kind: "trailing" as const },
+    { asOfDate: "2025-12-31", value: 0.9, kind: "trailing" as const },
+  ];
+  const ttm = ttmFromYahooRows(rows);
+  assert.deepEqual(ttm.map((p) => p.end), ["2023-12-31", "2024-12-31", "2025-06-30", "2025-12-31"]);
+  assert.equal(ttm[1].eps, 0.768, "el dato trailing manda sobre el anual del mismo cierre");
+  assert.equal(ttm[0].availableFrom, "2024-02-29", "un anual se conoce 60 días después del cierre");
+  assert.equal(ttm[2].availableFrom, "2025-08-14", "un TTM trimestral, 45 días después");
+  const g = epsGrowth(ttm)!;
+  assert.equal(g.yearAgo, 0.768, "hace un año = el cierre a 12 meses, aunque haya menos de cinco puntos");
+  assert.equal(g.growing, true);
+});
