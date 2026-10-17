@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Ayuda · Club de Inversión Familiar
 export default async function AyudaPage() {
   const user = await requireUser();
   const onboarding = await loadOnboarding(user);
-  const groups = HELP.map((g) => ({ ...g, sections: g.sections.filter((s) => s.audience !== "web" || user.siteAdmin) })).filter((g) => g.sections.length > 0);
+  const groups = HELP;
   const isAdmin = user.role === "ADMIN";
 
   return (

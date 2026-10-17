@@ -39,7 +39,7 @@ export async function createFamilyInvitationAction(_prev: FormState, formData: F
   const phone = d.phone ? normalizePhone(d.phone) : null;
   if (d.phone && !phone) return { error: "El móvil no parece válido. Escríbelo con prefijo (+34 612 345 678) o los nueve dígitos." };
   const cap = await loadInviteCapacity(user);
-  if (cap.source === "none") return { error: cap.pool ? noSlotsMessage(cap.pool) : "No tienes invitaciones para familias nuevas. La administración de la web puede asignarte un paquete." };
+  if (cap.source === "none") return { error: cap.pool ? noSlotsMessage(cap.pool) : "No tienes invitaciones para familias nuevas. Las del club las gestiona el presidente." };
   const code = await uniqueInviteCode();
   const inv = await prisma.invitation.create({
     data: {

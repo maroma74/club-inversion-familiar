@@ -3,7 +3,7 @@
  * para que la página de ayuda lo pinte y el buscador lo filtre. Al añadir una función, añade aquí su explicación.
  */
 
-export type HelpAudience = "todos" | "presidente" | "web";
+export type HelpAudience = "todos" | "presidente";
 
 export type HelpSection = {
   id: string;
@@ -152,7 +152,7 @@ export const HELP: HelpGroup[] = [
         summary: "El Club solo crece por invitación: cada familia puede invitar a cinco familias más.",
         points: [
           "Quien recibe una invitación de familia funda su propio club, lo preside y recibe a su vez cinco invitaciones.",
-          "Las cinco del club las reparte el presidente. Cualquier miembro puede invitar si la administración le ha asignado un paquete propio.",
+          "Las cinco invitaciones son del club y las gestiona el presidente.",
           "Al crearla puedes poner el nombre, el móvil y el email. Con email, el correo sale al momento; con móvil, «Enviar por WhatsApp» abre el chat con el mensaje ya escrito. También puedes copiar el enlace.",
           "Una invitación usada ocupa su hueco para siempre; una pendiente se libera si la anulas o caduca.",
         ],
@@ -207,22 +207,6 @@ export const HELP: HelpGroup[] = [
       },
     ],
   },
-  {
-    id: "web",
-    title: "Administración de la web",
-    intro: "Solo para quien administra el sitio.",
-    sections: [
-      {
-        id: "admin", title: "Administración", audience: "web", href: "/admin", cta: "Ir a Administración",
-        summary: "Cifras del sitio, accesos y actividad de cada familia, y paquetes de invitaciones.",
-        points: [
-          "Familias, usuarios, accesos de los últimos 7 y 30 días y una gráfica de accesos por día.",
-          "Actividad por familia en 30 días: accesos, operaciones, diario, decisiones, carteras, avisos y a quién ha invitado. Solo recuentos y fechas, nunca importes.",
-          "Por usuario: paquete de invitaciones para familias, «sin límite» y «administra la web».",
-        ],
-      },
-    ],
-  },
 ];
 
 export const GLOSSARY: { term: string; text: string }[] = [
@@ -251,5 +235,5 @@ export const FAQ: { q: string; a: string }[] = [
 ];
 
 export function audienceLabel(a: HelpAudience): string | null {
-  return a === "presidente" ? "Presidente" : a === "web" ? "Administración" : null;
+  return a === "presidente" ? "Presidente" : null;
 }

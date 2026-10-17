@@ -33,7 +33,7 @@ export default async function InvitarPage() {
     : cap.available === 0
       ? user.role === "ADMIN"
         ? "No te queda ninguna: las cinco del club están usadas o pendientes."
-        : "Ahora mismo no tienes ninguna. Las cinco del club las reparte el presidente; la administración de la web puede asignarte un paquete propio."
+        : "Ahora mismo no tienes ninguna. Las cinco invitaciones del club las gestiona el presidente: pídele que invite a la familia que quieras proponer."
       : `Te quedan ${cap.available} ${cap.available === 1 ? "invitación" : "invitaciones"}${cap.pool ? ` (${cap.pool.free} de las cinco del club${cap.pack.granted ? ` y ${cap.pack.free} de tu paquete` : ""})` : " de tu paquete"}.`;
 
   return (
