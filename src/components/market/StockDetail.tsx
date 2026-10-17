@@ -9,6 +9,7 @@ import { fp, priceDecimals } from "@/lib/fmtPrice";
 import { findCommodity } from "@/lib/commodities";
 import { ClubRecommendationCard } from "@/components/ClubRecommendationCard";
 import { PerPanel } from "@/components/PerPanel";
+import { AnalystPanel } from "@/components/AnalystPanel";
 import { DiaryDialog } from "@/components/DiaryDialog";
 import { StockChart } from "@/app/(app)/acciones/[symbol]/StockChart";
 import { symbolSchema } from "@/lib/validation";
@@ -111,6 +112,7 @@ export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind, pe
       )}
 
       {kind === "STOCK" && !isIndex && <PerPanel symbol={hist.symbol} perRange={perRange} hrefFor={(k) => `${base}/${encodeURIComponent(hist.symbol)}?per=${k}&r=${range}`} />}
+      {kind === "STOCK" && !isIndex && <AnalystPanel symbol={hist.symbol} />}
 
       <div className="card mb-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">

@@ -7,6 +7,7 @@ import { familyOverview } from "@/lib/league";
 import { eur, fmtDate, fmtRelative, pct } from "@/lib/format";
 import { DiaryDialog } from "@/components/DiaryDialog";
 import { Avatar } from "@/components/Avatar";
+import { MacroCard } from "@/components/MacroCard";
 import { getCurrentPortfolio, isDeadlinePassed, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
 
 const SIDE: Record<string, string> = { BUY: "Compra", SELL: "Venta", NOTE: "Nota" };
@@ -202,6 +203,8 @@ export default async function InicioPage() {
           <div><Link href="/cartera/gestion" className="btn-primary">Preparar la cartera</Link></div>
         </section>
       )}
+
+      <MacroCard />
 
       <section className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))" }}>
         <div className="flex flex-col gap-3 min-w-0">

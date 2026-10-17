@@ -403,3 +403,11 @@ model MonthlyChoice {
   @@index([tradeId])
   @@index([journalEntryId])
 }
+
+/// Respuestas de proveedores externos (BCE, FRED, Finnhub) guardadas con su fecha: sobreviven a los arranques
+/// en frío de Cloud Run y evitan repetir llamadas (cada módulo decide cuánto tiempo valen).
+model ApiCache {
+  key       String   @id
+  data      Json
+  fetchedAt DateTime
+}

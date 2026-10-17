@@ -90,6 +90,12 @@ Variables en Cloud Run: `APP_URL=https://clubdeinversionfamiliar.com`, `ALLOW_FA
 
 Ajustes de consumo: `--min-instances 0` (no cuesta nada sin visitas), `--max-instances 2`, 512 MiB y 1 CPU solo durante las peticiones. La imagen vive en Artifact Registry (`club`).
 
+## Contexto macro y analistas (BCE, FRED y Finnhub)
+
+- **Contexto del mercado** (tarjeta de Inicio, `src/components/MacroCard.tsx`): tipo de depósito del BCE, Euríbor a 12 meses e inflación de la zona euro y de España desde el portal de datos del BCE (sin clave), más tipo de la Reserva Federal, bono de EE. UU. a 10 años e inflación de EE. UU. desde FRED si existe `FRED_API_KEY` (clave gratuita). Cada dato lleva una frase que explica qué significa para la familia. Series y lectura de las respuestas en `src/lib/macroData.ts`; descarga en `src/lib/macro.ts`.
+- **Qué dicen los analistas** (ficha de cada acción, `src/components/AnalystPanel.tsx`): consenso de recomendaciones, cuántos de los últimos cuatro trimestres el beneficio por acción igualó o superó la previsión y la próxima fecha de resultados, desde Finnhub con `FINNHUB_API_KEY` (cuenta gratuita, 60 peticiones/min). Sin clave, el panel no se muestra; si un dato es de pago para un valor, se omite. Es informativo: no entra en la Recomendación del Club.
+- Todas estas respuestas pasan por `ApiCache` (`src/lib/apiCache.ts`): memoria de la instancia más una tabla en la base de datos con la fecha de cada dato, 12 horas de validez, y si el proveedor falla se sirve lo último guardado. Así los arranques en frío de Cloud Run no repiten llamadas y ninguna de estas fuentes puede tirar una página.
+
 ## Despliegue en otro sitio
 
 - **Docker Compose** (VPS, Railway, Render, Fly.io, Coolify): `docker compose up -d --build` levanta PostgreSQL y la app; el arranque aplica migraciones y carga la Academia (`npm run start:prod`). Define `AUTH_SECRET` (y opcionalmente `DB_PASSWORD`) en un `.env`.
