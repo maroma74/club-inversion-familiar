@@ -38,6 +38,7 @@ export default async function GestionPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/cartera/repositorio" className="btn-primary">Repositorio de propuestas</Link>
+          <Link href="/cartera/historial" className="btn-secondary">Historial y repaso</Link>
           <Link href="/cartera" className="btn-secondary">Ver como miembro</Link>
         </div>
       </header>

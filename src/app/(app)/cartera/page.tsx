@@ -90,7 +90,10 @@ export default async function CarteraPage() {
             Tu importe este mes: <b className="text-ink">{eur(myAllocation)}</b>.
           </p>
         </div>
-        {isAdmin && <Link href={`/cartera/gestion/${p.id}`} className="btn-secondary">Gestionar esta cartera</Link>}
+        <div className="flex flex-wrap gap-2">
+          <Link href="/cartera/historial" className="btn-ghost">Historial</Link>
+          {isAdmin && <Link href={`/cartera/gestion/${p.id}`} className="btn-secondary">Gestionar esta cartera</Link>}
+        </div>
       </header>
 
       <section aria-labelledby="estado-decision" className="card card-snug gap-2" style={{ borderColor: status.accent ? "var(--color-accent)" : "var(--color-divider)" }}>
@@ -208,14 +211,17 @@ export default async function CarteraPage() {
 
       {history.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h3 className="m-0">Meses anteriores</h3>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="m-0">Meses anteriores</h3>
+            <Link href="/cartera/historial" className="text-sm text-accent-700">Ver el repaso de cada mes →</Link>
+          </div>
           <div className="overflow-x-auto"><table className="table">
             <thead><tr><th>Mes</th><th>Cartera</th><th>Tu elección</th></tr></thead>
             <tbody>
               {history.map((h) => (
                 <tr key={h.id}>
                   <td>{cap(monthLabelLong(h.month))}</td>
-                  <td>{h.title}</td>
+                  <td><Link href={`/cartera/historial/${h.id}`} className="text-accent-700">{h.title}</Link></td>
                   <td>
                     {h.decisions[0]?.choices.length ? (
                       <div className="flex flex-wrap gap-1.5">{h.decisions[0].choices.map((c) => <span key={c.id} className="tag tag-neutral">{c.option.symbol} {eur(c.amount)}</span>)}</div>
