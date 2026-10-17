@@ -7,6 +7,7 @@ export const CLAIMS = [
   "Aprended a invertir juntos. Con la paga, sin prisas y con un porqué.",
   "Pequeñas cantidades. Grandes conversaciones en la cena.",
   "Enséñales a invertir antes de que alguien les enseñe a apostar.",
+  "Invertir se aprende en casa. Como todo lo importante.",
 ];
 
 /**
