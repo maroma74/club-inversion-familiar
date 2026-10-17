@@ -26,6 +26,7 @@ export default async function RepasoPage({ params }: { params: Promise<{ id: str
   const visible = showOthers ? review.decisions : review.decisions.filter((d) => d.userId === user.id);
   const withResult = review.options.filter((o) => o.changePct !== null);
   const sortedOptions = [...review.options].sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
+  const worst = sortedOptions.filter((o) => o.rank !== null).slice(-1)[0] ?? null;
 
   return (
     <div className="flex flex-col gap-7">
@@ -47,7 +48,7 @@ export default async function RepasoPage({ params }: { params: Promise<{ id: str
         <section className="card card-snug gap-1" style={{ borderColor: "var(--color-accent)" }}>
           <div className="card-kicker">Con la perspectiva de hoy</div>
           <div className="text-[15px] [text-wrap:pretty]">
-            La opción que más ha subido desde la publicación es <b>{review.best.symbol}</b> ({pctText(review.best.changePct)}); la que menos, <b>{withResult[withResult.length - 1] === review.best ? "—" : sortedOptions.filter((o) => o.rank !== null).slice(-1)[0]?.symbol}</b> ({pctText(sortedOptions.filter((o) => o.rank !== null).slice(-1)[0]?.changePct ?? null)}).
+            La opción que más ha subido desde la publicación es <b>{review.best.symbol}</b> ({pctText(review.best.changePct)}); la que menos, <b>{worst?.symbol ?? "—"}</b> ({pctText(worst?.changePct ?? null)}).
             {review.best.pickedBy.length ? ` La eligieron ${review.best.pickedBy.join(", ")}.` : " No la eligió nadie."} Mirar atrás no es para lamentarse, sino para comprobar si el porqué de cada elección sigue teniendo sentido.
           </div>
         </section>
