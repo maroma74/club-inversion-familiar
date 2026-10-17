@@ -19,7 +19,7 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
   const decidedIds = p.decisions.map((d) => d.userId);
   const locked = p.status === "CLOSED";
   const total = p.allocations.reduce((a, x) => a + x.amount, 0);
-  const shared = await prisma.proposal.findUnique({ where: { sourcePortfolioId: p.id }, select: { signed: true, theme: true, risk: true } });
+  const shared = await prisma.proposal.findUnique({ where: { sourcePortfolioId: p.id }, select: { signed: true, theme: true, risk: true, uses: true, _count: { select: { portfolios: { where: { familyId: { not: admin.familyId } } } } } } });
   const publishBlock = p.options.length === 0 ? "Añade al menos una opción de inversión." : total <= 0 ? "Asigna un importe a algún miembro." : p.options.length < p.minChoices ? "Hay menos opciones que el mínimo a elegir." : null;
   // Miembros activos sin importe (entraron después de crear la cartera o no se les asignó): no podrían decidir
   const withoutAllocation = members.filter((m) => !p.allocations.some((a) => a.userId === m.id && a.amount > 0));
@@ -129,7 +129,14 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
 
       <section className="card blueprint gap-3" style={{ padding: 24 }}>
         <div className="card-kicker">Repositorio de propuestas</div>
-        <p className="m-0 text-[13px] text-neutral-700 max-w-[68ch]">Si esta propuesta puede ayudar a otros presidentes sin ideas, compártela. La copia del repositorio no se actualiza sola: si cambias el título, la lección o las opciones, vuelve a pulsar «Guardar y compartir».{shared ? " Ahora mismo está compartida." : ""}</p>
+        <p className="m-0 text-[13px] text-neutral-700 max-w-[68ch]">Si esta propuesta puede ayudar a otros presidentes sin ideas, compártela. La copia del repositorio no se actualiza sola: si cambias el título, la lección o las opciones, vuelve a pulsar «Guardar y compartir».</p>
+        {shared && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="tag tag-accent">Compartida</span>
+            <span className="tabular-nums">{shared.uses === 0 ? "Nadie la ha usado todavía." : `Usada ${shared.uses} ${shared.uses === 1 ? "vez" : "veces"}${shared._count.portfolios ? `, ${shared._count.portfolios} por otras familias` : ""}.`}</span>
+            <span className="text-neutral-700">Cada uso es una familia aprendiendo con tu lección.</span>
+          </div>
+        )}
         <ShareProposalForm
           portfolioId={p.id}
           familyName={admin.family.name}

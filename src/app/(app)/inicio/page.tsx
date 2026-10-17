@@ -8,6 +8,7 @@ import { eur, fmtDate, fmtRelative, pct } from "@/lib/format";
 import { DiaryDialog } from "@/components/DiaryDialog";
 import { Avatar } from "@/components/Avatar";
 import { MacroCard } from "@/components/MacroCard";
+import { AdminTasks } from "@/components/AdminTasks";
 import { getCurrentPortfolio, isDeadlinePassed, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
 
 const SIDE: Record<string, string> = { BUY: "Compra", SELL: "Venta", NOTE: "Nota" };
@@ -92,6 +93,8 @@ export default async function InicioPage() {
           {step.kind === "monthly" && firstPending && <DiaryDialog label="Explicar una compra pendiente" symbol={firstPending.symbol} side="BUY" tradeId={firstPending.id} className="btn-ghost" />}
         </div>
       </section>
+
+      {user.role === "ADMIN" && <AdminTasks familyId={user.familyId} />}
 
       {isNewMember && (
         <section aria-labelledby="primeros-pasos" className="card card-roomy gap-2">
