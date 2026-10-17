@@ -158,7 +158,7 @@ Variables de entorno: `DATABASE_URL`, `SEC_USER_AGENT` (contacto para la SEC), `
 
 ## Portada pública
 
-`/` es la portada para quien no tiene sesión (quien la tiene va directo a `/inicio`): la caja de entrada en la cabecera y, debajo, los objetivos de los clubes familiares, cómo funciona un mes (con maquetas de la interfaz real y datos inventados), qué hay dentro, la regla de las cinco familias y las preguntas frecuentes. Está en `src/components/landing/Landing.tsx` con estilos `.lp-*` en `globals.css`; la caja de entrada es `src/app/login/LoginForm.tsx`, la misma que usa `/login`. Sin JavaScript propio: la única animación es la gráfica del héroe, que respeta `prefers-reduced-motion`.
+`/` es la portada para quien no tiene sesión (quien la tiene va directo a `/inicio`): la caja de entrada en la cabecera y, debajo, los objetivos de los clubes familiares, cómo funciona un mes (con maquetas de la interfaz real y datos inventados), qué hay dentro, la regla de las cinco familias y las preguntas frecuentes. Está en `src/components/landing/Landing.tsx` con estilos `.lp-*` en `globals.css`; la caja de entrada es `src/app/login/LoginForm.tsx`, la misma que usa `/login`. El registro (`/registro?codigo=…`, el enlace que llega por WhatsApp o correo) usa la misma presentación: héroe con el claim y los puntos clave personalizados según la invitación (familia nueva, miembro o código general), la tarjeta de alta al lado y, debajo, los objetivos y los cinco pasos del mes. Sin JavaScript propio: la única animación es la gráfica del héroe, que respeta `prefers-reduced-motion`.
 
 ## Invitaciones y entrada al club
 

@@ -5,14 +5,14 @@ import { FAMILY_INVITE_LIMIT } from "@/lib/familyInvites";
 /* Portada pública del Club. Modo «persuadir»: la caja de entrada vive en la cabecera y todo lo demás
    explica a un padre o una madre qué es un club familiar, para qué sirve y cómo se entra. */
 
-const OBJETIVOS = [
+export const OBJETIVOS = [
   { title: "Que sepan explicar, no acertar", text: "Cada decisión lleva un porqué escrito. La liga puntúa lecciones, logros y argumentos; acertar por suerte no enseña nada y aquí no vale." },
   { title: "Aprender con dinero pequeño y real", text: "Importes de paga, entre 10 y 50 euros al mes, en valores de verdad con precios de verdad. Lo bastante pequeño para equivocarse; lo bastante real para que importe." },
   { title: "Hablar de dinero en casa", text: "Una cartera del mes es una excusa para sentarse a comparar un banco con un ETF mundial. Las conversaciones salen solas; el Club solo pone el tema." },
   { title: "Criterio antes que gurús", text: "Van a invertir igual: en cripto, con una app o siguiendo a alguien en redes. Mejor que antes sepan leer un PER, una tendencia y un riesgo, y preguntar por qué." },
 ];
 
-const PASOS = [
+export const PASOS = [
   { n: 1, title: "El presidente publica la cartera del mes", text: "Una lección corta y dos, tres o cuatro opciones entre las que elegir: acciones, ETF, cripto, materias primas. Si no sabes qué proponer, el repositorio tiene propuestas de otras familias listas para usar." },
   { n: 2, title: "La familia recibe el aviso por WhatsApp", text: "Un mensaje personalizado para cada hijo con su nombre, su importe, el plazo y el enlace directo a la cartera. Tú solo pulsas enviar." },
   { n: 3, title: "Cada miembro investiga, decide y escribe su porqué", text: "La ficha de cada valor explica precio, PER, dividendo y una lectura técnica con sus bloques: qué mide cada uno y qué dice hoy. Sin porqué no hay decisión." },

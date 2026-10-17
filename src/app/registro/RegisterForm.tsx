@@ -13,13 +13,11 @@ export function RegisterForm({ initialCode, preview, allowCreate = true }: { ini
   const [mode, setMode] = useState<"create" | "join">(initialCode ? "join" : "join");
   const ok = preview && !("error" in preview) ? preview : null;
 
+  // Solo la tarjeta: la página de registro la coloca junto a la presentación del Club.
   return (
-    <main className="min-h-screen flex items-center justify-center p-4">
-      <div className="card w-full max-w-md">
-        <div className="inline-block rounded-xl mb-4" style={{ background: "#0e2138", padding: "10px 16px" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.svg" alt="Club de Inversión Familiar" className="w-60" /></div><h1 className="mb-1">Crear cuenta</h1>
-        <p className="text-sm text-slate-500 mb-6">Únete a tu familia con el código de invitación o crea una familia nueva.</p>
+      <div id="registro" className="card lp-login w-full">
+        <h2 className="lp-login-title">{ok?.newFamily ? "Crea el club de tu familia" : ok ? `Entrar en ${ok.familyName}` : "Crear cuenta"}</h2>
+        <p className="lp-login-sub">{ok?.newFamily ? "Un minuto: el nombre de tu familia, el tuyo y una contraseña." : "Únete a tu familia con el código de invitación o crea una familia nueva."}</p>
 
         {ok && (
           <div className="mb-5 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm">
@@ -94,6 +92,5 @@ export function RegisterForm({ initialCode, preview, allowCreate = true }: { ini
           ¿Ya tienes cuenta? <Link href="/login" className="text-indigo-600 font-medium">Inicia sesión</Link>
         </p>
       </div>
-    </main>
   );
 }
