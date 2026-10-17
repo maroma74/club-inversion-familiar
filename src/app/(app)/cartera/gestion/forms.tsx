@@ -3,7 +3,7 @@
 import { firstName } from "@/lib/names";
 
 import { useActionState, useEffect, useState } from "react";
-import { addOptionAction, createPortfolioAction, publishAction, setAllocationsAction, updatePortfolioAction } from "@/app/actions/monthly";
+import { addOptionAction, createPortfolioAction, publishAction, scheduleAction, setAllocationsAction, updatePortfolioAction } from "@/app/actions/monthly";
 import { adoptProposalAction } from "@/app/actions/proposals";
 import { autoFormat, LESSON_TEMPLATE, Markdown } from "@/components/Markdown";
 
@@ -179,6 +179,40 @@ export function PublishForm({ portfolioId, disabledReason }: { portfolioId: stri
       </button>
       {disabledReason && <p className="m-0 text-xs text-neutral-700">{disabledReason}</p>}
       <Msg state={state} />
+    </form>
+  );
+}
+
+const addDays = (ymd: string, n: number) => {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d + n));
+  return t.toISOString().slice(0, 10);
+};
+
+/**
+ * Plazo de una cartera publicada o cerrada: ampliarlo (con atajos de +3 / +7 días), quitarlo o, si está cerrada,
+ * reabrirla hasta la fecha elegida. `suggested` es el valor inicial del campo (el plazo vigente o hoy + 7).
+ */
+export function ScheduleForm({ portfolioId, closed, suggested, today }: { portfolioId: string; closed: boolean; suggested: string; today: string }) {
+  const [state, action, pending] = useActionState(scheduleAction, undefined);
+  const [date, setDate] = useState(suggested);
+  const base = date && date >= today ? date : today;
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      <input type="hidden" name="id" value={portfolioId} />
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="field">
+          <label htmlFor={`plazo-${portfolioId}`}>{closed ? "Reabrir hasta el" : "Nuevo plazo"}</label>
+          <input id={`plazo-${portfolioId}`} name="deadline" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} className="input w-auto" />
+        </div>
+        <button type="button" className="btn-secondary py-1.5 text-xs" onClick={() => setDate(addDays(base, 3))}>+3 días</button>
+        <button type="button" className="btn-secondary py-1.5 text-xs" onClick={() => setDate(addDays(base, 7))}>+7 días</button>
+        <button type="button" className="btn-ghost text-xs" onClick={() => setDate("")} title="Sin fecha límite: se cierra solo cuando la cierres tú">Sin fecha límite</button>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button className="btn-primary" disabled={pending}>{pending ? "Guardando…" : closed ? (date ? "Reabrir la cartera" : "Reabrir sin fecha límite") : "Guardar el plazo"}</button>
+        <Msg state={state} />
+      </div>
     </form>
   );
 }

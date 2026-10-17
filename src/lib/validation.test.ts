@@ -1,6 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { currentMonthYm, monthSchema, nameText, newPasswordSchema, parseDay, parsePastDay, todayYmd } from "./validation";
+import { clubEndOfDay, currentMonthYm, monthSchema, nameText, newPasswordSchema, parseDay, parsePastDay, todayYmd } from "./validation";
+
+test("el plazo termina a las 23:59 de Madrid, con horario de verano y de invierno", () => {
+  assert.equal(clubEndOfDay("2026-10-18")?.toISOString(), "2026-10-18T21:59:00.000Z"); // CEST, UTC+2
+  assert.equal(clubEndOfDay("2026-11-10")?.toISOString(), "2026-11-10T22:59:00.000Z"); // CET, UTC+1
+  assert.equal(clubEndOfDay("2026-10-25")?.toISOString(), "2026-10-25T22:59:00.000Z"); // día del cambio de hora
+  assert.equal(clubEndOfDay("2026-02-30"), null);
+  assert.equal(todayYmd(clubEndOfDay("2026-10-18")!), "2026-10-18");
+});
 
 test("hoy se decide en hora de España, no en la del servidor", () => {
   // 23:30 UTC del 16 de octubre ya es 17 de octubre en Madrid (CEST)

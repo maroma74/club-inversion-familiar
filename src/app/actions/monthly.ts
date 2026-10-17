@@ -12,7 +12,7 @@ import { describeSymbol } from "@/lib/symbolInfo";
 import { reconcileOwnContributions } from "@/lib/portfolio";
 import { isDeadlinePassed } from "@/lib/monthly";
 import { fmtDate } from "@/lib/format";
-import { currentMonthYm, longText, MAX_MONEY, monthSchema, parseDay, parseMoney, symbolSchema } from "@/lib/validation";
+import { clubEndOfDay, currentMonthYm, longText, MAX_MONEY, monthSchema, parseMoney, symbolSchema, todayYmd } from "@/lib/validation";
 import type { FormState } from "./auth";
 
 /** Las carteras se preparan como mucho con un mes de adelanto: la paga no puede adelantarse más que eso. */
@@ -36,13 +36,10 @@ const detailsSchema = z.object({
   deadline: z.string().optional(),
 });
 
-/** Fecha límite (AAAA-MM-DD) hasta el final de ese día. Un formato raro se ignora en vez de dar una fecha cualquiera. */
+/** Fecha límite (AAAA-MM-DD) hasta las 23:59 de ese día en Madrid. Un formato raro se ignora en vez de dar una fecha cualquiera. */
 function parseDeadline(s?: string) {
   if (!s) return null;
-  const d = parseDay(s);
-  if (!d) return null;
-  d.setHours(23, 59, 0, 0);
-  return d;
+  return clubEndOfDay(s);
 }
 
 export async function createPortfolioAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -216,6 +213,33 @@ export async function reopenAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   await prisma.monthlyPortfolio.updateMany({ where: { id, familyId: admin.familyId, status: "CLOSED" }, data: { status: "PUBLISHED", closedAt: null } });
   refresh(id);
+}
+
+const scheduleSchema = z.object({ id: z.string().min(1), deadline: z.string().trim().optional().default("") });
+
+/**
+ * Plazo de una cartera publicada o cerrada: lo amplía (o lo quita) y, si estaba cerrada, la reabre con ese plazo.
+ * Las decisiones ya enviadas y la paga del mes no se tocan; los que faltan vuelven a poder decidir.
+ */
+export async function scheduleAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requireAdmin();
+  const parsed = scheduleSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: "Datos no válidos" };
+  const { id, deadline: raw } = parsed.data;
+  const p = await prisma.monthlyPortfolio.findFirst({ where: { id, familyId: admin.familyId }, select: { status: true } });
+  if (!p) return { error: "Cartera no encontrada" };
+  if (p.status === "DRAFT") return { error: "El plazo de un borrador se cambia en «Propuesta y lección»" };
+  let deadline: Date | null = null;
+  if (raw) {
+    deadline = clubEndOfDay(raw);
+    if (!deadline) return { error: "Fecha no válida" };
+    if (raw < todayYmd()) return { error: "El nuevo plazo no puede ser anterior a hoy" };
+  }
+  const reopened = p.status === "CLOSED";
+  await prisma.monthlyPortfolio.update({ where: { id }, data: { deadline, ...(reopened ? { status: "PUBLISHED", closedAt: null } : {}) } });
+  refresh(id);
+  const until = deadline ? `hasta el ${fmtDate(deadline)}` : "sin fecha límite";
+  return { ok: reopened ? `Cartera reabierta ${until}: los que faltan ya pueden decidir.` : `Plazo actualizado: abierta ${until}.` };
 }
 
 export async function deletePortfolioAction(formData: FormData) {

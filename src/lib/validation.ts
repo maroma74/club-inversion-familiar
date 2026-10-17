@@ -63,6 +63,19 @@ export function parseDay(s: string): Date | null {
   return d;
 }
 
+/**
+ * Las 23:59 de ese día en hora de España, sea cual sea la zona horaria del servidor (los plazos de las carteras
+ * terminan a medianoche de Madrid, también en los días de cambio de hora).
+ */
+export function clubEndOfDay(ymd: string): Date | null {
+  if (!parseDay(ymd)) return null;
+  const [y, m, d] = ymd.split("-").map(Number);
+  const guess = Date.UTC(y, m - 1, d, 23, 59);
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: CLUB_TZ, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(guess)).map((p) => [p.type, p.value]));
+  const wall = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute);
+  return new Date(guess - (wall - guess));
+}
+
 /** Fecha válida, no posterior a hoy (hora de España) y posterior a 1990. */
 export function parsePastDay(s: string, now: Date = new Date()): { date: Date } | { error: string } {
   const date = parseDay(s);

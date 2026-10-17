@@ -106,6 +106,11 @@ export default async function CarteraPage() {
           {canDecide && <a href="#decidir" className="btn-primary">Ir a decidir</a>}
           {myDecision && <Link href="/inicio" className="btn-secondary">Ver mi diario</Link>}
         </div>
+        {isAdmin && !open && pendingMembers.length > 0 && (
+          <p className="m-0 text-sm text-neutral-700">
+            {pendingMembers.join(", ")} {pendingMembers.length === 1 ? "no ha" : "no han"} decidido. <Link href={`/cartera/gestion/${p.id}#plazo`} className="text-accent-700 font-medium">{p.status === "CLOSED" ? "Reabrir la cartera" : "Ampliar el plazo"}</Link>
+          </p>
+        )}
       </section>
 
       <details open className="card card-roomy gap-3" style={{ borderColor: "var(--color-divider)" }}>

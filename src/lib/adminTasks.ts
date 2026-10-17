@@ -72,7 +72,7 @@ export async function getAdminTasks(familyId: string): Promise<AdminTask[]> {
       tasks.push({ id: "portfolio-alloc", tone: "warn", title: "Miembros sin importe en la cartera del mes", text: `${missing.map((u) => firstName(u.name)).join(", ")} no ${missing.length === 1 ? "puede" : "pueden"} decidir en «${current.title}» porque no ${missing.length === 1 ? "tiene" : "tienen"} importe asignado.`, href: `/cartera/gestion/${current.id}`, cta: "Asignar importe" });
     }
     if (isDeadlinePassed(current)) {
-      tasks.push({ id: "portfolio-close", tone: "info", title: `El plazo de «${current.title}» ha terminado`, text: `${current.decisions.length} de ${current.allocations.filter((a) => a.amount > 0).length} decidieron. Ciérrala para archivarla en el historial.`, href: `/cartera/gestion/${current.id}`, cta: "Cerrar la cartera" });
+      tasks.push({ id: "portfolio-close", tone: "info", title: `El plazo de «${current.title}» ha terminado`, text: `${current.decisions.length} de ${current.allocations.filter((a) => a.amount > 0).length} decidieron. Ciérrala para archivarla en el historial o amplía el plazo para que decidan los que faltan.`, href: `/cartera/gestion/${current.id}#plazo`, cta: "Cerrar o ampliar el plazo" });
     } else if (current.deadline) {
       const days = Math.ceil((current.deadline.getTime() - Date.now()) / 86_400_000);
       const undecided = current.allocations.filter((a) => a.amount > 0 && !current.decisions.some((d) => d.userId === a.userId));

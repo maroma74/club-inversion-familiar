@@ -36,8 +36,13 @@ const GROUPS: Group[] = [
 
 const visible = (i: Item, isAdmin: boolean, isSiteAdmin: boolean) => (!i.admin || isAdmin) && (!i.site || isSiteAdmin);
 
+const ALL_HREFS = GROUPS.flatMap((g) => g.items.map((i) => i.href));
+
+/** Activo el enlace que mejor encaja: en /cartera/gestion se marca «Gestión de carteras», no también «Cartera del mes». */
 function isActive(path: string, href: string) {
-  return path === href || path.startsWith(href + "/");
+  const matches = (h: string) => path === h || path.startsWith(h + "/");
+  if (!matches(href)) return false;
+  return !ALL_HREFS.some((h) => h.length > href.length && matches(h));
 }
 
 /** Punto parpadeante y etiqueta «Abierta» que avisan de una cartera pendiente de decidir. */
