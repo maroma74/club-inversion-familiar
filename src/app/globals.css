@@ -482,6 +482,12 @@ table thead th { font-size: 11px; letter-spacing: 0.08em; text-transform: upperc
 .lp-hero-quote { margin: 30px 0 0; padding: 0 0 0 18px; border-left: 2px solid #34d399; }
 .lp-hero-quote p { margin: 0; font-family: var(--font-heading); font-weight: 700; font-size: clamp(18px, 1.8vw, 22px); line-height: 1.3; color: #ffffff; text-wrap: balance; }
 .lp-pasos-compact .lp-paso { padding: 20px 0; }
+/* Claim rotatorio: fundido entre frases; el hueco mínimo evita que el bloque salte al cambiar de longitud */
+.lp-claim-rotate { display: inline; transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
+.lp-claim-rotate[data-visible="false"] { opacity: 0; }
+.lp-hero-quote { min-height: 3.2em; }
+.lp-final .lp-display-sm { min-height: 2.2em; max-width: 26ch; }
+@media (prefers-reduced-motion: reduce) { .lp-claim-rotate { transition: none; } }
 .lp-lede { font-size: clamp(17px, 1.7vw, 20px); line-height: 1.5; color: rgba(248, 250, 252, 0.84); max-width: 58ch; margin: 22px 0 0; text-wrap: pretty; }
 .lp-proof { list-style: none; margin: 26px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 10px; }
 .lp-proof li { font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(248, 250, 252, 0.2); color: rgba(248, 250, 252, 0.9); background: rgba(248, 250, 252, 0.05); }

@@ -5,6 +5,7 @@ import { RegisterForm, type Preview } from "./RegisterForm";
 import { familySignupAllowed } from "@/app/actions/auth";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
 import { OBJETIVOS, PASOS } from "@/components/landing/Landing";
+import { RotatingClaim } from "@/components/landing/RotatingClaim";
 import { FAMILY_INVITE_LIMIT } from "@/lib/familyInvites";
 
 export const metadata: Metadata = {
@@ -84,7 +85,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
               {newFamily && <li>Tú presides y recibes {FAMILY_INVITE_LIMIT} invitaciones</li>}
             </ul>
             <blockquote className="lp-hero-quote">
-              <p>«Tu hijo va a invertir igual. Mejor que aprenda contigo.»</p>
+              <p>«<RotatingClaim />»</p>
             </blockquote>
           </div>
           <RegisterForm initialCode={code} allowCreate={allowCreate} preview={preview} />

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LoginForm } from "@/app/login/LoginForm";
 import { FAMILY_INVITE_LIMIT } from "@/lib/familyInvites";
+import { RotatingClaim } from "./RotatingClaim";
 
 /* Portada pública del Club. Modo «persuadir»: la caja de entrada vive en la cabecera y todo lo demás
    explica a un padre o una madre qué es un club familiar, para qué sirve y cómo se entra. */
@@ -179,7 +180,7 @@ export function Landing() {
 
       <section className="lp-section lp-section-alt lp-final" aria-labelledby="final-title">
         <div className="lp-wrap">
-          <h2 id="final-title" className="lp-display lp-display-sm">Tu hijo va a invertir igual. Mejor que aprenda contigo.</h2>
+          <h2 id="final-title" className="lp-display lp-display-sm"><RotatingClaim /></h2>
           <div className="lp-hero-actions">
             <a href="#entrar" className="btn-primary lp-btn-lg">Entrar en mi club</a>
             <Link href="/registro" className="btn-secondary lp-btn-lg">Tengo una invitación</Link>
