@@ -16,6 +16,7 @@ import { WatchlistForm } from "@/app/(app)/acciones/WatchlistForm";
 import { getClubRecommendations } from "@/lib/club";
 import { RemoveWatchlistButton } from "./RemoveWatchlistButton";
 import { ActionBadge } from "@/components/ClubRecommendationCard";
+import { ScoreBar } from "@/components/ScoreBar";
 
 const Change = ({ v }: { v: number | null }) =>
   v === null ? <span className="text-neutral-700">—</span> : <span className={`tabular-nums font-medium ${v >= 0 ? "text-accent-700" : "text-ink"}`}>{signed(v * 100, 2)} %</span>;
@@ -183,10 +184,13 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
                       <td className="px-2 py-2 text-right whitespace-nowrap"><Change v={q.price ? q.change1d : null} /></td>
                       <td className="px-2 py-2 whitespace-nowrap">
                         {rec ? (
-                          <Link href={`${c.base}/${encodeURIComponent(q.symbol)}`} title={`${rec.bias} · confianza ${rec.confidence}`} className="inline-flex items-center gap-1.5">
-                            <ActionBadge action={rec.action} small />
-                            <span className={`text-xs tabular-nums font-medium ${rec.total >= 0.3 ? "text-accent-700" : rec.total <= -0.3 ? "text-ink" : "text-neutral-700"}`}>{signed(rec.total, 2)}</span>
-                            {rec.daysToEarnings !== null && rec.daysToEarnings >= 0 && rec.daysToEarnings <= 10 && <span className="tag tag-gold" title={`Resultados el ${rec.earningsDate}`}>Resultados en {rec.daysToEarnings} d</span>}
+                          <Link href={`${c.base}/${encodeURIComponent(q.symbol)}`} title={`${rec.bias} · confianza ${rec.confidence}`} className="inline-flex flex-col gap-1 no-underline text-inherit">
+                            <span className="inline-flex items-center gap-1.5">
+                              <ActionBadge action={rec.action} small total={rec.total} />
+                              <span className={`text-xs tabular-nums font-medium ${rec.total >= 0.3 ? "text-accent-700" : rec.total <= -0.3 ? "text-ink" : "text-neutral-700"}`}>{signed(rec.total, 2)}</span>
+                              {rec.daysToEarnings !== null && rec.daysToEarnings >= 0 && rec.daysToEarnings <= 10 && <span className="tag tag-gold" title={`Resultados el ${rec.earningsDate}`}>Resultados en {rec.daysToEarnings} d</span>}
+                            </span>
+                            <ScoreBar total={rec.total} blocks={rec.blocks} />
                           </Link>
                         ) : (
                           <span className="text-xs text-neutral-700">N/D</span>
@@ -196,7 +200,7 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
                         <td className="px-2 py-2 whitespace-nowrap">
                           {(() => {
                             const per = perMap.get(q.symbol.toUpperCase());
-                            if (!per || per.signal === "N/D" || per.per === null) return <span className="text-xs text-neutral-700" title={per?.reason ?? "Solo acciones de EE. UU. con resultados en la SEC"}>N/D</span>;
+                            if (!per || per.signal === "N/D" || per.per === null) return <span className="text-xs text-neutral-700" title={per?.reason ?? "Sin datos de beneficio por acción para este valor"}>N/D</span>;
                             return (
                               <Link href={`${c.base}/${encodeURIComponent(q.symbol)}#per-title`} className="no-underline text-inherit" title={per.reason}>
                                 <span className="inline-flex items-center gap-1.5">

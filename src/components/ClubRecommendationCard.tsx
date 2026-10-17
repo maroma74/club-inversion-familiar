@@ -3,13 +3,15 @@ import { safeHref } from "@/lib/validation";
 import type { ClubRecommendation } from "@/lib/club";
 import { COMMODITY_DISCLAIMER, CRYPTO_DISCLAIMER, DISCLAIMER, recommendationMarkdown } from "@/lib/recommend";
 import { CopyButton } from "./CopyButton";
+import { ScoreBar, tiltLabel } from "./ScoreBar";
 import { fmtDate, num, signed } from "@/lib/format";
 import { priceDecimals } from "@/lib/fmtPrice";
 
-/** Etiqueta de acción con el estilo del sistema: COMPRAR relleno acento, MANTENER borde acento, VENDER fondo oscuro. */
-const READING: Record<string, string> = { COMPRAR: "Favorable", MANTENER: "Neutral", VENDER: "Desfavorable" };
-
-export function ActionBadge({ action, small = false }: { action: string; small?: boolean }) {
+/**
+ * Etiqueta de acción con el estilo del sistema: COMPRAR relleno acento, VENDER fondo oscuro y, para MANTENER,
+ * ámbar con el sesgo («▲ Sesgo alcista», «▼ Sesgo bajista» o «Neutral») cuando se conoce la puntuación.
+ */
+export function ActionBadge({ action, small = false, total }: { action: string; small?: boolean; total?: number }) {
   const style =
     action === "COMPRAR"
       ? { background: "linear-gradient(135deg, #047857, #065f46)", color: "#ffffff", border: "1px solid transparent" }
@@ -17,8 +19,8 @@ export function ActionBadge({ action, small = false }: { action: string; small?:
         ? { background: "#0e2138", color: "#f8fafc", border: "1px solid #0e2138" }
         : { background: "var(--color-amber-100)", color: "var(--color-amber-700)", border: "1px solid #e5a016" };
   return (
-    <span className="inline-flex items-center font-heading" style={{ ...style, fontSize: small ? 11 : 16, letterSpacing: "0.04em", padding: small ? "2px 10px" : "5px 16px", lineHeight: 1.3, borderRadius: 999, fontWeight: 800 }}>
-      {READING[action] ?? action}
+    <span className="inline-flex items-center font-heading whitespace-nowrap" style={{ ...style, fontSize: small ? 11 : 16, letterSpacing: "0.04em", padding: small ? "2px 10px" : "5px 16px", lineHeight: 1.3, borderRadius: 999, fontWeight: 800 }}>
+      {tiltLabel(action, total ?? 0)}
     </span>
   );
 }
@@ -68,9 +70,13 @@ export function ClubRecommendationCard({ r }: { r: ClubRecommendation }) {
 
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm text-neutral-700">Lectura técnica:</span>
-        <ActionBadge action={r.action} />
+        <ActionBadge action={r.action} total={r.total} />
         <span className="text-[15px]">{r.bias}</span>
         <span className="text-sm text-neutral-700">Confianza: <b className="text-ink">{r.confidence}</b> · Horizonte: <b className="text-ink">{r.horizon}</b>{r.since ? ` · desde ${fmtDate(r.since)}${r.previousAction ? ` (antes ${r.previousAction})` : ""}` : ""}</span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <div className="text-sm"><b className="tabular-nums" style={{ color: toneOf(r.total) }}>{sg(r.total)}</b> <span className="text-neutral-700">de ±2 · entre −0,3 y +0,3 es neutral; a partir de +1 se propone comprar y por debajo de −1, vender (si además la tendencia y el ratio riesgo/beneficio acompañan).</span></div>
+        <ScoreBar total={r.total} blocks={r.blocks} size="lg" />
       </div>
 
       <div className="overflow-x-auto">
