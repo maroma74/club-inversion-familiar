@@ -15,7 +15,9 @@ services:
       - "3000:3000"
     environment:
       AUTH_SECRET: ${AUTH_SECRET:?Define AUTH_SECRET con una cadena larga y aleatoria}
-      DATABASE_URL: postgresql://club:${DB_PASSWORD:-club}@db:5432/clubinversion
+      DATABASE_URL: postgresql://club:${DB_PASSWORD:-club}@db:5432/clubinversion?connection_limit=5&pool_timeout=20
+      # Ponlo a "true" solo mientras creas la primera familia; después vuelve a cerrar el registro.
+      ALLOW_FAMILY_SIGNUP: ${ALLOW_FAMILY_SIGNUP:-false}
     # Antes del primer arranque (y tras cada versión con migraciones): docker compose run --rm --entrypoint sh app -c "npx prisma migrate deploy && npx prisma db seed"
     depends_on:
       - db

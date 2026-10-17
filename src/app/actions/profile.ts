@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/ratelimit";
-import { MAX_AVATAR_BYTES, sniffImageMime } from "@/lib/avatar";
+import { checkAvatar, MAX_AVATAR_BYTES } from "@/lib/avatar";
 import type { FormState } from "./auth";
 
 /** Guarda la foto de perfil del usuario actual. El navegador ya la ha recortado y reducido; aquí se valida de nuevo. */
@@ -18,8 +18,9 @@ export async function uploadAvatarAction(_prev: FormState, formData: FormData): 
   if (file.size > MAX_AVATAR_BYTES) return { error: "La foto es demasiado grande" };
   const bytes = new Uint8Array(await file.arrayBuffer());
   // El tipo se deduce de los bytes, no de lo que declare el navegador
-  const mime = sniffImageMime(bytes);
-  if (!mime) return { error: "Formato no admitido. Usa una foto JPG, PNG o WebP." };
+  const check = checkAvatar(bytes);
+  if ("error" in check) return { error: check.error };
+  const { mime } = check;
 
   const now = new Date();
   await prisma.$transaction([

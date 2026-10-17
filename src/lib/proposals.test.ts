@@ -114,3 +114,12 @@ test("el tipo de cada opción es coherente con su símbolo", () => {
     }
   }
 });
+
+test("las propuestas compartidas no pueden llevar enlaces externos", () => {
+  const base = PROPOSALS[0];
+  const withLink: ProposalInput = { ...base, options: base.options.map((o) => ({ ...o })), lesson: base.lesson + "\n\nMás en https://ejemplo.com/analisis" };
+  assert.ok(proposalProblems(withLink).some((p) => p.includes("enlaces externos")));
+  const withWww: ProposalInput = { ...base, options: base.options.map((o) => ({ ...o })), title: "Mira www.ejemplo.com" };
+  assert.ok(proposalProblems(withWww).some((p) => p.includes("enlaces externos")));
+  assert.ok(!proposalProblems({ ...base, options: base.options.map((o) => ({ ...o })) }).some((p) => p.includes("enlaces externos")));
+});

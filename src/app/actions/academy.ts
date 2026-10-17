@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { getCoursesWithProgress } from "@/lib/academy";
+import { rateLimit } from "@/lib/ratelimit";
 
 export type QuizResult = {
   results: { questionId: string; correct: boolean; correctIndex: number; feedback: string; hint: string }[];
@@ -17,6 +18,9 @@ export type QuizResult = {
 export async function submitQuizAction(lessonId: string, answers: Record<string, number>): Promise<QuizResult | { error: string }> {
   const user = await requireUser();
   if (typeof lessonId !== "string" || lessonId.length > 40 || typeof answers !== "object" || answers === null) return { error: "Datos no válidos" };
+  // Sin límite, las preguntas se podrían resolver probando opciones una a una.
+  const limit = await rateLimit(`quiz:${user.id}`, 40, 60 * 60 * 1000);
+  if (!limit.ok) return { error: "Has hecho muchos intentos seguidos. Vuelve a leer la lección con calma y prueba dentro de un rato." };
   // El curso debe estar desbloqueado (se completan por orden); la página lo muestra, pero se comprueba también aquí.
   const courses = await getCoursesWithProgress(user.id);
   const course = courses.find((c) => c.lessons.some((l) => l.id === lessonId));

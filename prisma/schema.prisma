@@ -44,6 +44,28 @@ model User {
   /// Cuándo se subió la foto de perfil (null = sin foto). Sirve para cachear la imagen con ?v=.
   avatarUpdatedAt    DateTime?
   avatar             UserAvatar?
+  /// Sube al cambiar o restablecer la contraseña: las sesiones firmadas con un valor anterior dejan de valer.
+  sessionVersion     Int            @default(0)
+  passwordResets     PasswordReset[] @relation("PasswordResetUser")
+  passwordResetsIssued PasswordReset[] @relation("PasswordResetIssuer")
+
+  @@index([familyId, status])
+}
+
+/// Enlace de un solo uso, emitido por el presidente, para que un miembro fije una contraseña nueva.
+/// Solo se guarda el hash del token; el enlace completo se enseña una vez y se envía por correo.
+model PasswordReset {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation("PasswordResetUser", fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdById String
+  createdBy   User      @relation("PasswordResetIssuer", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, createdAt])
 }
 
 /// Foto de perfil (cuadrada, ya reducida en el navegador). Va en tabla aparte para no cargar los bytes en cada consulta de usuario.
@@ -87,6 +109,8 @@ model Contribution {
   amount    Float
   note      String?
   createdAt DateTime @default(now())
+
+  @@index([userId, date])
 }
 
 model Trade {
@@ -369,4 +393,7 @@ model MonthlyChoice {
   journalEntryId String?
   price          Float? // precio de ejecución en EUR
   quantity       Float?
+
+  @@index([tradeId])
+  @@index([journalEntryId])
 }

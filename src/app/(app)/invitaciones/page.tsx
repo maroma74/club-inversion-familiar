@@ -6,6 +6,7 @@ import { appUrl } from "@/lib/appUrl";
 import { fmtDate } from "@/lib/format";
 import { PageHeader } from "@/components/ui";
 import { approveMemberAction, deleteInvitationAction, removeMemberAction, renewInvitationAction, revokeInvitationAction, setMemberRoleAction } from "@/app/actions/invitations";
+import { ResetLinkButton } from "./ResetLinkButton";
 import { CopyButton } from "@/components/CopyButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { InvitationForm, JoinModeForm, RegenerateCodeForm, SendInvitationForm } from "./forms";
@@ -160,9 +161,12 @@ export default async function InvitacionesPage() {
                   <td className="px-2 py-2 text-right hidden md:table-cell">{m._count.trades}</td>
                   <td className="px-2 py-2 text-slate-500 hidden md:table-cell">{fmtDate(m.createdAt)}</td>
                   <td className="px-5 py-2 text-right">
-                    {!isMe && !lastAdmin && (
-                      <form action={removeMemberAction} className="inline"><input type="hidden" name="userId" value={m.id} /><ConfirmButton className="text-xs text-slate-400 hover:text-red-600" message={`¿Expulsar a ${firstName(m.name)} del club? Se borrarán su cuenta, sus operaciones y sus aportaciones. Esta acción no se puede deshacer.`}>Expulsar</ConfirmButton></form>
-                    )}
+                    <div className="inline-flex flex-wrap items-start justify-end gap-x-3 gap-y-1">
+                      {!isMe && <ResetLinkButton userId={m.id} name={firstName(m.name)} />}
+                      {!isMe && !lastAdmin && (
+                        <form action={removeMemberAction} className="inline"><input type="hidden" name="userId" value={m.id} /><ConfirmButton className="text-xs text-slate-400 hover:text-red-600" message={`¿Expulsar a ${firstName(m.name)} del club? Se borrarán su cuenta, sus operaciones y sus aportaciones. Esta acción no se puede deshacer.`}>Expulsar</ConfirmButton></form>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

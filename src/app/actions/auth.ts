@@ -5,24 +5,26 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { checkJoinCode, createSession, destroySession, hashPassword, uniqueInviteCode, verifyPassword } from "@/lib/auth";
 import { clearAttempts, clientIp, rateLimit } from "@/lib/ratelimit";
+import { nameText, newPasswordSchema } from "@/lib/validation";
 
 export type FormState = { error?: string; ok?: string } | undefined;
 
 const emailSchema = z.string().trim().toLowerCase().email("Email no válido").max(120);
-const passwordSchema = z.string().min(8, "La contraseña debe tener al menos 8 caracteres").max(128, "Contraseña demasiado larga");
-
 const registerSchema = z.object({
-  name: z.string().trim().min(2, "Nombre demasiado corto").max(60, "Nombre demasiado largo"),
+  name: nameText(60, 2),
   email: emailSchema,
-  password: passwordSchema,
+  password: newPasswordSchema,
   mode: z.enum(["create", "join"]),
-  familyName: z.string().trim().max(60, "Nombre de familia demasiado largo").optional(),
+  familyName: nameText(60).optional(),
   inviteCode: z.string().trim().toUpperCase().max(20).optional(),
 });
 
-/** ¿Se pueden crear familias nuevas desde el registro? (ALLOW_FAMILY_SIGNUP=false lo desactiva en producción) */
+/**
+ * ¿Se pueden crear familias nuevas desde el registro? Cerrado salvo que ALLOW_FAMILY_SIGNUP sea "true"
+ * (en desarrollo lo pone .env.example). Abierto, cualquiera podría crear una familia y ser su presidente.
+ */
 export async function familySignupAllowed() {
-  return process.env.ALLOW_FAMILY_SIGNUP !== "false";
+  return process.env.ALLOW_FAMILY_SIGNUP === "true";
 }
 
 export async function registerAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -83,7 +85,7 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
     if (typeof e === "object" && e && "code" in e && (e as { code?: string }).code === "P2002") return { error: "Ya existe una cuenta con ese email" };
     throw e;
   }
-  await createSession(userId);
+  await createSession({ id: userId, sessionVersion: 0 });
   redirect(status === "PENDING" ? "/pendiente" : "/inicio");
 }
 
@@ -94,20 +96,23 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   if (!parsed.success) return { error: "Email o contraseña incorrectos" };
   const { email, password } = parsed.data;
 
-  // Fuerza bruta: 8 intentos por email y conexión cada 15 minutos, 40 por conexión por hora.
+  // Fuerza bruta: 8 intentos por email y conexión cada 15 minutos, 40 por conexión por hora y, además,
+  // 25 por email cada 15 minutos vengan de donde vengan (frena ataques repartidos entre muchas IP).
   const ip = await clientIp();
   const perAccount = await rateLimit(`login:${ip}:${email}`, 8, 15 * 60 * 1000);
   if (!perAccount.ok) return { error: `Demasiados intentos. Espera ${perAccount.retryMinutes} minutos y vuelve a probar.` };
   const perIp = await rateLimit(`login:${ip}`, 40, 60 * 60 * 1000);
   if (!perIp.ok) return { error: "Demasiados intentos desde esta conexión. Prueba más tarde." };
+  const perEmail = await rateLimit(`login:email:${email}`, 25, 15 * 60 * 1000);
+  if (!perEmail.ok) return { error: `Demasiados intentos con este email. Espera ${perEmail.retryMinutes} minutos y vuelve a probar.` };
 
   const user = await prisma.user.findUnique({ where: { email } });
   // Se comprueba siempre un hash para que el tiempo de respuesta no revele si el email existe.
   const hash = user?.passwordHash ?? "$2a$10$CwTycUXWue0Thq9StjUM0uJ8gP0VQ2w7y6yZq7w1hX3Jm4h7z8t0O";
   const valid = await verifyPassword(password, hash);
   if (!user || !valid) return { error: "Email o contraseña incorrectos" };
-  await clearAttempts(`login:${ip}:${email}`);
-  await createSession(user.id);
+  await Promise.all([clearAttempts(`login:${ip}:${email}`), clearAttempts(`login:email:${email}`)]);
+  await createSession(user);
   redirect("/inicio");
 }
 

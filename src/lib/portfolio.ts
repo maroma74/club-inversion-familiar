@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { logError } from "./log";
 import { firstName, uniqueFirstNames } from "./names";
 import { getPrices } from "./prices";
 
@@ -66,7 +67,8 @@ export async function computePortfolio(userId: string, opts: { excludeTradeId?: 
       realized += sold * (priceEur - avg) - t.fees;
       p.qty -= sold;
       p.cost -= sold * avg;
-      cash += t.quantity * priceEur - t.fees;
+      // Solo entra en caja lo que de verdad se tenía: una venta mayor que la posición no crea dinero.
+      cash += sold * priceEur - t.fees;
     }
     if (t.name) p.name = t.name;
     pos.set(sym, p);
@@ -131,10 +133,13 @@ export const OWN_CONTRIBUTION_PREFIX = "Aportación propia";
  * una operación nunca deja aportaciones huérfanas ni efectivo negativo.
  */
 export async function reconcileOwnContributions(userId: string): Promise<{ created: { symbol: string; amount: number; date: Date }[]; removed: number }> {
-  const removed = await prisma.contribution.deleteMany({ where: { userId, note: { startsWith: OWN_CONTRIBUTION_PREFIX } } });
+  // Borrado, lectura y alta en una sola transacción: un fallo a medias no deja al miembro sin sus aportaciones
+  // automáticas, y dos recálculos a la vez no las duplican.
+  return prisma.$transaction(async (tx) => {
+  const removed = await tx.contribution.deleteMany({ where: { userId, note: { startsWith: OWN_CONTRIBUTION_PREFIX } } });
   const [manual, trades] = await Promise.all([
-    prisma.contribution.findMany({ where: { userId }, orderBy: { date: "asc" } }),
-    prisma.trade.findMany({ where: { userId }, orderBy: [{ date: "asc" }, { createdAt: "asc" }] }),
+    tx.contribution.findMany({ where: { userId }, orderBy: { date: "asc" } }),
+    tx.trade.findMany({ where: { userId }, orderBy: [{ date: "asc" }, { createdAt: "asc" }] }),
   ]);
   type Ev = { date: Date; order: number; kind: "contribution"; amount: number } | { date: Date; order: number; kind: "trade"; trade: (typeof trades)[number] };
   // Mismo día: primero las aportaciones, después las operaciones por orden de registro.
@@ -144,6 +149,7 @@ export async function reconcileOwnContributions(userId: string): Promise<{ creat
   ].sort((a, b) => a.date.getTime() - b.date.getTime() || a.order - b.order);
 
   let cash = 0;
+  const held = new Map<string, number>();
   const created: { symbol: string; amount: number; date: Date }[] = [];
   for (const ev of events) {
     if (ev.kind === "contribution") {
@@ -151,9 +157,10 @@ export async function reconcileOwnContributions(userId: string): Promise<{ creat
       continue;
     }
     const t = ev.trade;
-    const amount = t.quantity * t.price * t.fxRate;
+    const sym = t.symbol.toUpperCase();
+    const priceEur = t.price * t.fxRate;
     if (t.side === "BUY") {
-      const cost = amount + t.fees;
+      const cost = t.quantity * priceEur + t.fees;
       const shortfall = cost - cash;
       if (shortfall > 0.009) {
         const rounded = Math.round(shortfall * 100) / 100;
@@ -161,20 +168,27 @@ export async function reconcileOwnContributions(userId: string): Promise<{ creat
         cash += rounded;
       }
       cash -= cost;
+      held.set(sym, (held.get(sym) ?? 0) + t.quantity);
     } else {
-      cash += amount - t.fees;
+      // Misma regla que computePortfolio: solo ingresa lo que se tenía en ese momento.
+      const sold = Math.min(t.quantity, held.get(sym) ?? 0);
+      held.set(sym, (held.get(sym) ?? 0) - sold);
+      cash += sold * priceEur - t.fees;
     }
   }
   if (created.length) {
-    await prisma.contribution.createMany({
+    await tx.contribution.createMany({
       data: created.map((c) => ({ userId, date: c.date, amount: c.amount, note: `${OWN_CONTRIBUTION_PREFIX} (compra ${c.symbol})` })),
     });
   }
   return { created, removed: removed.count };
+  });
 }
 
 /** Guarda una foto diaria del valor de la cartera para dibujar la evolución. */
 export async function snapshotPortfolio(summary: PortfolioSummary) {
+  // Sin precio de alguna posición el valor estaría a coste: mejor no grabar ese día que dejarlo mal para siempre.
+  if (summary.missingPrices.length > 0) return;
   const today = new Date();
   const day = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
   // La foto diaria se escribe como mucho una vez cada 10 minutos por usuario (cada visita de la liga la recalcula).
@@ -186,7 +200,7 @@ export async function snapshotPortfolio(summary: PortfolioSummary) {
     where: { userId_date: { userId: summary.userId, date: day } },
     update: { value: summary.totalValue, invested: summary.contributed },
     create: { userId: summary.userId, date: day, value: summary.totalValue, invested: summary.contributed },
-  });
+  }).catch((e) => logError("portfolio.snapshot", e, { userId: summary.userId }));
 }
 
 const snapshotWritten = new Map<string, { day: number; at: number }>();

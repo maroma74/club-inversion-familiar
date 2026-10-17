@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { logError } from "./log";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 // Caché de precios: 60 s. Yahoo sirve cripto y bolsa de EE. UU. en tiempo real y la mayoría de bolsas europeas con 15 min de retraso.
@@ -19,6 +20,15 @@ async function fetchJson(url: string, timeoutMs = 6000) {
 }
 
 const fxCache = new Map<string, { rate: number; at: number }>();
+// Peticiones en vuelo: si varios miembros tienen el mismo valor, Yahoo recibe una sola llamada por render.
+const inflight = new Map<string, Promise<unknown>>();
+function dedupe<T>(key: string, run: () => Promise<T>): Promise<T> {
+  const existing = inflight.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+  const p = run().finally(() => inflight.delete(key));
+  inflight.set(key, p);
+  return p;
+}
 
 export const SUPPORTED_CURRENCIES = ["EUR", "USD", "GBP", "CHF"] as const;
 
@@ -32,10 +42,13 @@ export async function fxToEur(currency: string): Promise<number> {
   let rate: number;
   if (cached && Date.now() - cached.at < TTL_MS) rate = cached.rate;
   else {
-    const data = await fetchJson(`https://query1.finance.yahoo.com/v8/finance/chart/${cur}EUR=X?range=1d&interval=1d`);
-    rate = Number(data?.chart?.result?.[0]?.meta?.regularMarketPrice);
-    if (!Number.isFinite(rate)) throw new Error(`Sin tipo de cambio para ${cur}`);
-    fxCache.set(cur, { rate, at: Date.now() });
+    rate = await dedupe(`fx:${cur}`, async () => {
+      const data = await fetchJson(`https://query1.finance.yahoo.com/v8/finance/chart/${cur}EUR=X?range=1d&interval=1d`);
+      const r = Number(data?.chart?.result?.[0]?.meta?.regularMarketPrice);
+      if (!Number.isFinite(r)) throw new Error(`Sin tipo de cambio para ${cur}`);
+      fxCache.set(cur, { rate: r, at: Date.now() });
+      return r;
+    });
   }
   return isPence ? rate / 100 : rate;
 }
@@ -59,6 +72,10 @@ export async function fxToEurAt(currency: string, date: Date): Promise<number> {
 }
 
 export async function fetchQuote(symbol: string): Promise<Quote> {
+  return dedupe(`quote:${symbol.toUpperCase()}`, () => fetchQuoteUncached(symbol));
+}
+
+async function fetchQuoteUncached(symbol: string): Promise<Quote> {
   const data = await fetchJson(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d`);
   const meta = data?.chart?.result?.[0]?.meta;
   const cents = meta?.currency === "USX"; // futuros agrícolas: Yahoo los da en centavos de dólar
@@ -121,7 +138,8 @@ export async function getPrices(symbols: string[], familyId?: string): Promise<M
           create: { symbol: sym, price: q.priceEur, name: q.name, currency: "EUR" },
         });
         out.set(sym, { priceEur: saved.price, name: saved.name, updatedAt: saved.updatedAt, stale: false });
-      } catch {
+      } catch (e) {
+        logError("prices.quote", e, { symbol: sym, stale: Boolean(c) });
         if (c) out.set(sym, { priceEur: c.price, name: c.name, updatedAt: c.updatedAt, stale: true });
       }
     }),

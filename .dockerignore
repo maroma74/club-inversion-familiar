@@ -10,3 +10,8 @@ shadow.db
 club-inversion-familiar-claude-pack.zip
 tsconfig.tsbuildinfo
 .claude
+.impeccable
+.playwright-mcp
+docs
+*.md
+!README.md

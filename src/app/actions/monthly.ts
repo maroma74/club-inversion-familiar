@@ -1,6 +1,6 @@
 "use server";
 
-import { allowanceNote } from "@/lib/allowance";
+import { allowanceNote, allowanceWhere } from "@/lib/allowance";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -13,8 +13,15 @@ import { fetchStockQuote } from "@/lib/stocks";
 import { fetchProfile } from "@/lib/fundamentals";
 import { reconcileOwnContributions } from "@/lib/portfolio";
 import { isDeadlinePassed } from "@/lib/monthly";
-import { longText, MAX_MONEY, parseMoney, symbolSchema } from "@/lib/validation";
+import { currentMonthYm, longText, MAX_MONEY, monthSchema, parseDay, parseMoney, symbolSchema } from "@/lib/validation";
 import type { FormState } from "./auth";
+
+/** Las carteras se preparan como mucho con un mes de adelanto: la paga no puede adelantarse más que eso. */
+function nextMonthYm() {
+  const [y, m] = currentMonthYm().split("-").map(Number);
+  const d = new Date(y, m, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
 
 const refresh = (id?: string) => {
   for (const p of ["/cartera", "/cartera/gestion", "/inicio", "/inversiones", "/familia", "/operaciones"]) revalidatePath(p);
@@ -22,7 +29,7 @@ const refresh = (id?: string) => {
 };
 
 const detailsSchema = z.object({
-  month: z.string().regex(/^\d{4}-\d{2}$/, "Mes no válido"),
+  month: monthSchema,
   title: z.string().trim().min(3, "Pon un título").max(120),
   lesson: z.string().trim().min(20, "La lección debe explicar la propuesta (mínimo 20 caracteres)").max(8000),
   minChoices: z.coerce.number().int().min(1).max(10).default(1),
@@ -30,10 +37,13 @@ const detailsSchema = z.object({
   deadline: z.string().optional(),
 });
 
+/** Fecha límite (AAAA-MM-DD) hasta el final de ese día. Un formato raro se ignora en vez de dar una fecha cualquiera. */
 function parseDeadline(s?: string) {
   if (!s) return null;
-  const d = new Date(s + "T23:59:00");
-  return isNaN(d.getTime()) ? null : d;
+  const d = parseDay(s);
+  if (!d) return null;
+  d.setHours(23, 59, 0, 0);
+  return d;
 }
 
 export async function createPortfolioAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -71,6 +81,8 @@ export async function updatePortfolioAction(_prev: FormState, formData: FormData
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
   if (d.minChoices > d.maxChoices) return { error: "El mínimo de opciones no puede superar el máximo" };
+  // Publicada, la paga ya se registró con la nota de ese mes: cambiarlo permitiría pagar dos veces.
+  if (d.month !== p.month && p.status !== "DRAFT") return { error: "El mes de una cartera publicada no se puede cambiar" };
   if (d.month !== p.month && (await prisma.monthlyPortfolio.findUnique({ where: { familyId_month: { familyId: admin.familyId, month: d.month } } }))) return { error: "Ya existe otra cartera para ese mes" };
   await prisma.monthlyPortfolio.update({ where: { id }, data: { month: d.month, title: d.title, lesson: d.lesson, minChoices: d.minChoices, maxChoices: d.maxChoices, deadline: parseDeadline(d.deadline) } });
   refresh(id);
@@ -152,7 +164,7 @@ export async function setAllocationsAction(_prev: FormState, formData: FormData)
       if (p.status === "PUBLISHED") {
         if (alloc.contributionId) await tx.contribution.update({ where: { id: alloc.contributionId }, data: { amount } });
         else if (amount > 0) {
-          const c = await tx.contribution.create({ data: { userId: m.id, date: monthDate(p.month), amount, note: `${allowanceNote(p.month)} · ${p.title}` } });
+          const c = await linkAllowance(tx, m.id, p.month, p.title, amount);
           await tx.monthlyAllocation.update({ where: { id: alloc.id }, data: { contributionId: c.id } });
         }
         touched.push(m.id);
@@ -169,6 +181,19 @@ function monthDate(month: string) {
   return new Date(y, m - 1, 1, 12);
 }
 
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/**
+ * La paga de un mes se registra una sola vez: si el miembro ya la cobró por el reparto manual de Familia,
+ * la cartera se liga a esa aportación (ajustando su importe) en vez de crear otra.
+ */
+async function linkAllowance(tx: Tx, userId: string, month: string, title: string, amount: number) {
+  const [y, m] = month.split("-").map(Number);
+  const existing = await tx.contribution.findFirst({ where: { userId, date: { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) }, ...allowanceWhere(month) } });
+  if (existing) return tx.contribution.update({ where: { id: existing.id }, data: { amount, note: `${allowanceNote(month)} · ${title}` } });
+  return tx.contribution.create({ data: { userId, date: monthDate(month), amount, note: `${allowanceNote(month)} · ${title}` } });
+}
+
 /** Publica la cartera: los miembros reciben su importe como aportación y pueden decidir. */
 export async function publishAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const admin = await requireAdmin();
@@ -179,13 +204,14 @@ export async function publishAction(_prev: FormState, formData: FormData): Promi
   if (p.options.length === 0) return { error: "Añade al menos una opción de inversión" };
   if (p.allocations.every((a) => a.amount <= 0)) return { error: "Asigna un importe a algún miembro" };
   if (p.options.length < p.minChoices) return { error: `Hay menos opciones (${p.options.length}) que el mínimo a elegir (${p.minChoices})` };
+  if (p.month > nextMonthYm()) return { error: "Solo se puede publicar la cartera del mes actual o del siguiente: la paga no se adelanta más" };
   // Cerrojo: solo el primer envío cambia DRAFT → PUBLISHED; las aportaciones se crean en la misma transacción.
   const published = await prisma.$transaction(async (tx) => {
     const lock = await tx.monthlyPortfolio.updateMany({ where: { id, familyId: admin.familyId, status: "DRAFT" }, data: { status: "PUBLISHED", publishedAt: new Date() } });
     if (lock.count !== 1) return false;
     for (const a of p.allocations) {
       if (a.amount <= 0 || a.contributionId) continue;
-      const c = await tx.contribution.create({ data: { userId: a.userId, date: monthDate(p.month), amount: a.amount, note: `${allowanceNote(p.month)} · ${p.title}` } });
+      const c = await linkAllowance(tx, a.userId, p.month, p.title, a.amount);
       await tx.monthlyAllocation.update({ where: { id: a.id }, data: { contributionId: c.id } });
     }
     return true;
@@ -270,9 +296,12 @@ export async function submitDecisionAction(_prev: FormState, formData: FormData)
         const q = quotes[pk.option.symbol];
         if (!(q.priceEur > 0)) throw new Error("SIN_PRECIO");
         const quantity = pk.amount / q.priceEur;
-        const fxRate = q.price > 0 ? q.priceEur / q.price : 1;
+        // Londres cotiza en peniques («GBp»): la operación se guarda en libras, con el cambio de libras a euros.
+        const pence = q.currency === "GBp";
+        const price = pence ? q.price / 100 : q.price;
+        const fxRate = price > 0 ? q.priceEur / price : 1;
         const trade = await tx.trade.create({
-          data: { userId: user.id, date: new Date(), symbol: pk.option.symbol, name: q.name || pk.option.name, side: "BUY", quantity, price: q.price, currency: q.currency === "GBp" ? "GBP" : q.currency, fxRate: q.currency === "GBp" ? fxRate * 100 : fxRate, fees: 0, broker: `Cartera ${p.month}` },
+          data: { userId: user.id, date: new Date(), symbol: pk.option.symbol, name: q.name || pk.option.name, side: "BUY", quantity, price, currency: pence ? "GBP" : q.currency, fxRate, fees: 0, broker: `Cartera ${p.month}` },
         });
         const entry = await tx.journalEntry.create({ data: { userId: user.id, tradeId: trade.id, symbol: pk.option.symbol, side: "BUY", why: pk.why, exitCondition: pk.exit } });
         await tx.monthlyChoice.create({ data: { decisionId: decision.id, optionId: pk.option.id, amount: pk.amount, why: pk.why, exitCondition: pk.exit, tradeId: trade.id, journalEntryId: entry.id, price: q.priceEur, quantity } });

@@ -87,6 +87,8 @@ export function TradeList({ trades, usdPerEur = null }: { trades: TradeRow[]; us
                       <button className="btn-primary">Sí, borrar</button>
                     </div>
                   </form>
+                ) : t.broker?.startsWith("Cartera ") ? (
+                  <span className="text-xs text-slate-500" title="Las compras de la cartera del mes son el registro de tu decisión y no se modifican">Decisión del mes</span>
                 ) : (
                   <div className="flex justify-end gap-1 whitespace-nowrap">
                     <button type="button" onClick={() => setEditing(t.id)} className="btn-ghost" style={{ minHeight: 36 }}>Editar</button>

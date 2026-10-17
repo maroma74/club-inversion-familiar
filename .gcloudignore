@@ -13,3 +13,5 @@ club-inversion-familiar-claude-pack.zip
 tsconfig.tsbuildinfo
 .claude
 docs
+.impeccable
+.playwright-mcp

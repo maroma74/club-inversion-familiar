@@ -7,6 +7,8 @@ import { destroySession, requireAdmin, uniqueInviteCode } from "@/lib/auth";
 import { invitationEmail, sendEmail } from "@/lib/email";
 import { appUrl } from "@/lib/appUrl";
 import { firstName } from "@/lib/names";
+import { rateLimit } from "@/lib/ratelimit";
+import { nameText } from "@/lib/validation";
 import type { FormState } from "./auth";
 
 const refresh = () => {
@@ -16,10 +18,10 @@ const refresh = () => {
 };
 
 const invitationSchema = z.object({
-  name: z.string().trim().max(80).optional(),
+  name: nameText(80).optional(),
   email: z.string().trim().toLowerCase().email("Email no válido").optional().or(z.literal("")),
   role: z.enum(["MEMBER", "ADMIN"]).default("MEMBER"),
-  note: z.string().trim().max(200).optional(),
+  note: nameText(200).optional(),
   expiresDays: z.coerce.number().int().min(0).max(365).default(14),
 });
 
@@ -29,7 +31,10 @@ export async function createInvitationAction(_prev: FormState, formData: FormDat
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
   const email = d.email || null;
-  if (email && (await prisma.user.findUnique({ where: { email } }))) return { error: "Ya existe un miembro con ese email" };
+  const limit = await rateLimit(`invite:${admin.id}`, 30, 60 * 60 * 1000);
+  if (!limit.ok) return { error: "Has creado muchas invitaciones seguidas. Prueba dentro de un rato." };
+  // Solo se mira dentro de la propia familia: la lista de correos de otras familias no es asunto de nadie.
+  if (email && (await prisma.user.findFirst({ where: { email, familyId: admin.familyId }, select: { id: true } }))) return { error: "Ya hay un miembro de tu familia con ese email" };
   const pending = await prisma.invitation.count({ where: { familyId: admin.familyId, usedAt: null, revokedAt: null } });
   if (pending >= 50) return { error: "Demasiadas invitaciones pendientes; anula alguna antes de crear más" };
   const code = await uniqueInviteCode();
@@ -63,11 +68,12 @@ export async function sendInvitationAction(_prev: FormState, formData: FormData)
   if (inv.expiresAt && inv.expiresAt.getTime() < Date.now()) return { error: "Esta invitación ha caducado; reactívala antes de enviarla" };
   const to = inv.email ?? parsed.data.email ?? "";
   if (!to) return { error: "Indica a qué email enviarla" };
-  // Límites de envío: 10 minutos entre reenvíos de la misma invitación y 30 correos al día por familia.
+  // Una invitación, un destinatario: una vez enviada no se reutiliza para escribir a otras direcciones.
+  if (inv.sentTo && inv.sentTo !== to) return { error: `Esta invitación ya se envió a ${inv.sentTo}. Para otra persona, crea una invitación nueva.` };
+  // Límites de envío: 10 minutos entre reenvíos de la misma invitación y 30 correos por familia cada 24 horas.
   if (inv.sentAt && Date.now() - inv.sentAt.getTime() < 10 * 60 * 1000) return { error: "Esta invitación se envió hace menos de 10 minutos. Espera un poco antes de reenviarla." };
-  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
-  const sentToday = await prisma.invitation.count({ where: { familyId: admin.familyId, sentAt: { gte: dayStart } } });
-  if (sentToday >= 30) return { error: "Se ha alcanzado el límite de 30 correos de invitación al día" };
+  const daily = await rateLimit(`invite-mail:${admin.familyId}`, 30, 24 * 60 * 60 * 1000);
+  if (!daily.ok) return { error: "Se ha alcanzado el límite de 30 correos de invitación al día" };
   const origin = appUrl();
   const message = invitationEmail({
     to,
@@ -139,15 +145,22 @@ export async function approveMemberAction(formData: FormData) {
 }
 
 /** Rechaza una solicitud pendiente o expulsa a un miembro: se borra el usuario con sus operaciones y aportaciones. */
+/** Comprueba dentro de la transacción que la familia sigue teniendo al menos un presidente activo; si no, deshace. */
+const NO_ADMIN_LEFT = "SIN_PRESIDENTE";
+async function ensureAdminRemains(tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0], familyId: string) {
+  const admins = await tx.user.count({ where: { familyId, role: "ADMIN", status: "ACTIVE" } });
+  if (admins < 1) throw new Error(NO_ADMIN_LEFT);
+}
+
 export async function removeMemberAction(formData: FormData) {
   const admin = await requireAdmin();
   const m = await memberOfMyFamily(admin.familyId, String(formData.get("userId")));
   if (!m || m.id === admin.id) return;
-  if (m.role === "ADMIN") {
-    const admins = await prisma.user.count({ where: { familyId: admin.familyId, role: "ADMIN", status: "ACTIVE" } });
-    if (admins <= 1) return;
-  }
-  await prisma.user.delete({ where: { id: m.id } });
+  // Borrado y comprobación en la misma transacción: dos presidentes no pueden expulsarse a la vez y dejar la familia sin ninguno.
+  await prisma.$transaction(async (tx) => {
+    await tx.user.delete({ where: { id: m.id } });
+    await ensureAdminRemains(tx, admin.familyId);
+  }, { isolationLevel: "Serializable" }).catch((e) => { if (!(e instanceof Error && e.message === NO_ADMIN_LEFT)) throw e; });
   refresh();
 }
 
@@ -156,11 +169,10 @@ export async function setMemberRoleAction(formData: FormData) {
   const m = await memberOfMyFamily(admin.familyId, String(formData.get("userId")));
   const role = String(formData.get("role"));
   if (!m || !["ADMIN", "MEMBER"].includes(role)) return;
-  if (m.id === admin.id && role === "MEMBER") {
-    const admins = await prisma.user.count({ where: { familyId: admin.familyId, role: "ADMIN", status: "ACTIVE" } });
-    if (admins <= 1) return; // siempre debe quedar un administrador
-  }
-  await prisma.user.update({ where: { id: m.id }, data: { role } });
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: m.id }, data: { role } });
+    await ensureAdminRemains(tx, admin.familyId); // siempre debe quedar un presidente
+  }, { isolationLevel: "Serializable" }).catch((e) => { if (!(e instanceof Error && e.message === NO_ADMIN_LEFT)) throw e; });
   refresh();
   if (m.id === admin.id && role === "MEMBER") revalidatePath("/invitaciones");
 }

@@ -5,12 +5,31 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { firstName } from "@/lib/names";
-import { computePortfolio, OWN_CONTRIBUTION_PREFIX, reconcileOwnContributions } from "@/lib/portfolio";
+import { OWN_CONTRIBUTION_PREFIX, reconcileOwnContributions } from "@/lib/portfolio";
+import { firstOversell } from "@/lib/ledger";
 import { fetchQuote, fxToEurAt, setManualPrice, SUPPORTED_CURRENCIES } from "@/lib/prices";
 import { allowanceNote, allowanceWhere } from "@/lib/allowance";
-import { eur } from "@/lib/format";
-import { dateSchema, MAX_PRICE, MAX_QUANTITY, num, parseMoney, parsePastDay, shortText, symbolSchema } from "@/lib/validation";
+import { eur, fmtDate } from "@/lib/format";
+import { logError } from "@/lib/log";
+import { currentMonthYm, dateSchema, MAX_PRICE, MAX_QUANTITY, num, parseMoney, parsePastDay, shortText, symbolSchema } from "@/lib/validation";
 import type { FormState } from "./auth";
+
+/** Las compras hechas al enviar la decisión de la cartera del mes son el registro de esa decisión: no se tocan. */
+async function isMonthlyDecisionTrade(tradeId: string) {
+  return Boolean(await prisma.monthlyChoice.findFirst({ where: { tradeId }, select: { id: true } }));
+}
+
+/**
+ * ¿Deja el historial coherente? Se reproduce con la operación nueva (o editada) puesta en su fecha, para que
+ * no se pueda vender lo que no se tenía ese día ni encoger o quitar una compra de la que después se vendió.
+ */
+async function historyProblem(userId: string, candidate: { id?: string; symbol: string; side: string; quantity: number; date: Date } | null, excludeId?: string): Promise<string | null> {
+  const trades = await prisma.trade.findMany({ where: { userId, ...(excludeId ? { id: { not: excludeId } } : {}) }, select: { symbol: true, side: true, quantity: true, date: true, createdAt: true } });
+  const over = firstOversell(candidate ? [...trades, { ...candidate, createdAt: null }] : trades);
+  if (!over) return null;
+  const held = over.held.toLocaleString("es-ES", { maximumFractionDigits: 6 });
+  return `El ${fmtDate(over.date)} no tenías ${over.wanted.toLocaleString("es-ES", { maximumFractionDigits: 6 })} unidades de ${over.symbol} para vender (tenías ${held}). Revisa las fechas y cantidades de tus operaciones.`;
+}
 
 const tradeSchema = z.object({
   symbol: symbolSchema,
@@ -30,6 +49,7 @@ async function saveTrade(formData: FormData, tradeId?: string): Promise<FormStat
   if (tradeId) {
     const existing = await prisma.trade.findFirst({ where: { id: tradeId, userId: user.id } });
     if (!existing) return { error: "Operación no encontrada" };
+    if (await isMonthlyDecisionTrade(tradeId)) return { error: "Esta compra forma parte de tu decisión de la cartera del mes y no se puede modificar" };
   }
   const parsed = tradeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
@@ -48,14 +68,9 @@ async function saveTrade(formData: FormData, tradeId?: string): Promise<FormStat
     }
   }
 
-  // Al editar, la cartera se calcula sin la operación original para validar la nueva versión.
-  const portfolio = await computePortfolio(user.id, { excludeTradeId: tradeId });
-  if (d.side === "SELL") {
-    const h = portfolio.holdings.find((h) => h.symbol === d.symbol);
-    if (!h || h.quantity + 1e-9 < d.quantity) {
-      return { error: `No tienes ${d.quantity} unidades de ${d.symbol} para vender` };
-    }
-  }
+  // El historial se reproduce con esta operación en su fecha (al editar, sin la versión original).
+  const problem = await historyProblem(user.id, { symbol: d.symbol, side: d.side, quantity: d.quantity, date }, tradeId);
+  if (problem) return { error: problem };
 
   let name = d.name || d.symbol;
   if (!d.name) {
@@ -113,11 +128,20 @@ function parseContributionFields(formData: FormData): { amount: number; date: Da
   return { amount, date: day.date, note };
 }
 
+/** Aportaciones que no se editan ni borran a mano: las automáticas y las ligadas al importe de una cartera del mes. */
+async function protectedContribution(c: { id: string; note: string | null }): Promise<string | null> {
+  if (c.note?.startsWith(OWN_CONTRIBUTION_PREFIX)) return "Las aportaciones propias se calculan solas a partir de las operaciones; no se editan a mano.";
+  if (await prisma.monthlyAllocation.findFirst({ where: { contributionId: c.id }, select: { id: true } })) return "Esta aportación es el importe de una cartera del mes: cámbialo desde la gestión de esa cartera.";
+  return null;
+}
+
 export async function updateContributionAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const admin = await requireAdmin();
   const id = String(formData.get("id") ?? "");
   const existing = await prisma.contribution.findFirst({ where: { id, user: { familyId: admin.familyId } } });
   if (!existing) return { error: "Aportación no encontrada" };
+  const blocked = await protectedContribution(existing);
+  if (blocked) return { error: blocked };
   const f = parseContributionFields(formData);
   if ("error" in f) return { error: f.error };
   await prisma.contribution.update({ where: { id }, data: { amount: f.amount, date: f.date, note: f.note } });
@@ -128,7 +152,13 @@ export async function updateContributionAction(_prev: FormState, formData: FormD
 
 export async function deleteTradeAction(formData: FormData) {
   const user = await requireUser();
-  await prisma.trade.deleteMany({ where: { id: String(formData.get("id")), userId: user.id } });
+  const id = String(formData.get("id"));
+  const trade = await prisma.trade.findFirst({ where: { id, userId: user.id }, select: { id: true } });
+  if (!trade) return;
+  // Ni las compras de una decisión del mes ni una compra de la que después se vendió (dejaría ventas en el aire).
+  if (await isMonthlyDecisionTrade(id)) return;
+  if (await historyProblem(user.id, null, id)) return;
+  await prisma.trade.deleteMany({ where: { id, userId: user.id } });
   await reconcileOwnContributions(user.id);
   revalidatePaths();
 }
@@ -167,27 +197,34 @@ export async function payMonthlyAllowanceAction(_prev: FormState, formData: Form
   const ym = String(formData.get("month") ?? "");
   const m = ym.match(/^(\d{4})-(\d{2})$/);
   if (!m || +m[2] < 1 || +m[2] > 12 || +m[1] < 2000 || +m[1] > 2100) return { error: "Mes no válido" };
-  const now = new Date();
-  if (ym > `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`) return { error: "No se puede repartir la paga de un mes que todavía no ha empezado" };
+  if (ym > currentMonthYm()) return { error: "No se puede repartir la paga de un mes que todavía no ha empezado" };
   const date = new Date(+m[1], +m[2] - 1, 1, 12);
   const end = new Date(+m[1], +m[2], 1);
   const family = await prisma.family.findUniqueOrThrow({ where: { id: admin.familyId }, include: { users: { where: { status: "ACTIVE" }, select: { id: true } } } });
   const note = allowanceNote(ym);
   // Transacción serializable: dos pulsaciones a la vez no pueden registrar la paga dos veces.
-  const created = await prisma.$transaction(
-    async (tx) => {
-      let n = 0;
-      for (const u of family.users) {
-        // «Ya tiene la paga» incluye la que llegó al publicar una cartera del mes (nota «Paga mensual AAAA-MM · título»).
-        const already = await tx.contribution.findFirst({ where: { userId: u.id, date: { gte: date, lt: end }, ...allowanceWhere(ym) } });
-        if (already) continue;
-        await tx.contribution.create({ data: { userId: u.id, date, amount: family.monthlyAllowance, note } });
-        n++;
-      }
-      return n;
-    },
-    { isolationLevel: "Serializable" },
-  ).catch(() => -1);
+  // Un conflicto de serialización (otro recálculo escribiendo aportaciones) se reintenta un par de veces.
+  let created = -1;
+  for (let attempt = 0; attempt < 3 && created < 0; attempt++) {
+    created = await prisma.$transaction(
+      async (tx) => {
+        let n = 0;
+        for (const u of family.users) {
+          // «Ya tiene la paga» incluye la que llegó al publicar una cartera del mes (nota «Paga mensual AAAA-MM · título»).
+          const already = await tx.contribution.findFirst({ where: { userId: u.id, date: { gte: date, lt: end }, ...allowanceWhere(ym) } });
+          if (already) continue;
+          await tx.contribution.create({ data: { userId: u.id, date, amount: family.monthlyAllowance, note } });
+          n++;
+        }
+        return n;
+      },
+      { isolationLevel: "Serializable" },
+    ).catch((e) => {
+      const code = typeof e === "object" && e && "code" in e ? (e as { code?: string }).code : undefined;
+      if (code !== "P2034") logError("invest.pay-allowance", e, { familyId: admin.familyId, month: ym });
+      return -1;
+    });
+  }
   if (created < 0) return { error: "No se pudo registrar la paga en este momento. Vuelve a intentarlo." };
   revalidatePath("/familia");
   revalidatePath("/inversiones");
@@ -210,7 +247,7 @@ export async function addContributionAction(_prev: FormState, formData: FormData
 export async function deleteContributionAction(formData: FormData) {
   const admin = await requireAdmin();
   const c = await prisma.contribution.findFirst({ where: { id: String(formData.get("id")), user: { familyId: admin.familyId } } });
-  if (!c) return;
+  if (!c || (await protectedContribution(c))) return;
   await prisma.contribution.delete({ where: { id: c.id } });
   // Al cambiar el efectivo disponible, las aportaciones propias automáticas pueden variar.
   await reconcileOwnContributions(c.userId);

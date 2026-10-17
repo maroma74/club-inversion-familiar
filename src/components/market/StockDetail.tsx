@@ -11,8 +11,17 @@ import { ClubRecommendationCard } from "@/components/ClubRecommendationCard";
 import { PerPanel } from "@/components/PerPanel";
 import { DiaryDialog } from "@/components/DiaryDialog";
 import { StockChart } from "@/app/(app)/acciones/[symbol]/StockChart";
+import { symbolSchema } from "@/lib/validation";
 
 const RANGES: Range[] = ["3m", "6m", "1y", "2y", "5y"];
+
+/** Símbolo del segmento de URL: ya viene decodificado por Next, y «%» sueltos o rutas raras no son símbolos. */
+function parseSymbolParam(raw: string): string | null {
+  let decoded = raw;
+  try { decoded = decodeURIComponent(raw); } catch { return null; }
+  const parsed = symbolSchema.safeParse(decoded);
+  return parsed.success ? parsed.data : null;
+}
 
 const tone = (v: Verdict) => (v === "alcista" ? "border-accent-400 bg-accent-100" : v === "bajista" ? "border-neutral-800" : "border-divider");
 const dot = (v: Verdict) => (v === "alcista" ? "▲" : v === "bajista" ? "▼" : "•");
@@ -25,7 +34,8 @@ export async function StockDetail({ symbol: rawSymbol, range: rawRange, kind, pe
   const base = kind === "ETF" ? "/etf" : crypto ? "/cripto" : commodity ? "/materias-primas" : "/acciones";
   const title = kind === "ETF" ? "ETF" : crypto ? "Cripto" : commodity ? "Materias primas" : "Acciones";
   const unit = crypto ? "días" : "sesiones"; // una criptomoneda cotiza todos los días
-  const symbol = decodeURIComponent(rawSymbol).toUpperCase();
+  const symbol = parseSymbolParam(rawSymbol);
+  if (!symbol) notFound();
   const range: Range = isRange(rawRange) ? rawRange : "1y";
   const info = commodity ? findCommodity(symbol) : null;
   if (commodity && !info) notFound(); // solo las materias primas del catálogo del club

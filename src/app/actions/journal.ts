@@ -33,6 +33,9 @@ export async function saveJournalEntryAction(_prev: FormState, formData: FormDat
 
 export async function deleteJournalEntryAction(formData: FormData) {
   const user = await requireUser();
-  await prisma.journalEntry.deleteMany({ where: { id: String(formData.get("id")), userId: user.id } });
+  const id = String(formData.get("id"));
+  // Las entradas que forman parte de una decisión de la cartera del mes son el registro de esa decisión.
+  if (await prisma.monthlyChoice.findFirst({ where: { journalEntryId: id }, select: { id: true } })) return;
+  await prisma.journalEntry.deleteMany({ where: { id, userId: user.id } });
   revalidatePath("/inicio");
 }

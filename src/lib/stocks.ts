@@ -1,4 +1,5 @@
 /** Cotizaciones e histórico de acciones e índices desde el endpoint público de Yahoo Finance. */
+import { logError } from "./log";
 import { prisma } from "./prisma";
 import { fxToEur, isCrypto } from "./prices";
 import type { Candle } from "./technical";
@@ -129,18 +130,21 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote> {
     const regular = (meta.currentTradingPeriod as { regular?: { start?: number; end?: number } } | undefined)?.regular;
     const nowS = Date.now() / 1000;
     const marketState = regular?.start && regular?.end ? (nowS >= regular.start && nowS <= regular.end ? "REGULAR" : "CLOSED") : "";
-    let rate = 1;
-    try {
-      rate = await fxToEur(currency);
-    } catch {
-      /* sin cambio: mostramos la divisa original */
+    let rate: number | null = currency === "EUR" ? 1 : null;
+    if (rate === null) {
+      try {
+        rate = await fxToEur(currency);
+      } catch (e) {
+        logError("stocks.fx", e, { symbol: sym, currency }); // sin cambio: no se inventa un precio en euros
+      }
     }
     const quote: StockQuote = {
       symbol: String(meta.symbol ?? sym),
       name: String(meta.longName ?? meta.shortName ?? sym),
       price,
       currency: currency === "GBp" ? "GBX" : currency,
-      priceEur: price * rate,
+      priceEur: rate === null ? 0 : price * rate,
+      ...(rate === null ? { error: "sin cambio a euros" } : {}),
       change1d: prev > 0 ? price / prev - 1 : 0,
       change1w: ref(crypto ? 7 : 5),
       change1m: ref(crypto ? 30 : 21),

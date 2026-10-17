@@ -11,6 +11,6 @@ import { safeInternalPath } from "@/lib/validation";
 export async function setViewAsAction(formData: FormData) {
   const user = await getCurrentUser();
   const mode = String(formData.get("mode") ?? "");
-  if (user) await createSession(user.id, user.realRole === "ADMIN" && mode === "member" ? "member" : null);
+  if (user) await createSession(user, user.realRole === "ADMIN" && mode === "member" ? "member" : null);
   redirect(safeInternalPath(formData.get("back")));
 }

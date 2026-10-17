@@ -45,19 +45,30 @@ const SECTOR_ES: Record<string, string> = {
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 const TTL_MS = 6 * 60 * 60 * 1000; // el perfil cambia poco: 6 h
 let session: { cookie: string; crumb: string; at: number } | null = null;
+let sessionPending: Promise<{ cookie: string; crumb: string; at: number }> | null = null;
+let sessionFailedAt = 0; // Yahoo a veces niega el crumb a las IP de la nube: no insistir en cada render
 import { boundedSet } from "./cache";
 const cache = new Map<string, { at: number; data: Profile }>();
 
 async function getSession() {
   if (session && Date.now() - session.at < 60 * 60 * 1000) return session;
-  const r1 = await fetch("https://fc.yahoo.com", { headers: { "User-Agent": UA }, redirect: "manual", cache: "no-store" });
+  if (Date.now() - sessionFailedAt < 10 * 60 * 1000) throw new Error("Yahoo no concede sesión ahora mismo (reintento en unos minutos)");
+  if (sessionPending) return sessionPending;
+  sessionPending = openSession()
+    .catch((e) => { sessionFailedAt = Date.now(); throw e; })
+    .finally(() => { sessionPending = null; });
+  return sessionPending;
+}
+
+async function openSession() {
+  const r1 = await fetch("https://fc.yahoo.com", { headers: { "User-Agent": UA }, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(8000) });
   const setCookie = r1.headers.get("set-cookie") ?? "";
   const cookie = setCookie
     .split(",")
     .map((c) => c.split(";")[0].trim())
     .filter((c) => /^(A1|A3|A1S|B|GUC)=/.test(c))
     .join("; ");
-  const r2 = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", { headers: { "User-Agent": UA, Cookie: cookie }, cache: "no-store" });
+  const r2 = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", { headers: { "User-Agent": UA, Cookie: cookie }, cache: "no-store", signal: AbortSignal.timeout(8000) });
   const crumb = (await r2.text()).trim();
   if (!r2.ok || !crumb || crumb.includes("<")) throw new Error("No se pudo obtener el crumb de Yahoo");
   session = { cookie, crumb, at: Date.now() };

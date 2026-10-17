@@ -15,7 +15,7 @@ export default async function InicioPage() {
   const user = await requireUser();
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
-  const [courses, overview, diary, pendingTrades, monthly, weekEntries, myEntries] = await Promise.all([
+  const [courses, overview, diaryRaw, pendingTrades, monthly, weekEntries, myEntries] = await Promise.all([
     getCoursesWithProgress(user.id),
     familyOverview(user.familyId),
     prisma.journalEntry.findMany({ where: { user: { familyId: user.familyId } }, orderBy: { createdAt: "desc" }, take: 6, include: { user: { select: { id: true, name: true, avatarUpdatedAt: true } } } }),
@@ -26,6 +26,13 @@ export default async function InicioPage() {
   ]);
   const monthlyAllocation = monthly?.allocations.find((a) => a.userId === user.id)?.amount ?? 0;
   const monthlyDecided = !!monthly?.decisions.some((d) => d.userId === user.id);
+  // Mientras la cartera del mes esté abierta y no hayas decidido, el diario no adelanta las elecciones de los demás.
+  let diary = diaryRaw;
+  if (monthly && monthly.status === "PUBLISHED" && !monthlyDecided) {
+    const hidden = await prisma.monthlyChoice.findMany({ where: { decision: { portfolioId: monthly.id }, journalEntryId: { not: null } }, select: { journalEntryId: true } });
+    const hiddenIds = new Set(hidden.map((h) => h.journalEntryId));
+    diary = diaryRaw.filter((d) => d.user.id === user.id || !hiddenIds.has(d.id));
+  }
   const monthlyPending = !!monthly && monthly.status === "PUBLISHED" && !monthlyDecided && monthlyAllocation > 0 && !isDeadlinePassed(monthly);
   const me = overview.ranking.find((r) => r.userId === user.id);
   const myProgress = overview.progress.get(user.id);

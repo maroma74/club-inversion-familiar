@@ -1,4 +1,5 @@
 import { signed } from "@/lib/format";
+import { logError } from "./log";
 import { prisma } from "./prisma";
 import { familyHistory, familyLeaderboard, type PortfolioSummary } from "./portfolio";
 import { computeBadges, type MemberProgress } from "./badges";
@@ -27,7 +28,8 @@ export async function familyOverview(familyId: string): Promise<FamilyOverview> 
     ranking.map(async (r, i) => {
       const p = computeBadges(r, trades.filter((t) => t.userId === r.userId), contributions.filter((c) => c.userId === r.userId), i, ranking.length, learning.get(r.userId)?.lessonsPassed ?? 0);
       progress.set(r.userId, p);
-      await prisma.user.update({ where: { id: r.userId }, data: { badgeCount: p.badgesEarned } }).catch(() => {});
+      // Solo se escribe cuando cambia: esta vista se recarga a menudo y la base de datos es compartida.
+      await prisma.user.updateMany({ where: { id: r.userId, badgeCount: { not: p.badgesEarned } }, data: { badgeCount: p.badgesEarned } }).catch((e) => logError("league.badges", e, { userId: r.userId }));
     }),
   );
   const stats = leagueStats(ranking, history);

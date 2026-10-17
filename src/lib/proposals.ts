@@ -97,12 +97,18 @@ export function proposalProblems(p: ProposalInput): string[] {
     if ((o.note ?? "").length > L.note.max) out.push(`La nota de ${sym} supera los ${L.note.max} caracteres.`);
   }
 
-  // Texto neutro: título, lección y notas de las opciones
+  // Texto neutro y sin enlaces externos: título, lección y notas de las opciones
   const texts = [["el título", p.title], ["la lección", p.lesson], ...p.options.map((o) => [`la nota de ${o.symbol}`, o.note ?? ""] as const)];
   for (const [where, text] of texts) {
     for (const issue of neutralIssues(text)) out.push(`Texto no neutro en ${where}: quita ${issue.label} (${issue.found.map((f) => `«${f}»`).join(", ")}). Las propuestas del repositorio las usan otras familias en otros momentos.`);
+    if (hasExternalLink(text)) out.push(`Quita los enlaces externos de ${where}: las propuestas compartidas no pueden llevar direcciones web (las leen otras familias y el club no puede revisarlas).`);
   }
   return out;
+}
+
+/** ¿Lleva una dirección web (http, https o www.)? */
+export function hasExternalLink(text: string): boolean {
+  return /(https?:\/\/|\bwww\.)/i.test(text);
 }
 
 /** Cómo se muestra quién ha propuesto: las del club, la familia firmante o «Anónima». */

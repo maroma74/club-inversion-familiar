@@ -6,6 +6,9 @@ export const MAX_MONEY = 1_000_000; // euros por aportación/importe
 export const MAX_QUANTITY = 1_000_000_000;
 export const MAX_PRICE = 1_000_000_000;
 
+/** Zona horaria del club: las fechas «de hoy» y los meses se deciden en hora de España, no en la del servidor. */
+export const CLUB_TZ = "Europe/Madrid";
+
 /** Símbolos de mercado (AAPL, SAN.MC, VWCE.DE, BTC-EUR, ^GSPC, EURUSD=X). */
 export const symbolSchema = z
   .string()
@@ -20,19 +23,51 @@ export const num = (msg: string) => z.coerce.number({ message: msg });
 export const shortText = (max = 120) => z.string().trim().max(max, `Texto demasiado largo (máximo ${max} caracteres)`);
 export const longText = (max = 4000) => z.string().trim().max(max, `Texto demasiado largo (máximo ${max} caracteres)`);
 
+/** Nombres de personas y familias: sin caracteres de control ni saltos de línea (acaban en asuntos de correo y listas). */
+export const nameText = (max = 60, min = 0) =>
+  z
+    .string()
+    .trim()
+    .min(min, min > 0 ? "Nombre demasiado corto" : undefined)
+    .max(max, "Nombre demasiado largo")
+    .regex(/^[^\u0000-\u001f\u007f]*$/, "El nombre contiene caracteres no permitidos");
+
+/**
+ * Contraseñas nuevas: al menos 10 caracteres y como mucho 72, que es lo que bcrypt tiene en cuenta
+ * (más largas se aceptarían en silencio recortadas).
+ */
+export const newPasswordSchema = z.string().min(10, "La contraseña debe tener al menos 10 caracteres").max(72, "La contraseña no puede superar los 72 caracteres");
+
+/** Mes AAAA-MM con mes real (01–12) y año razonable. */
+export const monthSchema = z.string().regex(/^(20\d{2}|19\d{2})-(0[1-9]|1[0-2])$/, "Mes no válido");
+
+/** Día de hoy (AAAA-MM-DD) en la zona horaria del club. */
+export function todayYmd(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: CLUB_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
+/** Mes actual (AAAA-MM) en la zona horaria del club. */
+export function currentMonthYm(now: Date = new Date()): string {
+  return todayYmd(now).slice(0, 7);
+}
+
 /** Fecha en formato AAAA-MM-DD, interpretada a mediodía local. */
 export const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha no válida");
 
+/** Fecha de calendario real (rechaza 2026-02-31) interpretada a mediodía local. */
 export function parseDay(s: string): Date | null {
-  const d = new Date(s + "T12:00:00");
-  return isNaN(d.getTime()) ? null : d;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return null;
+  const d = new Date(+m[1], +m[2] - 1, +m[3], 12);
+  if (isNaN(d.getTime()) || d.getFullYear() !== +m[1] || d.getMonth() !== +m[2] - 1 || d.getDate() !== +m[3]) return null;
+  return d;
 }
 
-/** Fecha válida, no futura y posterior a 1990. */
-export function parsePastDay(s: string): { date: Date } | { error: string } {
+/** Fecha válida, no posterior a hoy (hora de España) y posterior a 1990. */
+export function parsePastDay(s: string, now: Date = new Date()): { date: Date } | { error: string } {
   const date = parseDay(s);
   if (!date) return { error: "Fecha no válida" };
-  if (date.getTime() > Date.now()) return { error: "La fecha no puede ser futura" };
+  if (s > todayYmd(now)) return { error: "La fecha no puede ser futura" };
   if (date.getFullYear() < 1990) return { error: "Fecha demasiado antigua" };
   return { date };
 }

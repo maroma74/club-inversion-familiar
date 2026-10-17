@@ -1,4 +1,5 @@
 import "server-only";
+import { logError } from "./log";
 
 /**
  * Envío de correo con la API HTTP de Resend (https://resend.com), sin SDK.
@@ -29,6 +30,7 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: process.env.EMAIL_FROM || DEFAULT_FROM, to: [message.to], subject: message.subject, text: message.text, html: message.html }),
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       const body = await res.text();
@@ -37,11 +39,13 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
         const j = JSON.parse(body) as { message?: string };
         if (j.message) detail = j.message;
       } catch {}
+      logError("email.send", new Error(detail), { status: res.status });
       return { sent: false, error: `Resend ha rechazado el envío (${res.status}): ${detail}` };
     }
     const data = (await res.json().catch(() => ({}))) as { id?: string };
     return { sent: true, id: data.id ?? null };
   } catch (e) {
+    logError("email.send", e);
     return { sent: false, error: `No se pudo contactar con Resend: ${e instanceof Error ? e.message : String(e)}` };
   }
 }
@@ -88,6 +92,40 @@ export function invitationEmail(opts: { to: string; inviteeName: string | null; 
     <p style="margin:18px 0 0;font-size:13px;color:#64748b;">${esc(caduca)} Si el botón no funciona, copia este enlace en el navegador:<br><a href="${esc(opts.link)}" style="color:#0e2138;word-break:break-all;">${esc(opts.link)}</a></p>
   </td></tr>
   <tr><td style="padding:16px 28px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;">Si no esperabas este correo, puedes ignorarlo. Club de Inversión Familiar · Aprende, invierte y crece en familia.</td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+  return { to: opts.to, subject, text, html };
+}
+
+/** Correo con el enlace de un solo uso para fijar una contraseña nueva (lo genera el presidente). */
+export function passwordResetEmail(opts: { to: string; name: string; presidentName: string; link: string }): EmailMessage {
+  const subject = "Tu enlace para cambiar la contraseña del Club de Inversión Familiar";
+  const text = [
+    `Hola, ${opts.name}:`,
+    "",
+    `${opts.presidentName} ha generado un enlace para que elijas una contraseña nueva en el Club de Inversión Familiar.`,
+    "",
+    `Cámbiala aquí (vale una hora y un solo uso): ${opts.link}`,
+    "",
+    "Si no lo has pedido, ignora este correo: tu contraseña actual sigue siendo válida.",
+  ].join("\n");
+  const html = `<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(subject)}</title></head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif;color:#0e2138;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8fafc;padding:24px 12px;"><tr><td align="center">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+  <tr><td style="background:#0e2138;padding:22px 28px;">
+    <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#10b981;font-weight:700;">Club de Inversión Familiar</div>
+    <div style="font-size:22px;font-weight:800;color:#ffffff;margin-top:6px;">Contraseña nueva</div>
+  </td></tr>
+  <tr><td style="padding:28px;font-size:15px;line-height:1.6;">
+    <p style="margin:0 0 14px;">Hola, ${esc(opts.name)}:</p>
+    <p style="margin:0 0 14px;"><strong>${esc(opts.presidentName)}</strong> ha generado un enlace para que elijas una contraseña nueva.</p>
+    <p style="margin:22px 0;text-align:center;"><a href="${esc(opts.link)}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:10px;font-size:15px;">Elegir contraseña nueva</a></p>
+    <p style="margin:18px 0 0;font-size:13px;color:#64748b;">El enlace vale una hora y un solo uso. Si el botón no funciona, copia esta dirección en el navegador:<br><a href="${esc(opts.link)}" style="color:#0e2138;word-break:break-all;">${esc(opts.link)}</a></p>
+  </td></tr>
+  <tr><td style="padding:16px 28px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;">Si no lo has pedido, ignora este correo: tu contraseña actual sigue siendo válida.</td></tr>
 </table>
 </td></tr></table>
 </body></html>`;

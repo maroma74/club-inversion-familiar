@@ -3,6 +3,7 @@ import { roleLabel } from "@/lib/monthly";
 import { firstName } from "@/lib/names";
 import { PageHeader } from "@/components/ui";
 import { AvatarForm } from "./AvatarForm";
+import { PasswordForm } from "./PasswordForm";
 
 export default async function PerfilPage() {
   const user = await requireUser();
@@ -13,6 +14,12 @@ export default async function PerfilPage() {
       <div className="card mb-6 max-w-3xl">
         <h2 className="font-semibold mb-3">Foto de perfil</h2>
         <AvatarForm id={user.id} name={user.name} updatedAt={user.avatarUpdatedAt ? user.avatarUpdatedAt.toISOString() : null} />
+      </div>
+
+      <div className="card mb-6 max-w-3xl">
+        <h2 className="font-semibold mb-1">Contraseña</h2>
+        <p className="m-0 mb-3 text-sm text-neutral-700">Al menos 10 caracteres. Al cambiarla se cierran tus sesiones en otros dispositivos. Si la olvidas, el presidente del club puede enviarte un enlace para elegir una nueva.</p>
+        <PasswordForm />
       </div>
 
       <div className="card max-w-3xl text-sm">

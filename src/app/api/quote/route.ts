@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { fetchQuote } from "@/lib/prices";
 import { symbolSchema } from "@/lib/validation";
+import { rateLimit } from "@/lib/ratelimit";
 
 /** Cotización actual de un símbolo en su divisa nativa (para prellenar el formulario de operación). */
 export async function GET(req: Request) {
   const user = await getCurrentUser();
   if (!user || user.status !== "ACTIVE") return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const limit = await rateLimit(`api-quote:${user.id}`, 60, 60 * 1000);
+  if (!limit.ok) return NextResponse.json({ error: "Demasiadas consultas seguidas" }, { status: 429 });
   const parsed = symbolSchema.safeParse(new URL(req.url).searchParams.get("symbol") ?? "");
   if (!parsed.success) return NextResponse.json({ error: "Símbolo no válido" }, { status: 400 });
   try {

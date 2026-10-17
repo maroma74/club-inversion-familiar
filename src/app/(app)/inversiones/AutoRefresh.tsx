@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
-const INTERVAL_MIN = 1;
+const INTERVAL_MIN = 3;
 
 /**
- * Vuelve a pedir la página (y con ella las cotizaciones) cada minuto, y permite forzarlo con un botón.
+ * Vuelve a pedir la página (y con ella las cotizaciones) cada tres minutos, y permite forzarlo con un botón.
  * `renderedAt` es la hora (ms) en que el servidor generó los datos: el texto dice la antigüedad real y no un
  * contador que arranca al cargar. Sin él, cuenta desde que se abrió la pantalla.
  */

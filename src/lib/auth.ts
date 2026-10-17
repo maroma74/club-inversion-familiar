@@ -4,20 +4,31 @@ import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { randomInt } from "crypto";
 import { prisma } from "./prisma";
+import { isAcceptableSecret, secretProblem } from "./secretPolicy";
 
 // Firebase Hosting solo deja pasar la cookie llamada __session hacia Cloud Run, así que la sesión
 // (y el modo «ver como miembro» del presidente) viajan juntos en esa única cookie.
 const COOKIE = "__session";
 export type ViewAs = "member" | null;
-// En producción no se firma ni se verifica ninguna sesión sin un secreto propio y suficientemente largo:
-// con el valor por defecto cualquiera podría firmar sesiones de cualquier usuario. La comprobación se hace
-// en el primer uso (no al cargar el módulo) para que `next build` pueda ejecutarse sin el secreto.
+
+/**
+ * Secreto con el que se firman las sesiones. En producción se exige uno propio, largo y con variedad:
+ * con un valor por defecto o de ejemplo cualquiera podría firmar sesiones de cualquier usuario.
+ * La comprobación se hace al usarlo (y al arrancar, desde instrumentation.ts), no al cargar el módulo,
+ * para que `next build` pueda ejecutarse sin el secreto.
+ */
 function secret() {
   const raw = process.env.AUTH_SECRET?.trim();
-  if (process.env.NODE_ENV === "production" && (!raw || raw.length < 32)) {
-    throw new Error("AUTH_SECRET no definido o demasiado corto (mínimo 32 caracteres)");
+  if (process.env.NODE_ENV === "production") {
+    const problem = secretProblem(raw);
+    if (problem) throw new Error(problem);
   }
   return new TextEncoder().encode(raw || "dev-secret-change-me");
+}
+
+/** Para fallar al arrancar (y no en el primer inicio de sesión) si el secreto no es válido. */
+export function assertAuthSecret() {
+  secret();
 }
 
 export async function hashPassword(pw: string) {
@@ -28,8 +39,14 @@ export async function verifyPassword(pw: string, hash: string) {
   return bcrypt.compare(pw, hash);
 }
 
-export async function createSession(userId: string, viewAs: ViewAs = null) {
-  const token = await new SignJWT(viewAs ? { sub: userId, viewAs } : { sub: userId })
+type SessionUser = { id: string; sessionVersion: number };
+
+/**
+ * Emite la cookie de sesión. El claim `sv` es la versión de sesión del usuario: al cambiar la contraseña
+ * sube en la base de datos y las cookies anteriores dejan de valer aunque no hayan caducado.
+ */
+export async function createSession(user: SessionUser, viewAs: ViewAs = null) {
+  const token = await new SignJWT({ sub: user.id, sv: user.sessionVersion, ...(viewAs ? { viewAs } : {}) })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("30d")
@@ -49,14 +66,16 @@ export async function destroySession() {
   store.delete(COOKIE);
 }
 
-export async function getSession(): Promise<{ userId: string; viewAs: ViewAs } | null> {
+export async function getSession(): Promise<{ userId: string; viewAs: ViewAs; sessionVersion: number } | null> {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
     if (typeof payload.sub !== "string") return null;
-    return { userId: payload.sub, viewAs: payload.viewAs === "member" ? "member" : null };
+    // Las sesiones emitidas antes de existir el claim cuentan como versión 0 (la inicial de todos los usuarios).
+    const sv = typeof payload.sv === "number" ? payload.sv : 0;
+    return { userId: payload.sub, viewAs: payload.viewAs === "member" ? "member" : null, sessionVersion: sv };
   } catch {
     return null;
   }
@@ -64,6 +83,12 @@ export async function getSession(): Promise<{ userId: string; viewAs: ViewAs } |
 
 export async function getSessionUserId(): Promise<string | null> {
   return (await getSession())?.userId ?? null;
+}
+
+/** Invalida todas las sesiones de un usuario (cambio o restablecimiento de contraseña). Devuelve la versión nueva. */
+export async function bumpSessionVersion(userId: string): Promise<number> {
+  const u = await prisma.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } }, select: { sessionVersion: true } });
+  return u.sessionVersion;
 }
 
 type DbUser = NonNullable<Awaited<ReturnType<typeof loadUser>>>;
@@ -81,7 +106,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const session = await getSession();
   if (!session) return null;
   const user = await loadUser(session.userId);
-  if (!user) return null;
+  if (!user || user.sessionVersion !== session.sessionVersion) return null;
   const previewAsMember = user.role === "ADMIN" && session.viewAs === "member";
   return { ...user, realRole: user.role, role: previewAsMember ? "MEMBER" : user.role, previewAsMember };
 }
@@ -137,3 +162,5 @@ export function generateInviteCode() {
   for (let i = 0; i < 8; i++) out += alphabet[randomInt(alphabet.length)]; // CSPRNG: los códigos dan acceso a la familia
   return out;
 }
+
+export { isAcceptableSecret };

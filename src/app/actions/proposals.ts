@@ -85,6 +85,8 @@ export async function adoptProposalAction(_prev: FormState, formData: FormData):
   const parsed = useSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { proposalId, month } = parsed.data;
+  const limit = await rateLimit(`adopt:${admin.id}`, 20, 60 * 60 * 1000);
+  if (!limit.ok) return { error: "Has creado muchas carteras seguidas desde el repositorio. Prueba dentro de un rato." };
 
   const proposal = await prisma.proposal.findUnique({ where: { id: proposalId }, include: { options: { orderBy: { order: "asc" } } } });
   if (!proposal) return { error: "La propuesta ya no está en el repositorio" };
