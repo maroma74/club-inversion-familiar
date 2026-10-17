@@ -50,7 +50,7 @@ export async function createInvitationAction(_prev: FormState, formData: FormDat
     fromPack = cap.source !== "pool";
   }
   const code = await uniqueInviteCode();
-  await prisma.invitation.create({
+  const inv = await prisma.invitation.create({
     data: {
       familyId: admin.familyId,
       code,
@@ -65,8 +65,15 @@ export async function createInvitationAction(_prev: FormState, formData: FormDat
       createdById: admin.id,
     },
   });
+  const created = newFamily ? `Invitación para una familia nueva creada con el código ${code}` : `Invitación creada con el código ${code}`;
+  // Con email, el correo sale en el acto: nadie tiene que acordarse de pulsar «Enviar» después
+  if (email) {
+    const sent = await deliverInvitation(admin, inv.id, email);
+    refresh();
+    return sent.ok ? { ok: `${created} y enviada por correo a ${email}` } : { ok: `${created}, pero el correo no ha salido: ${sent.error} Puedes reenviarlo desde la lista o mandarla por WhatsApp.` };
+  }
   refresh();
-  return { ok: newFamily ? `Invitación para una familia nueva creada con el código ${code}` : `Invitación creada con el código ${code}` };
+  return { ok: `${created}. Envíala por WhatsApp, por correo o copia el enlace desde la lista.` };
 }
 
 const sendSchema = z.object({ id: z.string().min(1), email: z.string().trim().toLowerCase().email("Indica un email válido").optional().or(z.literal("")) });

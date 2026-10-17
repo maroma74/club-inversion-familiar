@@ -41,7 +41,7 @@ export async function createFamilyInvitationAction(_prev: FormState, formData: F
   const cap = await loadInviteCapacity(user);
   if (cap.source === "none") return { error: cap.pool ? noSlotsMessage(cap.pool) : "No tienes invitaciones para familias nuevas. La administración de la web puede asignarte un paquete." };
   const code = await uniqueInviteCode();
-  await prisma.invitation.create({
+  const inv = await prisma.invitation.create({
     data: {
       familyId: user.familyId,
       code,
@@ -56,8 +56,15 @@ export async function createFamilyInvitationAction(_prev: FormState, formData: F
       createdById: user.id,
     },
   });
+  const origin = cap.source === "pool" ? " (una de las cinco del club)" : cap.source === "pack" ? " (de tu paquete)" : "";
+  // Con email, el correo sale en el acto: nadie tiene que acordarse de pulsar «Enviar» después
+  if (d.email) {
+    const sent = await deliverInvitation(user, inv.id, d.email);
+    refresh();
+    return sent.ok ? { ok: `Invitación creada${origin} y enviada por correo a ${d.email}` } : { ok: `Invitación creada con el código ${code}${origin}, pero el correo no ha salido: ${sent.error} Puedes reenviarlo desde la lista o mandarla por WhatsApp.` };
+  }
   refresh();
-  return { ok: `Invitación creada con el código ${code}${cap.source === "pool" ? " (una de las cinco del club)" : cap.source === "pack" ? " (de tu paquete)" : ""}` };
+  return { ok: `Invitación creada con el código ${code}${origin}. Envíala por WhatsApp o copia el enlace desde la lista.` };
 }
 
 const sendSchema = z.object({ id: z.string().min(1), email: z.string().trim().toLowerCase().email("Indica un email válido").optional().or(z.literal("")) });
