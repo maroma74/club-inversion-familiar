@@ -94,6 +94,13 @@ Variables en Cloud Run: `APP_URL=https://clubdeinversionfamiliar.com`, `ALLOW_FA
 
 Ajustes de consumo: `--min-instances 0` (no cuesta nada sin visitas), `--max-instances 2`, 512 MiB y 1 CPU solo durante las peticiones. La imagen vive en Artifact Registry (`club`).
 
+## Comunicaciones por WhatsApp
+
+- Cada miembro pone su móvil en «Mi perfil» (`User.phone`, formato internacional; «612 345 678» se entiende como +34). Solo lo ve el presidente.
+- En **Comunicaciones** (menú del presidente, `/comunicaciones`) se prepara el aviso de que la cartera del mes está lista: una plantilla motivadora editable con marcadores (`{nombre}`, `{importe}`, `{mes}`, `{titulo}`, `{opciones}`, `{eleccion}`, `{plazo}`, `{enlace}`, `{presidente}`, `{familia}`) que se personaliza para cada miembro con su importe y el enlace directo a la cartera. El marcador `{enlace}` es obligatorio.
+- El envío es con «clic para chatear» de WhatsApp (`https://wa.me/<móvil>?text=…`): el presidente pulsa «Enviar por WhatsApp» junto a cada miembro, se abre WhatsApp con el mensaje escrito y solo tiene que enviarlo; la app anota cuándo se hizo. Hay «Copiar texto» por miembro (para quien no tiene móvil) y «Copiar para el grupo» (versión sin personalizar). No se usa la API de pago de WhatsApp Business ni hace falta cuenta de empresa; cambiar el transporte más adelante no afecta al almacén.
+- Todos los avisos quedan guardados (`Communication`: plantilla, destinatarios con su texto y fecha de envío) en «Avisos enviados». «Tareas del presidente» avisa cuando una cartera publicada no tiene ningún aviso. Reglas puras en `src/lib/communications.ts` (con pruebas).
+
 ## Contexto macro y analistas (BCE, FRED y Finnhub)
 
 - **Contexto del mercado** (tarjeta de Inicio, `src/components/MacroCard.tsx`): tipo de depósito del BCE, Euríbor a 12 meses e inflación de la zona euro y de España desde el portal de datos del BCE (sin clave), más tipo de la Reserva Federal, bono de EE. UU. a 10 años e inflación de EE. UU. desde FRED si existe `FRED_API_KEY` (clave gratuita). Cada dato lleva una frase que explica qué significa para la familia. Series y lectura de las respuestas en `src/lib/macroData.ts`; descarga en `src/lib/macro.ts`.

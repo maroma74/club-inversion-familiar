@@ -19,6 +19,7 @@ model Family {
   invitations      Invitation[]
   manualPrices     ManualPrice[]
   proposals        Proposal[]
+  communications   Communication[]
 }
 
 model User {
@@ -44,6 +45,9 @@ model User {
   /// Cuándo se subió la foto de perfil (null = sin foto). Sirve para cachear la imagen con ?v=.
   avatarUpdatedAt    DateTime?
   avatar             UserAvatar?
+  /// Teléfono móvil en formato internacional (+34…) para recibir avisos por WhatsApp; lo pone cada uno en su perfil.
+  phone              String?
+  communicationsSent Communication[]
   /// Sube al cambiar o restablecer la contraseña: las sesiones firmadas con un valor anterior dejan de valer.
   sessionVersion     Int            @default(0)
   passwordResets     PasswordReset[] @relation("PasswordResetUser")
@@ -416,4 +420,23 @@ model ApiCache {
   key       String   @id
   data      Json
   fetchedAt DateTime
+}
+
+/// Comunicación del presidente a los miembros (hoy, por WhatsApp con «clic para chatear»). Se guarda el texto
+/// enviado y, por destinatario, el mensaje personalizado y cuándo se abrió WhatsApp para enviárselo.
+model Communication {
+  id          String   @id @default(cuid())
+  familyId    String
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  channel     String   @default("WHATSAPP")
+  kind        String   @default("PORTFOLIO") // PORTFOLIO (cartera del mes lista) | FREE (texto libre)
+  portfolioId String? // cartera a la que se refiere
+  subject     String
+  body        String // plantilla con los marcadores ya documentados
+  recipients  Json // [{ userId, name, phone, text, openedAt }]
+  createdAt   DateTime @default(now())
+
+  @@index([familyId, createdAt])
 }

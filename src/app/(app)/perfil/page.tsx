@@ -4,6 +4,7 @@ import { firstName } from "@/lib/names";
 import { PageHeader } from "@/components/ui";
 import { AvatarForm } from "./AvatarForm";
 import { PasswordForm } from "./PasswordForm";
+import { PhoneForm } from "./PhoneForm";
 
 export default async function PerfilPage() {
   const user = await requireUser();
@@ -14,6 +15,12 @@ export default async function PerfilPage() {
       <div className="card mb-6 max-w-3xl">
         <h2 className="font-semibold mb-3">Foto de perfil</h2>
         <AvatarForm id={user.id} name={user.name} updatedAt={user.avatarUpdatedAt ? user.avatarUpdatedAt.toISOString() : null} />
+      </div>
+
+      <div className="card mb-6 max-w-3xl">
+        <h2 className="font-semibold mb-1">Teléfono para avisos por WhatsApp</h2>
+        <p className="m-0 mb-3 text-sm text-neutral-700">El presidente del club te avisa por WhatsApp cuando la cartera del mes está lista, con el enlace directo. Solo lo ve el presidente y no se usa para nada más.</p>
+        <PhoneForm initial={user.phone ?? ""} />
       </div>
 
       <div className="card mb-6 max-w-3xl">

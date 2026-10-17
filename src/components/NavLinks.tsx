@@ -22,7 +22,7 @@ const GROUPS: Group[] = [
       { num: "09", label: "Materias primas", href: "/materias-primas" },
     ],
   },
-  { header: "Club", items: [{ num: "10", label: "Familia", href: "/familia" }, { num: "11", label: "Invitaciones", href: "/invitaciones", note: "presidente", admin: true }] },
+  { header: "Club", items: [{ num: "10", label: "Familia", href: "/familia" }, { num: "11", label: "Invitaciones", href: "/invitaciones", note: "presidente", admin: true }, { num: "12", label: "Comunicaciones", href: "/comunicaciones", note: "presidente", admin: true }] },
 ];
 
 function isActive(path: string, href: string) {

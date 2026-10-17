@@ -78,6 +78,10 @@ export async function getAdminTasks(familyId: string): Promise<AdminTask[]> {
       if (days <= 3 && undecided.length) tasks.push({ id: "portfolio-deadline", tone: "info", title: `Quedan ${days <= 0 ? "horas" : `${days} ${days === 1 ? "día" : "días"}`} para decidir`, text: `${undecided.map((a) => firstName(members.find((u) => u.id === a.userId)?.name ?? "")).filter(Boolean).join(", ")} aún no ${undecided.length === 1 ? "ha" : "han"} decidido en «${current.title}».`, href: "/cartera", cta: "Ver la cartera" });
     }
   }
+  if (current && current.status === "PUBLISHED" && !isDeadlinePassed(current)) {
+    const notified = await prisma.communication.count({ where: { familyId, portfolioId: current.id } });
+    if (notified === 0) tasks.push({ id: "notify", tone: "warn", title: "Avisa a la familia de que la cartera está lista", text: `«${current.title}» está publicada pero no has enviado ningún aviso. Un WhatsApp con el enlace directo hace que decidan antes.`, href: `/comunicaciones?cartera=${current.id}`, cta: "Enviar aviso" });
+  }
   if (!portfolios.some((p) => p.month === next)) {
     tasks.push({ id: "portfolio-next", tone: "info", title: `Prepara ${monthLabelLong(next)}`, text: "Todavía no hay borrador para el mes que viene. Las propuestas sugeridas del repositorio te lo dejan hecho en un clic.", href: "/cartera/gestion", cta: "Ver propuestas" });
   }
