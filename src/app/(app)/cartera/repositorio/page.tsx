@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { currentMonth, listPortfolios } from "@/lib/monthly";
+import { currentMonth, listPortfolios, monthLabelLong } from "@/lib/monthly";
 import { KIND_LABEL, PROPOSAL_THEMES, proposalSignature, RISK_LABEL } from "@/lib/proposals";
 import { retireProposalAction } from "@/app/actions/proposals";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -40,7 +40,7 @@ export default async function RepositorioPage({ searchParams }: { searchParams: 
   if (origen === "familias") where.source = "FAMILY";
   if (query) where.OR = [{ title: { contains: query, mode: "insensitive" } }, { options: { some: { OR: [{ symbol: { contains: query, mode: "insensitive" } }, { name: { contains: query, mode: "insensitive" } }] } } }];
 
-  const [proposals, totals, portfolios] = await Promise.all([
+  const [proposals, totals, portfolios, usedRows] = await Promise.all([
     prisma.proposal.findMany({
       where,
       orderBy: [{ uses: "desc" }, { createdAt: "desc" }],
@@ -53,7 +53,11 @@ export default async function RepositorioPage({ searchParams }: { searchParams: 
     }),
     prisma.proposal.groupBy({ by: ["source"], _count: { _all: true } }),
     listPortfolios(admin.familyId),
+    prisma.monthlyPortfolio.findMany({ where: { familyId: admin.familyId, sourceProposalId: { not: null } }, select: { sourceProposalId: true, month: true }, orderBy: { month: "asc" } }),
   ]);
+  // Propuestas que esta familia ya convirtió en cartera (y en qué meses)
+  const usedBy = new Map<string, string[]>();
+  for (const r of usedRows) usedBy.set(r.sourceProposalId!, [...(usedBy.get(r.sourceProposalId!) ?? []), r.month]);
   const club = totals.find((t) => t.source === "CLUB")?._count._all ?? 0;
   const families = totals.find((t) => t.source === "FAMILY")?._count._all ?? 0;
 
@@ -75,7 +79,10 @@ export default async function RepositorioPage({ searchParams }: { searchParams: 
           <h1 className="mt-1 mb-1">Repositorio de propuestas</h1>
           <p className="m-0 text-neutral-700 max-w-[68ch] [text-wrap:pretty]">¿Sin ideas para la cartera de este mes? Elige una propuesta ya preparada: trae la lección, las opciones y cuántas pueden elegir los miembros, en un texto neutro que puedes adaptar. Hay {club} del club y {families} compartidas por otras familias.</p>
         </div>
-        <Link href="/cartera/gestion" className="btn-ghost">← Carteras</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/cartera/repositorio/nueva" className="btn-primary">Nueva propuesta</Link>
+          <Link href="/cartera/gestion" className="btn-ghost">← Carteras</Link>
+        </div>
       </header>
 
       <form method="get" className="card gap-3" style={{ padding: 18 }} role="search" aria-label="Filtrar propuestas">
@@ -114,6 +121,7 @@ export default async function RepositorioPage({ searchParams }: { searchParams: 
                   <RiskBar risk={p.risk} />
                   <span className="tag tag-neutral" title="Quién ha preparado la propuesta">{proposalSignature({ source: p.source, signed: p.signed, familyName: p.family?.name })}</span>
                   {own && <span className="tag tag-accent">Tuya</span>}
+                  {usedBy.has(p.id) && <span className="tag tag-gold" title={`Tu familia la usó en ${usedBy.get(p.id)!.map(monthLabelLong).join(", ")}`}>Usada · {usedBy.get(p.id)!.map(monthLabelLong).join(", ")}</span>}
                   <span className="ml-auto text-xs text-neutral-700">{p.uses === 0 ? "Sin usar todavía" : `Usada ${p.uses} ${p.uses === 1 ? "vez" : "veces"}`}</span>
                 </div>
                 <h3 id={`t-${p.id}`} className="m-0">{p.title}</h3>

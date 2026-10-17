@@ -7,12 +7,11 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { firstName } from "@/lib/names";
-import { fetchQuote, isCrypto } from "@/lib/prices";
-import { findCommodity, isCommodity } from "@/lib/commodities";
-import { fetchStockQuote } from "@/lib/stocks";
-import { fetchProfile } from "@/lib/fundamentals";
+import { fetchQuote } from "@/lib/prices";
+import { describeSymbol } from "@/lib/symbolInfo";
 import { reconcileOwnContributions } from "@/lib/portfolio";
 import { isDeadlinePassed } from "@/lib/monthly";
+import { fmtDate } from "@/lib/format";
 import { currentMonthYm, longText, MAX_MONEY, monthSchema, parseDay, parseMoney, symbolSchema } from "@/lib/validation";
 import type { FormState } from "./auth";
 
@@ -101,27 +100,10 @@ export async function addOptionAction(_prev: FormState, formData: FormData): Pro
   if (!p) return { error: "Cartera no encontrada" };
   if (p.status === "CLOSED") return { error: "La cartera está cerrada" };
   if (p._count.options >= 12) return { error: "Máximo 12 opciones por cartera" };
-  let kind = "STOCK";
-  if (isCrypto(symbol)) {
-    kind = "CRYPTO";
-    try {
-      const q = await fetchQuote(symbol);
-      if (!name) name = q.name;
-    } catch {
-      return { error: `No se encontró cotización para ${symbol}` };
-    }
-  } else if (isCommodity(symbol)) {
-    kind = "COMMODITY";
-    const q = await fetchStockQuote(symbol);
-    if (q.error && q.price === 0) return { error: `No se encontró cotización para ${symbol}` };
-    if (!name) name = findCommodity(symbol)!.name;
-  } else {
-    const q = await fetchStockQuote(symbol);
-    if (q.error && q.price === 0) return { error: `No se encontró cotización para ${symbol}` };
-    if (!name) name = q.name;
-    const profile = await fetchProfile(q.symbol);
-    kind = profile.isFund ? "ETF" : "STOCK";
-  }
+  const described = await describeSymbol(symbol, name);
+  if (!described.ok) return { error: described.error };
+  name = described.info.name;
+  const kind = described.info.kind;
   await prisma.monthlyOption.upsert({
     where: { portfolioId_symbol: { portfolioId: id, symbol } },
     update: { name, note },
@@ -315,4 +297,33 @@ export async function submitDecisionAction(_prev: FormState, formData: FormData)
   await reconcileOwnContributions(user.id);
   refresh(id);
   return { ok: `Decisión enviada: ${picks.map((pk) => `${pk.option.symbol} ${pk.amount.toFixed(2)} €`).join(", ")}` };
+}
+
+/**
+ * El presidente reconoce una compra hecha a mano como la decisión de ese miembro en la cartera del mes: se crea
+ * (o amplía) su decisión con esa compra, con el porqué de su diario si lo escribió. No mueve dinero: la compra ya
+ * existe y se pagó con su efectivo; si el miembro no tenía importe asignado se anota el coste como su importe,
+ * sin registrar paga nueva.
+ */
+export async function adoptTradeAsDecisionAction(formData: FormData) {
+  const admin = await requireAdmin();
+  const portfolioId = String(formData.get("portfolioId") ?? "");
+  const tradeId = String(formData.get("tradeId") ?? "");
+  const { getPortfolioFull, findUnlinkedTrades } = await import("@/lib/monthly");
+  const p = await getPortfolioFull(portfolioId, admin.familyId);
+  if (!p || p.status === "DRAFT") return;
+  const candidate = (await findUnlinkedTrades(p)).find((t) => t.id === tradeId);
+  if (!candidate) return;
+  const when = fmtDate(candidate.date);
+  const why = candidate.why ?? `Compra hecha el ${when} fuera del formulario de la cartera del mes; reconocida por el presidente.`;
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.monthlyDecision.findUnique({ where: { portfolioId_userId: { portfolioId, userId: candidate.userId } } });
+    const decision = existing ?? (await tx.monthlyDecision.create({ data: { portfolioId, userId: candidate.userId, argument: why, submittedAt: candidate.date } }));
+    await tx.monthlyChoice.create({ data: { decisionId: decision.id, optionId: candidate.optionId, amount: candidate.costEur, why, exitCondition: null, tradeId: candidate.id, journalEntryId: candidate.journalEntryId, price: candidate.priceEur, quantity: candidate.quantity } });
+    const alloc = await tx.monthlyAllocation.findUnique({ where: { portfolioId_userId: { portfolioId, userId: candidate.userId } } });
+    if (!alloc) await tx.monthlyAllocation.create({ data: { portfolioId, userId: candidate.userId, amount: candidate.costEur } });
+    else if (alloc.amount < candidate.costEur) await tx.monthlyAllocation.update({ where: { id: alloc.id }, data: { amount: candidate.costEur } });
+  });
+  refresh(portfolioId);
+  revalidatePath(`/cartera/historial/${portfolioId}`);
 }

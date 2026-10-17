@@ -13,6 +13,7 @@ const GROUPS: Group[] = [
     header: "Invertir",
     items: [
       { num: "03", label: "Cartera del mes", href: "/cartera" },
+      { num: "03", label: "Gestión de carteras", href: "/cartera/gestion", note: "presidente", admin: true },
       { num: "04", label: "Liga de inversión", href: "/inversiones" },
       { num: "05", label: "Operaciones", href: "/operaciones" },
       { num: "06", label: "Acciones", href: "/acciones" },

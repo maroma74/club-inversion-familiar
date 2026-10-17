@@ -6,7 +6,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { rateLimit } from "@/lib/ratelimit";
-import { proposalProblems } from "@/lib/proposals";
+import { proposalProblems, PROPOSAL_LIMITS } from "@/lib/proposals";
+import { describeSymbol } from "@/lib/symbolInfo";
+import { symbolSchema } from "@/lib/validation";
 import type { FormState } from "./auth";
 
 const refresh = (portfolioId?: string) => {
@@ -98,6 +100,7 @@ export async function adoptProposalAction(_prev: FormState, formData: FormData):
       data: {
         familyId: admin.familyId,
         month,
+        sourceProposalId: proposal.id,
         title: proposal.title,
         lesson: proposal.lesson,
         minChoices: proposal.minChoices,
@@ -119,4 +122,68 @@ export async function retireProposalAction(formData: FormData) {
   const admin = await requireAdmin();
   await prisma.proposal.deleteMany({ where: { id: String(formData.get("id") ?? ""), familyId: admin.familyId, source: "FAMILY" } });
   refresh();
+}
+
+const newProposalSchema = z.object({
+  title: z.string().trim().min(1, "Pon un título").max(PROPOSAL_LIMITS.title.max),
+  theme: z.string().default(""),
+  risk: z.coerce.number().int().default(0),
+  minChoices: z.coerce.number().int().min(1).max(10).default(1),
+  maxChoices: z.coerce.number().int().min(1).max(10).default(1),
+  visibility: z.enum(["signed", "anonymous"]).default("signed"),
+  lesson: z.string().trim().max(PROPOSAL_LIMITS.lesson.max),
+  options: z.string().trim().max(4000),
+});
+
+/** Líneas «SÍMBOLO | nota» del formulario → símbolo y nota. Las líneas vacías se ignoran. */
+export async function parseOptionLines(text: string): Promise<{ symbol: string; note: string | null }[]> {
+  return text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => {
+      const [sym, ...rest] = l.split("|");
+      return { symbol: sym.trim().toUpperCase(), note: rest.join("|").trim().slice(0, PROPOSAL_LIMITS.note.max) || null };
+    });
+}
+
+/**
+ * Alta de una propuesta directamente en el catálogo, sin pasar por una cartera: el presidente escribe la lección,
+ * las opciones (una por línea, «SÍMBOLO | qué investigar») y decide si va firmada o anónima. Cada símbolo se
+ * comprueba y se completa con su nombre y tipo. Pasa la misma normativa que las propuestas compartidas.
+ */
+export async function createProposalAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requireAdmin();
+  const limit = await rateLimit(`share:${admin.id}`, 20, 60 * 60 * 1000);
+  if (!limit.ok) return { error: "Has creado demasiadas propuestas seguidas. Prueba dentro de un rato." };
+  const parsed = newProposalSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const d = parsed.data;
+  const count = await prisma.proposal.count({ where: { familyId: admin.familyId, source: "FAMILY" } });
+  if (count >= MAX_SHARED_PER_FAMILY) return { error: `Tu familia ya tiene ${MAX_SHARED_PER_FAMILY} propuestas en el repositorio. Retira alguna antes de crear otra.` };
+
+  const lines = await parseOptionLines(d.options);
+  if (lines.length < PROPOSAL_LIMITS.options.min) return { error: `Indica al menos ${PROPOSAL_LIMITS.options.min} opciones (una por línea, p. ej. «VWCE.DE | ETF mundial de bajo coste»).` };
+  if (lines.length > PROPOSAL_LIMITS.options.max) return { error: `Máximo ${PROPOSAL_LIMITS.options.max} opciones.` };
+  const options: { symbol: string; name: string; kind: string; note: string | null }[] = [];
+  for (const line of lines) {
+    const sym = symbolSchema.safeParse(line.symbol);
+    if (!sym.success) return { error: `Símbolo no válido: «${line.symbol}»` };
+    const described = await describeSymbol(sym.data);
+    if (!described.ok) return { error: described.error };
+    options.push({ symbol: described.info.symbol, name: described.info.name, kind: described.info.kind, note: line.note });
+  }
+  const input = { title: d.title, lesson: d.lesson, theme: d.theme, risk: d.risk, minChoices: d.minChoices, maxChoices: d.maxChoices, options };
+  const problems = proposalProblems(input);
+  if (problems.length) return { error: problems.slice(0, 3).join(" ") };
+
+  const signed = d.visibility === "signed";
+  await prisma.proposal.create({
+    data: {
+      source: "FAMILY", familyId: admin.familyId, signed, title: input.title.trim(), theme: input.theme, risk: input.risk, lesson: input.lesson.trim(), minChoices: input.minChoices, maxChoices: input.maxChoices,
+      options: { create: options.map((o, i) => ({ ...o, order: i })) },
+    },
+  });
+  refresh();
+  redirect("/cartera/repositorio?origen=familias");
 }

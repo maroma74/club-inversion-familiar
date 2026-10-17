@@ -92,6 +92,7 @@ export default async function CarteraPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/cartera/historial" className="btn-ghost">Historial</Link>
+          {isAdmin && <Link href="/cartera/gestion" className="btn-ghost">Gestión de carteras</Link>}
           {isAdmin && <Link href={`/cartera/gestion/${p.id}`} className="btn-secondary">Gestionar esta cartera</Link>}
         </div>
       </header>

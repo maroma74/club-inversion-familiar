@@ -3,9 +3,9 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { firstName } from "@/lib/names";
-import { getPortfolioFull, isDeadlinePassed, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
+import { findUnlinkedTrades, getPortfolioFull, isDeadlinePassed, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
 import { eur, fmtDate } from "@/lib/format";
-import { closeAction, deletePortfolioAction, removeOptionAction, reopenAction } from "@/app/actions/monthly";
+import { adoptTradeAsDecisionAction, closeAction, deletePortfolioAction, removeOptionAction, reopenAction } from "@/app/actions/monthly";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { ShareProposalForm } from "../../repositorio/forms";
 import { AddOptionForm, AllocationsForm, PortfolioDetailsForm, PublishForm } from "../forms";
@@ -21,6 +21,9 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
   const total = p.allocations.reduce((a, x) => a + x.amount, 0);
   const shared = await prisma.proposal.findUnique({ where: { sourcePortfolioId: p.id }, select: { signed: true, theme: true, risk: true } });
   const publishBlock = p.options.length === 0 ? "Añade al menos una opción de inversión." : total <= 0 ? "Asigna un importe a algún miembro." : p.options.length < p.minChoices ? "Hay menos opciones que el mínimo a elegir." : null;
+  // Miembros activos sin importe (entraron después de crear la cartera o no se les asignó): no podrían decidir
+  const withoutAllocation = members.filter((m) => !p.allocations.some((a) => a.userId === m.id && a.amount > 0));
+  const unlinked = await findUnlinkedTrades(p);
 
   return (
     <div className="flex flex-col gap-7">
@@ -31,7 +34,7 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
           <p className="m-0 text-neutral-700">{p.options.length} opciones · {p.decisions.length} de {p.allocations.filter((a) => a.amount > 0).length} decisiones · {eur(total)} repartidos{isDeadlinePassed(p) ? " · plazo terminado" : ""}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/cartera/gestion" className="btn-ghost">← Carteras</Link>
+          <Link href="/cartera/gestion" className="btn-ghost">← Todas las carteras y propuestas</Link>
           <Link href="/cartera" className="btn-secondary">Ver como miembro</Link>
           {p.status === "DRAFT" && <PublishForm portfolioId={p.id} disabledReason={publishBlock} />}
           {p.status === "PUBLISHED" && (
@@ -89,6 +92,40 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
           )}
         </div>
       </section>
+
+      {p.status !== "CLOSED" && withoutAllocation.length > 0 && (
+        <section className="card card-snug gap-1" style={{ borderColor: "#e5a016" }}>
+          <div className="card-kicker">Miembros sin importe</div>
+          <p className="m-0 text-sm [text-wrap:pretty]"><b>{withoutAllocation.map((m) => firstName(m.name)).join(", ")}</b> {withoutAllocation.length === 1 ? "no tiene" : "no tienen"} importe en esta cartera, así que el formulario no {withoutAllocation.length === 1 ? "le" : "les"} dejará decidir. Asígnaselo en «Importe por miembro» (si entraron después de crear la cartera aparecen a 0).</p>
+        </section>
+      )}
+
+      {unlinked.length > 0 && (
+        <section className="card blueprint gap-3" style={{ padding: 24, borderColor: "var(--color-accent)" }}>
+          <div className="card-kicker">Compras hechas fuera del formulario</div>
+          <p className="m-0 text-sm text-neutral-700 max-w-[70ch] [text-wrap:pretty]">Estos miembros compraron a mano valores de esta cartera desde su publicación (por ejemplo, porque no tenían importe asignado). Si cuentan como su decisión del mes, reconócelas: aparecerán en «cómo decide el club» y en el repaso con el precio real que pagaron. No mueve dinero: la compra ya está hecha y pagada con su efectivo.</p>
+          <div className="overflow-x-auto"><table className="table">
+            <thead><tr><th>Miembro</th><th>Compra</th><th className="text-right">Coste</th><th>Porqué en el diario</th><th /></tr></thead>
+            <tbody>
+              {unlinked.map((t) => (
+                <tr key={t.id}>
+                  <td className="font-medium">{firstName(t.userName)}</td>
+                  <td><b>{t.symbol}</b> <span className="text-xs text-neutral-700">{t.quantity.toLocaleString("es-ES", { maximumFractionDigits: 6 })} uds. a {eur(t.priceEur)} · {fmtDate(t.date)} · {t.broker ?? "sin entidad"}</span></td>
+                  <td className="text-right tabular-nums whitespace-nowrap">{eur(t.costEur)}</td>
+                  <td className="text-sm max-w-[320px] [text-wrap:pretty]">{t.why ? `“${t.why}”` : <span className="text-neutral-700">sin porqué todavía</span>}</td>
+                  <td className="text-right whitespace-nowrap">
+                    <form action={adoptTradeAsDecisionAction}>
+                      <input type="hidden" name="portfolioId" value={p.id} />
+                      <input type="hidden" name="tradeId" value={t.id} />
+                      <ConfirmButton className="btn-primary py-1 text-xs" message={`¿Contar esta compra de ${t.symbol} como la decisión de ${firstName(t.userName)} en la cartera de ${monthLabelLong(p.month)}?`}>Contar como su decisión</ConfirmButton>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        </section>
+      )}
 
       <section className="card blueprint gap-3" style={{ padding: 24 }}>
         <div className="card-kicker">Repositorio de propuestas</div>

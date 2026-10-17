@@ -308,6 +308,8 @@ model Proposal {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   options           ProposalOption[]
+  /// Carteras creadas a partir de esta propuesta
+  portfolios MonthlyPortfolio[]
 
   @@index([source, theme])
 }
@@ -339,11 +341,15 @@ model MonthlyPortfolio {
   createdAt   DateTime @default(now())
   publishedAt DateTime?
   closedAt    DateTime?
+  /// Propuesta del repositorio de la que se creó (para marcarla como usada por la familia)
+  sourceProposalId String?
+  sourceProposal   Proposal? @relation(fields: [sourceProposalId], references: [id], onDelete: SetNull)
   options     MonthlyOption[]
   allocations MonthlyAllocation[]
   decisions   MonthlyDecision[]
 
   @@unique([familyId, month])
+  @@index([sourceProposalId])
 }
 
 model MonthlyOption {

@@ -22,11 +22,12 @@ export default async function GestionPage() {
   const month = freeMonths[0];
   // Una sugerencia del repositorio por mes libre: las más usadas primero, sin repetir títulos que la familia ya tenga
   const usedTitles = new Set(portfolios.map((p) => p.title.trim().toLowerCase()));
+  const usedIds = new Set(portfolios.map((p) => p.sourceProposalId).filter((x): x is string => !!x));
   const suggestions = (await prisma.proposal.findMany({
     orderBy: [{ uses: "desc" }, { createdAt: "asc" }],
     take: 12,
     select: { id: true, title: true, theme: true, risk: true, source: true, signed: true, minChoices: true, maxChoices: true, family: { select: { name: true } }, options: { orderBy: { order: "asc" }, select: { symbol: true } } },
-  })).filter((p) => !usedTitles.has(p.title.trim().toLowerCase())).slice(0, freeMonths.length);
+  })).filter((p) => !usedIds.has(p.id) && !usedTitles.has(p.title.trim().toLowerCase())).slice(0, freeMonths.length);
 
   return (
     <div className="flex flex-col gap-7">
@@ -53,7 +54,7 @@ export default async function GestionPage() {
           <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))" }}>
             {suggestions.map((p, i) => (
               <article key={p.id} className="card blueprint gap-2" style={{ padding: 20 }}>
-                <div className="card-kicker text-[11px] capitalize">{monthLabelLong(freeMonths[i])}</div>
+                <div className="card-kicker text-[11px] capitalize">Borrador para {monthLabelLong(freeMonths[i])}</div>
                 <h4 className="m-0">{p.title}</h4>
                 <div className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-700">
                   <span className="tag tag-outline">{p.theme}</span>
@@ -93,7 +94,8 @@ export default async function GestionPage() {
       </section>
 
       <section className="card blueprint gap-3" style={{ padding: 24 }}>
-        <div className="card-kicker">Nueva cartera</div>
+        <div className="card-kicker">Nueva cartera (de este mes o de cualquier mes futuro)</div>
+        <p className="m-0 text-[13px] text-neutral-700">Elige el mes que quieras, aunque sea dentro de varios: queda como borrador hasta que la publiques.</p>
         <p className="m-0 text-[13px] text-neutral-700">¿Sin ideas? <Link href="/cartera/repositorio" className="text-accent-700 underline">Elige una propuesta del repositorio</Link>: ya trae lección y opciones, y puedes adaptarla.</p>
         <p className="m-0 text-[13px] text-neutral-700">Se crea como borrador con el importe por defecto ({admin.family.monthlyAllowance.toFixed(2)} €) para cada miembro; después añades las opciones y ajustas los importes antes de publicar.</p>
         <PortfolioDetailsForm initial={{ month, title: "", lesson: "", minChoices: 1, maxChoices: 1, deadline: "" }} />

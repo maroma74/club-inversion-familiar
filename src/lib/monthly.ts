@@ -52,3 +52,40 @@ export function lessonParagraphs(text: string) {
 export function isDeadlinePassed(p: { deadline: Date | null }) {
   return !!p.deadline && p.deadline.getTime() < Date.now();
 }
+
+export type UnlinkedTrade = { id: string; userId: string; userName: string; symbol: string; optionId: string; date: Date; quantity: number; costEur: number; priceEur: number; broker: string | null; why: string | null; journalEntryId: string | null };
+
+/**
+ * Compras hechas «fuera del formulario»: un miembro compró a mano uno de los valores de la cartera desde el día de
+ * su publicación (p. ej. porque no tenía importe asignado y el formulario no le dejaba decidir). El presidente
+ * puede reconocerlas como la decisión de ese miembro para que cuenten en «cómo decide el club» y en el repaso.
+ */
+export async function findUnlinkedTrades(p: PortfolioFull): Promise<UnlinkedTrade[]> {
+  if (p.status === "DRAFT") return [];
+  const since = new Date(p.publishedAt ?? p.createdAt);
+  since.setHours(0, 0, 0, 0);
+  const bySymbol = new Map(p.options.map((o) => [o.symbol.toUpperCase(), o.id]));
+  const linked = new Set(p.decisions.flatMap((d) => d.choices.map((c) => c.tradeId).filter((t): t is string => !!t)));
+  const trades = await prisma.trade.findMany({
+    where: { user: { familyId: p.familyId, status: "ACTIVE" }, side: "BUY", symbol: { in: p.options.map((o) => o.symbol) }, date: { gte: since } },
+    orderBy: { date: "asc" },
+    include: { user: { select: { id: true, name: true } }, journal: { select: { id: true, why: true } } },
+  });
+  // Una compra que ya es parte de una decisión no se ofrece; tampoco las que ya hizo el formulario (entidad «Cartera AAAA-MM»)
+  return trades
+    .filter((t) => !linked.has(t.id) && !(t.broker ?? "").startsWith("Cartera "))
+    .map((t) => ({
+      id: t.id,
+      userId: t.userId,
+      userName: t.user.name,
+      symbol: t.symbol,
+      optionId: bySymbol.get(t.symbol.toUpperCase())!,
+      date: t.date,
+      quantity: t.quantity,
+      costEur: Math.round((t.quantity * t.price * t.fxRate + t.fees) * 100) / 100,
+      priceEur: t.price * t.fxRate,
+      broker: t.broker,
+      why: t.journal?.why ?? null,
+      journalEntryId: t.journal?.id ?? null,
+    }));
+}
