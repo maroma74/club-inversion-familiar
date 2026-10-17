@@ -141,12 +141,14 @@ export default async function InversionesPage() {
               <p className="m-0 text-sm text-neutral-700">Sin posiciones abiertas. Efectivo disponible: {eur(r.cash)}.</p>
             ) : (
               <>
-              <ul className="sm:hidden m-0 p-0 list-none flex flex-col">
+              {/* Una lista de dos columnas (activo | valor y rentabilidad) cabe en la tarjeta a cualquier ancho; el detalle va en línea pequeña */}
+              <ul className="m-0 p-0 list-none flex flex-col">
                 {r.holdings.map((h) => (
-                  <li key={h.symbol} className="flex items-center justify-between gap-3 py-2 border-t border-divider first:border-t-0">
+                  <li key={h.symbol} className="flex items-start justify-between gap-3 py-2 border-t border-divider first:border-t-0">
                     <div className="min-w-0">
-                      <div className="font-medium"><Link href={analysisPath(h.symbol)} className="text-ink">{h.symbol}</Link></div>
+                      <div className="font-medium"><Link href={analysisPath(h.symbol)} className="text-ink">{h.symbol}</Link>{symbolKind(h.symbol) === "CRYPTO" && <span className="tag tag-neutral ml-1">cripto</span>}{symbolKind(h.symbol) === "COMMODITY" && <span className="tag tag-neutral ml-1">materia prima</span>}</div>
                       <div className="text-xs text-neutral-700 truncate">{h.name}</div>
+                      <div className="text-xs text-neutral-600 tabular-nums">{h.quantity.toLocaleString("es-ES", { maximumFractionDigits: 4 })} uds. · medio {eur(h.avgCost)}{h.price !== null ? ` · ahora ${eur(h.price)}` : ""}</div>
                     </div>
                     <div className="text-right shrink-0">
                       <div className="tabular-nums font-medium" style={{ color: tone(h.pnl) }}>{pct(h.pnlPct)}</div>
@@ -156,24 +158,6 @@ export default async function InversionesPage() {
                 ))}
                 <li className="flex justify-between py-2 border-t border-divider text-sm text-neutral-700"><span>Efectivo</span><span className="tabular-nums">{eur(r.cash)}</span></li>
               </ul>
-              <div className="hidden sm:block overflow-x-auto"><table className="table">
-                <thead><tr><th>Activo</th><th className="text-right">Uds.</th><th className="text-right">Precio</th><th className="text-right">Valor</th><th className="text-right">Rent.</th></tr></thead>
-                <tbody>
-                  {r.holdings.map((h) => (
-                    <tr key={h.symbol}>
-                      <td>
-                        <div className="font-medium"><Link href={analysisPath(h.symbol)} className="text-ink">{h.symbol}</Link> {symbolKind(h.symbol) === "CRYPTO" && <span className="tag tag-neutral ml-1">cripto</span>}{symbolKind(h.symbol) === "COMMODITY" && <span className="tag tag-neutral ml-1">materia prima</span>}</div>
-                        <div className="text-xs text-neutral-600 truncate max-w-[180px]">{h.name}</div>
-                      </td>
-                      <td className="text-right tabular-nums">{h.quantity.toLocaleString("es-ES", { maximumFractionDigits: 4 })}</td>
-                      <td className="text-right tabular-nums whitespace-nowrap">{h.price === null ? "—" : eur(h.price)}<div className="text-xs text-neutral-600">medio {eur(h.avgCost)}</div></td>
-                      <td className="text-right tabular-nums whitespace-nowrap">{eur(h.value)}</td>
-                      <td className="text-right tabular-nums font-medium whitespace-nowrap" style={{ color: tone(h.pnl) }}>{pct(h.pnlPct)}</td>
-                    </tr>
-                  ))}
-                  <tr className="text-xs text-neutral-700"><td colSpan={3}>Efectivo</td><td className="text-right tabular-nums">{eur(r.cash)}</td><td /></tr>
-                </tbody>
-              </table></div>
               </>
             )}
           </div>

@@ -4,6 +4,7 @@ import { firstName } from "@/lib/names";
 
 import { useActionState, useEffect, useState } from "react";
 import { addOptionAction, createPortfolioAction, publishAction, setAllocationsAction, updatePortfolioAction } from "@/app/actions/monthly";
+import { adoptProposalAction } from "@/app/actions/proposals";
 import { autoFormat, LESSON_TEMPLATE, Markdown } from "@/components/Markdown";
 
 function Msg({ state }: { state: { error?: string; ok?: string } | undefined }) {
@@ -178,6 +179,19 @@ export function PublishForm({ portfolioId, disabledReason }: { portfolioId: stri
       </button>
       {disabledReason && <p className="m-0 text-xs text-neutral-700">{disabledReason}</p>}
       <Msg state={state} />
+    </form>
+  );
+}
+
+/** Botón de las propuestas sugeridas en Carteras: crea el borrador de ese mes directamente desde el repositorio. */
+export function UseSuggestionForm({ proposalId, month, label }: { proposalId: string; month: string; label: string }) {
+  const [state, action, pending] = useActionState(adoptProposalAction, undefined);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="proposalId" value={proposalId} />
+      <input type="hidden" name="month" value={month} />
+      <button className="btn-primary py-1.5 text-xs" disabled={pending}>{pending ? "Creando…" : `Usar para ${label}`}</button>
+      {state?.error && <span role="alert" className="text-xs text-neutral-800">{state.error}</span>}
     </form>
   );
 }

@@ -2,18 +2,31 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { currentMonth, listPortfolios, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
 import { fmtDate } from "@/lib/format";
-import { PortfolioDetailsForm } from "./forms";
+import { prisma } from "@/lib/prisma";
+import { proposalSignature, RISK_LABEL } from "@/lib/proposals";
+import { PortfolioDetailsForm, UseSuggestionForm } from "./forms";
+
+const nextMonth = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y, m, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
 
 export default async function GestionPage() {
   const admin = await requireAdmin();
   const portfolios = await listPortfolios(admin.familyId);
   const taken = new Set(portfolios.map((p) => p.month));
-  let month = currentMonth();
-  while (taken.has(month)) {
-    const [y, m] = month.split("-").map(Number);
-    const d = new Date(y, m, 1);
-    month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  }
+  // Próximos tres meses sin cartera, empezando por el actual
+  const freeMonths: string[] = [];
+  for (let ym = currentMonth(); freeMonths.length < 3; ym = nextMonth(ym)) if (!taken.has(ym)) freeMonths.push(ym);
+  const month = freeMonths[0];
+  // Una sugerencia del repositorio por mes libre: las más usadas primero, sin repetir títulos que la familia ya tenga
+  const usedTitles = new Set(portfolios.map((p) => p.title.trim().toLowerCase()));
+  const suggestions = (await prisma.proposal.findMany({
+    orderBy: [{ uses: "desc" }, { createdAt: "asc" }],
+    take: 12,
+    select: { id: true, title: true, theme: true, risk: true, source: true, signed: true, minChoices: true, maxChoices: true, family: { select: { name: true } }, options: { orderBy: { order: "asc" }, select: { symbol: true } } },
+  })).filter((p) => !usedTitles.has(p.title.trim().toLowerCase())).slice(0, freeMonths.length);
 
   return (
     <div className="flex flex-col gap-7">
@@ -28,6 +41,31 @@ export default async function GestionPage() {
           <Link href="/cartera" className="btn-secondary">Ver como miembro</Link>
         </div>
       </header>
+
+      {suggestions.length > 0 && (
+        <section className="flex flex-col gap-2.5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="m-0">Propuestas para los próximos meses</h3>
+            <Link href="/cartera/repositorio" className="text-sm text-accent-700">Ver todo el repositorio →</Link>
+          </div>
+          <p className="m-0 text-sm text-neutral-700 max-w-[68ch] [text-wrap:pretty]">Una idea del repositorio para cada mes que aún no tiene cartera. Al usarla se crea el borrador con su lección y sus opciones; después lo adaptas y lo publicas cuando quieras.</p>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))" }}>
+            {suggestions.map((p, i) => (
+              <article key={p.id} className="card blueprint gap-2" style={{ padding: 20 }}>
+                <div className="card-kicker text-[11px] capitalize">{monthLabelLong(freeMonths[i])}</div>
+                <h4 className="m-0">{p.title}</h4>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-700">
+                  <span className="tag tag-outline">{p.theme}</span>
+                  <span>Riesgo {RISK_LABEL[p.risk].toLowerCase()}</span>
+                  <span>· {proposalSignature({ source: p.source, signed: p.signed, familyName: p.family?.name })}</span>
+                </div>
+                <p className="m-0 text-xs text-neutral-700">{p.options.map((o) => o.symbol).join(" · ")} · eligen de {p.minChoices} a {p.maxChoices}</p>
+                <UseSuggestionForm proposalId={p.id} month={freeMonths[i]} label={monthLabelLong(freeMonths[i])} />
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="flex flex-col gap-2.5">
         <h3 className="m-0">Carteras</h3>

@@ -16,17 +16,40 @@ export type FamilyOverview = {
 
 /** Todo lo que necesitan Inicio y Liga: carteras, histórico, logros, formación y estadísticas. Actualiza el contador de logros de cada miembro. */
 export async function familyOverview(familyId: string): Promise<FamilyOverview> {
-  const [ranking, history, trades, contributions] = await Promise.all([
+  const [ranking, history, trades, contributions, journal, decisions, etfItems] = await Promise.all([
     familyLeaderboard(familyId),
     familyHistory(familyId),
-    prisma.trade.findMany({ where: { user: { familyId } }, select: { userId: true, symbol: true, side: true, date: true, currency: true } }),
+    prisma.trade.findMany({ where: { user: { familyId } }, select: { id: true, userId: true, symbol: true, side: true, date: true, currency: true } }),
     prisma.contribution.findMany({ where: { user: { familyId } }, select: { userId: true, date: true, note: true } }),
+    // Para los logros del diario: cuántas entradas y qué compras tienen su porqué
+    prisma.journalEntry.findMany({ where: { user: { familyId } }, select: { userId: true, tradeId: true } }),
+    // Para los logros de la cartera del mes: decisiones, puntualidad y longitud del argumento
+    prisma.monthlyDecision.findMany({ where: { user: { familyId } }, select: { userId: true, submittedAt: true, argument: true, portfolio: { select: { deadline: true } } } }),
+    // Qué símbolos considera la familia ETF o fondo (lista de seguimiento y opciones de las carteras del mes)
+    Promise.all([
+      prisma.watchlistItem.findMany({ where: { familyId, kind: "ETF" }, select: { symbol: true } }),
+      prisma.monthlyOption.findMany({ where: { portfolio: { familyId }, kind: "ETF" }, select: { symbol: true } }),
+    ]).then(([a, b]) => new Set([...a, ...b].map((x) => x.symbol.toUpperCase()))),
   ]);
   const learning = await getLearningStats(ranking.map((r) => r.userId));
   const progress = new Map<string, MemberProgress>();
   await Promise.all(
     ranking.map(async (r, i) => {
-      const p = computeBadges(r, trades.filter((t) => t.userId === r.userId), contributions.filter((c) => c.userId === r.userId), i, ranking.length, learning.get(r.userId)?.lessonsPassed ?? 0);
+      const mine = trades.filter((t) => t.userId === r.userId);
+      const myJournal = journal.filter((j) => j.userId === r.userId);
+      const withWhy = new Set(myJournal.map((j) => j.tradeId).filter(Boolean));
+      const myDecisions = decisions.filter((d) => d.userId === r.userId);
+      const stats = learning.get(r.userId);
+      const extras = {
+        journalEntries: myJournal.length,
+        buysWithJournal: mine.filter((t) => t.side === "BUY" && withWhy.has(t.id)).length,
+        allCoursesCompleted: !!stats && stats.totalLessons > 0 && stats.lessonsPassed >= stats.totalLessons,
+        decisions: myDecisions.length,
+        decisionsOnTime: myDecisions.filter((d) => !d.portfolio.deadline || d.submittedAt.getTime() <= d.portfolio.deadline.getTime()).length,
+        longestArgument: Math.max(0, ...myDecisions.map((d) => d.argument.length)),
+        etfSymbols: etfItems,
+      };
+      const p = computeBadges(r, mine, contributions.filter((c) => c.userId === r.userId), i, ranking.length, stats?.lessonsPassed ?? 0, extras);
       progress.set(r.userId, p);
       // Solo se escribe cuando cambia: esta vista se recarga a menudo y la base de datos es compartida.
       await prisma.user.updateMany({ where: { id: r.userId, badgeCount: { not: p.badgesEarned } }, data: { badgeCount: p.badgesEarned } }).catch((e) => logError("league.badges", e, { userId: r.userId }));
