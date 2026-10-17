@@ -9,6 +9,8 @@ import { DiaryDialog } from "@/components/DiaryDialog";
 import { Avatar } from "@/components/Avatar";
 import { MacroCard } from "@/components/MacroCard";
 import { AdminTasks } from "@/components/AdminTasks";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { loadOnboarding } from "@/lib/onboardingData";
 import { getCurrentPortfolio, isDeadlinePassed, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
 
 const SIDE: Record<string, string> = { BUY: "Compra", SELL: "Venta", NOTE: "Nota" };
@@ -17,14 +19,13 @@ export default async function InicioPage() {
   const user = await requireUser();
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
-  const [courses, overview, diaryRaw, pendingTrades, monthly, weekEntries, myEntries] = await Promise.all([
+  const [courses, overview, diaryRaw, pendingTrades, monthly, weekEntries] = await Promise.all([
     getCoursesWithProgress(user.id),
     familyOverview(user.familyId),
     prisma.journalEntry.findMany({ where: { user: { familyId: user.familyId } }, orderBy: { createdAt: "desc" }, take: 6, include: { user: { select: { id: true, name: true, avatarUpdatedAt: true } } } }),
     prisma.trade.findMany({ where: { userId: user.id, journal: null, side: "BUY" }, orderBy: { date: "desc" }, take: 3 }),
     getCurrentPortfolio(user.familyId),
     prisma.journalEntry.count({ where: { user: { familyId: user.familyId }, createdAt: { gte: weekAgo } } }),
-    prisma.journalEntry.count({ where: { userId: user.id } }),
   ]);
   const monthlyAllocation = monthly?.allocations.find((a) => a.userId === user.id)?.amount ?? 0;
   const monthlyDecided = !!monthly?.decisions.some((d) => d.userId === user.id);
@@ -39,7 +40,6 @@ export default async function InicioPage() {
   const me = overview.ranking.find((r) => r.userId === user.id);
   const myProgress = overview.progress.get(user.id);
   const myRank = overview.ranking.findIndex((r) => r.userId === user.id) + 1;
-  const myLessons = overview.learning.get(user.id)?.lessonsPassed ?? 0;
   const current = courses.find((c) => c.current) ?? courses.find((c) => c.unlocked && !c.completed) ?? courses[courses.length - 1];
   const nextLesson = current?.nextLesson;
   const nextHref = current && nextLesson ? `/academia/${current.slug}/${nextLesson.slug}` : "/academia";
@@ -49,7 +49,7 @@ export default async function InicioPage() {
   const monthName = new Intl.DateTimeFormat("es-ES", { month: "long" }).format(new Date());
   const level = myProgress?.level ?? 1;
   const firstPending = pendingTrades[0];
-  const isNewMember = myLessons === 0 && myEntries === 0;
+  const onboarding = await loadOnboarding(user);
 
   // Una sola acción principal, por prioridad: decisión del mes > compra sin explicar > lección.
   const step = monthlyPending
@@ -96,14 +96,13 @@ export default async function InicioPage() {
 
       {user.role === "ADMIN" && <AdminTasks familyId={user.familyId} />}
 
-      {isNewMember && (
+      {!onboarding.complete && (
         <section aria-labelledby="primeros-pasos" className="card card-roomy gap-2">
-          <h3 id="primeros-pasos" className="m-0">Tus primeros pasos</h3>
-          <ol className="m-0 pl-6 flex flex-col gap-1.5 text-base list-decimal marker:font-bold marker:text-accent-700">
-            <li>Haz tu primera lección en la <Link href="/academia">Academia</Link>.</li>
-            <li>Mira una acción o un ETF en <Link href="/acciones">Acciones</Link> y decide si comprarías.</li>
-            <li>Escribe en el diario <b>por qué</b> lo harías. Ese porqué es lo que aprenderás a mejorar.</li>
-          </ol>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 id="primeros-pasos" className="m-0">Tus primeros pasos</h3>
+            <Link href="/ayuda#primeros-pasos" className="btn-ghost text-sm">Ver todos y la ayuda →</Link>
+          </div>
+          <OnboardingChecklist steps={onboarding.steps} done={onboarding.done} total={onboarding.total} compact />
         </section>
       )}
 

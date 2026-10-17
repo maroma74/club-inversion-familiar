@@ -8,7 +8,7 @@ type Item = { num: string; label: string; href: string; note?: string; admin?: b
 type Group = { header: string; items: Item[] };
 
 const GROUPS: Group[] = [
-  { header: "Aprender", items: [{ num: "01", label: "Inicio", href: "/inicio" }, { num: "02", label: "Academia", href: "/academia" }] },
+  { header: "Aprender", items: [{ num: "01", label: "Inicio", href: "/inicio" }, { num: "02", label: "Academia", href: "/academia" }, { num: "?", label: "Ayuda y primeros pasos", href: "/ayuda" }] },
   {
     header: "Invertir",
     items: [
