@@ -29,7 +29,6 @@ const fmtPrice = (n: number, currency: string, crypto = false) => {
 };
 const shortNum = (n: number) => (n >= 100 ? num(n, 0) : n >= 1 ? num(n, 2) : num(n, 4));
 
-const MARKET_STATE: Record<string, string> = { REGULAR: "Abierto", PRE: "Preapertura", POST: "Cierre ampliado", CLOSED: "Cerrado", PREPRE: "Cerrado", POSTPOST: "Cerrado" };
 
 const COPY: Record<WatchKind, { title: string; subtitle: string; listTitle: string; empty: string; base: string; footer: string }> = {
   STOCK: {
