@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin, requireUser } from "@/lib/auth";
 import { isCrypto } from "@/lib/prices";
 import { DEFAULT_COMMODITY_WATCHLIST, findCommodity, isCommodity, matchCommodity } from "@/lib/commodities";
 import { DEFAULT_CRYPTO_WATCHLIST, DEFAULT_ETF_WATCHLIST, DEFAULT_WATCHLIST, fetchStockQuote, type WatchKind } from "@/lib/stocks";
@@ -80,8 +80,9 @@ export async function followWatchlistAction(formData: FormData) {
   await addToWatchlist(formData.get("symbol"), formData.get("name"), asKind(formData.get("kind")));
 }
 
+/** Quitar un valor de la lista compartida de la familia: solo el presidente (añadir sí puede cualquiera). */
 export async function removeWatchlistAction(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireAdmin();
   await prisma.watchlistItem.deleteMany({ where: { familyId: user.familyId, symbol: String(formData.get("symbol") ?? "").slice(0, 20) } });
   revalidateLists();
 }

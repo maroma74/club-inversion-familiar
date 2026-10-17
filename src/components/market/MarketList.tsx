@@ -223,7 +223,7 @@ export async function MarketList({ kind, embedded = false, sort }: { kind: Watch
                       {!crypto && <td className="px-2 py-2 text-xs text-neutral-700 hidden lg:table-cell">{MARKET_STATE[q.marketState] ?? q.marketState}</td>}
                       <td className="px-5 py-2 text-right whitespace-nowrap">
                         <Link href={`/operaciones?activo=${encodeURIComponent(q.symbol)}#operar`} className="btn-ghost min-h-[44px] md:min-h-0">Operar</Link>
-                        {listSymbols.has(q.symbol) && <RemoveWatchlistButton symbol={q.symbol} label={names.get(q.symbol) ?? q.name} />}
+                        {listSymbols.has(q.symbol) && user.role === "ADMIN" && <RemoveWatchlistButton symbol={q.symbol} label={names.get(q.symbol) ?? q.name} />}
                       </td>
                     </tr>
                   );

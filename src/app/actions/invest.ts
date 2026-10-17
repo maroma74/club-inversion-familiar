@@ -14,7 +14,11 @@ import { logError } from "@/lib/log";
 import { currentMonthYm, dateSchema, MAX_PRICE, MAX_QUANTITY, num, parseMoney, parsePastDay, shortText, symbolSchema } from "@/lib/validation";
 import type { FormState } from "./auth";
 
-/** Las compras hechas al enviar la decisión de la cartera del mes son el registro de esa decisión: no se tocan. */
+/**
+ * Las compras hechas al enviar la decisión de la cartera del mes son el registro de esa decisión: se pueden ajustar
+ * al precio, cantidad o comisión reales del bróker (rara vez coinciden con la cotización del momento), pero no
+ * cambiar de valor ni de tipo, ni borrarse.
+ */
 async function isMonthlyDecisionTrade(tradeId: string) {
   return Boolean(await prisma.monthlyChoice.findFirst({ where: { tradeId }, select: { id: true } }));
 }
@@ -46,14 +50,17 @@ const tradeSchema = z.object({
 /** Valida y guarda una operación. Si `tradeId` existe, la edita; si no, la crea. */
 async function saveTrade(formData: FormData, tradeId?: string): Promise<FormState> {
   const user = await requireUser();
+  let monthly = false;
+  let existing: { symbol: string; side: string } | null = null;
   if (tradeId) {
-    const existing = await prisma.trade.findFirst({ where: { id: tradeId, userId: user.id } });
+    existing = await prisma.trade.findFirst({ where: { id: tradeId, userId: user.id }, select: { symbol: true, side: true } });
     if (!existing) return { error: "Operación no encontrada" };
-    if (await isMonthlyDecisionTrade(tradeId)) return { error: "Esta compra forma parte de tu decisión de la cartera del mes y no se puede modificar" };
+    monthly = await isMonthlyDecisionTrade(tradeId);
   }
   const parsed = tradeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
+  if (monthly && existing && (d.symbol !== existing.symbol || d.side !== existing.side)) return { error: "Esta compra forma parte de tu decisión de la cartera del mes: puedes ajustar precio, cantidad, comisión o entidad, pero no cambiar el valor ni el tipo" };
   const day = parsePastDay(d.date);
   if ("error" in day) return { error: day.error };
   const date = day.date;
@@ -83,6 +90,8 @@ async function saveTrade(formData: FormData, tradeId?: string): Promise<FormStat
 
   const data = { date, symbol: d.symbol, name, side: d.side, quantity: d.quantity, price: d.price, currency: d.currency, fxRate, fees: d.fees, broker: d.broker || null };
   const saved = tradeId ? await prisma.trade.update({ where: { id: tradeId }, data }) : await prisma.trade.create({ data: { userId: user.id, ...data } });
+  // La elección de la cartera del mes guarda el precio de ejecución en euros y la cantidad: se mantienen al día
+  if (monthly) await prisma.monthlyChoice.updateMany({ where: { tradeId: saved.id }, data: { price: d.price * fxRate, quantity: d.quantity } });
   // Si la compra supera el efectivo (p. ej. posiciones que ya tenías antes de usar la app),
   // la diferencia se registra como aportación propia. Se recalculan todas a partir del historial,
   // de modo que editar o borrar operaciones siempre deja las aportaciones coherentes.

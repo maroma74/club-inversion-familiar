@@ -19,6 +19,8 @@ export default async function OperacionesPage({ searchParams }: { searchParams: 
     fxToEur("USD").catch(() => null), // euros por dólar, para mostrar los importes también en $
   ]);
   const usdPerEur = usdRate ? 1 / usdRate : null;
+  // Compras que son el registro de una decisión de la cartera del mes (se ajustan, pero no se borran)
+  const monthlyIds = new Set((await prisma.monthlyChoice.findMany({ where: { tradeId: { in: myTrades.map((t) => t.id) } }, select: { tradeId: true } })).map((c) => c.tradeId));
 
   return (
     <>
@@ -95,6 +97,7 @@ export default async function OperacionesPage({ searchParams }: { searchParams: 
               symbol: t.symbol,
               name: t.name,
               side: t.side as "BUY" | "SELL",
+              monthly: monthlyIds.has(t.id),
               quantity: t.quantity,
               price: t.price,
               currency: t.currency,

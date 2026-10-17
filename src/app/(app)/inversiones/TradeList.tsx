@@ -17,6 +17,8 @@ export type TradeRow = {
   fxRate: number;
   fees: number;
   broker: string | null;
+  /** Compra hecha al enviar la decisión de la cartera del mes: se puede ajustar al precio real, pero no cambiar de valor ni borrar. */
+  monthly?: boolean;
 };
 
 const CURRENCIES = ["EUR", "USD", "GBP", "CHF"];
@@ -43,30 +45,52 @@ export function TradeList({ trades, usdPerEur = null }: { trades: TradeRow[]; us
           <th className="text-left py-1 font-medium">Operación</th>
           <th className="text-right py-1 font-medium">Precio</th>
           <th className="text-right py-1 font-medium">Importe € / $</th>
-          <th className="py-1" />
         </tr>
       </thead>
       <tbody>
         {trades.map((t) =>
           editing === t.id ? (
             <tr key={t.id} className="border-t border-slate-100">
-              <td colSpan={5} className="py-2">
+              <td colSpan={4} className="py-2">
                 <EditTradeForm trade={t} onDone={() => setEditing(null)} />
               </td>
             </tr>
-          ) : (
+          ) : confirming === t.id ? (
             <tr key={t.id} className="border-t border-slate-100">
-              <td className="py-1.5 text-slate-500 whitespace-nowrap">{fmtDate(t.date)}</td>
-              <td className="py-1.5">
+              <td colSpan={4} className="py-2">
+                <form action={deleteTradeAction} className="flex flex-wrap items-center justify-between gap-2" role="alertdialog" aria-label="Confirmar borrado">
+                  <input type="hidden" name="id" value={t.id} />
+                  <p className="m-0 text-sm [text-wrap:pretty]">¿Borrar esta {t.side === "BUY" ? "compra" : "venta"} de {t.symbol} del {fmtDate(t.date)}? Se recalculará tu rentabilidad y no se puede deshacer.</p>
+                  <div className="flex gap-2">
+                    <button type="button" className="btn-secondary" onClick={() => setConfirming(null)} autoFocus>No, conservarla</button>
+                    <button className="btn-primary">Sí, borrar</button>
+                  </div>
+                </form>
+              </td>
+            </tr>
+          ) : (
+            <tr key={t.id} className="border-t border-slate-100 align-top">
+              <td className="py-2 text-slate-500 whitespace-nowrap">{fmtDate(t.date)}</td>
+              <td className="py-2">
                 <span className="tag tag-neutral">{t.side === "BUY" ? "Compra" : "Venta"}</span> <b>{t.symbol}</b>
                 <div className="text-xs text-slate-400">{t.broker ?? "Entidad sin indicar"}</div>
+                {/* Acciones debajo del valor: la tabla cabe sin desplazamiento horizontal */}
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs">
+                  <button type="button" onClick={() => setEditing(t.id)} className="text-indigo-600 hover:underline py-1" aria-label={`Editar ${t.side === "BUY" ? "compra" : "venta"} de ${t.symbol}`}>Editar</button>
+                  {t.monthly ? (
+                    <span className="text-slate-400" title="Las compras de la cartera del mes son el registro de tu decisión: puedes ajustar precio, cantidad o comisión al valor real, pero no borrarlas ni cambiar de valor">Decisión del mes</span>
+                  ) : (
+                    <button type="button" onClick={() => setConfirming(t.id)} className="text-slate-500 hover:text-red-600 hover:underline py-1" aria-label={`Borrar ${t.side === "BUY" ? "compra" : "venta"} de ${t.symbol}`}>Borrar</button>
+                  )}
+                </div>
               </td>
-              <td className="py-1.5 text-right tabular-nums whitespace-nowrap">
-                {t.quantity} × {t.currency === "EUR" ? eur(t.price) : `${t.price.toLocaleString("es-ES", { maximumFractionDigits: 4 })} ${t.currency}`}
-                {t.currency !== "EUR" && <div className="text-xs text-slate-400">= {eur(t.price * t.fxRate)} / ud.</div>}
-                {t.fees > 0 && <div className="text-xs text-slate-400">comisión {eur(t.fees)}</div>}
+              <td className="py-2 text-right tabular-nums">
+                <span className="whitespace-nowrap">{t.quantity.toLocaleString("es-ES", { maximumFractionDigits: 6 })} ×</span>{" "}
+                <span className="whitespace-nowrap">{t.currency === "EUR" ? eur(t.price) : `${t.price.toLocaleString("es-ES", { maximumFractionDigits: 4 })} ${t.currency}`}</span>
+                {t.currency !== "EUR" && <div className="text-xs text-slate-400 whitespace-nowrap">= {eur(t.price * t.fxRate)} / ud.</div>}
+                {t.fees > 0 && <div className="text-xs text-slate-400 whitespace-nowrap">comisión {eur(t.fees)}</div>}
               </td>
-              <td className="py-1.5 text-right tabular-nums whitespace-nowrap">
+              <td className="py-2 text-right tabular-nums whitespace-nowrap">
                 {(() => {
                   const { totalEur, totalUsd } = amounts(t, usdPerEur);
                   return (
@@ -76,25 +100,6 @@ export function TradeList({ trades, usdPerEur = null }: { trades: TradeRow[]; us
                     </>
                   );
                 })()}
-              </td>
-              <td className="py-1.5 text-right">
-                {confirming === t.id ? (
-                  <form action={deleteTradeAction} className="flex flex-col items-end gap-1.5 max-w-[220px] ml-auto" role="alertdialog" aria-label="Confirmar borrado">
-                    <input type="hidden" name="id" value={t.id} />
-                    <p className="m-0 text-sm text-right [text-wrap:pretty]">¿Borrar esta {t.side === "BUY" ? "compra" : "venta"} de {t.symbol}? Se recalculará tu rentabilidad y no se puede deshacer.</p>
-                    <div className="flex gap-2">
-                      <button type="button" className="btn-secondary" onClick={() => setConfirming(null)} autoFocus>No, conservarla</button>
-                      <button className="btn-primary">Sí, borrar</button>
-                    </div>
-                  </form>
-                ) : t.broker?.startsWith("Cartera ") ? (
-                  <span className="text-xs text-slate-500" title="Las compras de la cartera del mes son el registro de tu decisión y no se modifican">Decisión del mes</span>
-                ) : (
-                  <div className="flex justify-end gap-1 whitespace-nowrap">
-                    <button type="button" onClick={() => setEditing(t.id)} className="btn-ghost" style={{ minHeight: 36 }}>Editar</button>
-                    <button type="button" onClick={() => setConfirming(t.id)} className="btn-ghost" style={{ minHeight: 36 }} aria-label={`Borrar ${t.side === "BUY" ? "compra" : "venta"} de ${t.symbol}`}>Borrar</button>
-                  </div>
-                )}
               </td>
             </tr>
           ),
@@ -106,22 +111,34 @@ export function TradeList({ trades, usdPerEur = null }: { trades: TradeRow[]; us
 
 function EditTradeForm({ trade, onDone }: { trade: TradeRow; onDone: () => void }) {
   const [state, action, pending] = useActionState(updateTradeAction, undefined);
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   return (
     <form action={action} className="rounded-lg border border-indigo-200 bg-indigo-50/40 p-3 space-y-2">
       <input type="hidden" name="id" value={trade.id} />
       <input type="hidden" name="name" value={trade.name} />
+      {trade.monthly && (
+        <p className="m-0 text-xs text-slate-600 [text-wrap:pretty]">Compra de tu decisión de la cartera del mes: ajusta el precio, la cantidad, la comisión o la entidad al valor real de tu bróker. El valor y el tipo de operación no se cambian.</p>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         <div>
           <label className="label">Tipo</label>
-          <select name="side" defaultValue={trade.side} className="input">
-            <option value="BUY">Compra</option>
-            <option value="SELL">Venta</option>
-          </select>
+          {trade.monthly ? (
+            <><input type="hidden" name="side" value={trade.side} /><div className="input bg-slate-50 text-slate-600">{trade.side === "BUY" ? "Compra" : "Venta"}</div></>
+          ) : (
+            <select name="side" defaultValue={trade.side} className="input">
+              <option value="BUY">Compra</option>
+              <option value="SELL">Venta</option>
+            </select>
+          )}
         </div>
         <div>
           <label className="label">Símbolo</label>
-          <input name="symbol" defaultValue={trade.symbol} required className="input uppercase" />
+          {trade.monthly ? (
+            <><input type="hidden" name="symbol" value={trade.symbol} /><div className="input bg-slate-50 text-slate-600">{trade.symbol}</div></>
+          ) : (
+            <input name="symbol" defaultValue={trade.symbol} required className="input uppercase" />
+          )}
         </div>
         <div>
           <label className="label">Fecha</label>

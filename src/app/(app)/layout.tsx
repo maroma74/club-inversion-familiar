@@ -59,15 +59,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </Link>
         <NavLinks isAdmin={user.role === "ADMIN"} alertHref={alertHref} />
-        <div className="flex items-center justify-between gap-2 border-t border-[rgba(248,250,252,0.12)]" style={{ padding: "14px 20px" }}>
+        {/* Pie: nombre y nivel en su propia fila (ancho completo) y los botones debajo, para que el nombre no se recorte */}
+        <div className="flex flex-col gap-2 border-t border-[rgba(248,250,252,0.12)]" style={{ padding: "12px 20px 14px" }}>
           <Link href="/perfil" className="flex items-center gap-2.5 min-w-0 no-underline" title="Mi perfil y foto">
             <Avatar id={user.id} name={user.name} updatedAt={user.avatarUpdatedAt} size={36} />
             <div className="min-w-0">
               <div className="text-[14px] font-medium truncate">{firstName(user.name)}</div>
-              <div className="text-[11px] opacity-70">{userMeta}</div>
+              <div className="text-[11px] opacity-70 truncate">{userMeta}</div>
             </div>
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 pl-[46px]">
             <ThemeToggle />
             {logout}
           </div>
