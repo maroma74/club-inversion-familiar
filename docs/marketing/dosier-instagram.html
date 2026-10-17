@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Dosier Instagram</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f7f5;--surface:#ffffff;--surface-2:#eef1ee;--ink:#0f1b2d;--ink-2:#3b4656;--muted:#6b7684;
+  --line:#dde2dd;--accent:#0b6b4f;--accent-ink:#ffffff;--accent-soft:#dcf2e8;--amber:#b7791f;--amber-soft:#fbf0d9;
+  --navy:#0f1b2d;--navy-ink:#e8eef5;--mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0c1320;--surface:#131c2b;--surface-2:#1b2536;--ink:#eef2f7;--ink-2:#c3ccd8;--muted:#8d99a8;
+  --line:#26324480;--accent:#3dc48f;--accent-ink:#06261a;--accent-soft:#143526;--amber:#e3b561;--amber-soft:#3a2d12;
+  --navy:#060b14;--navy-ink:#e8eef5;
+}}
+:root[data-theme="dark"]{
+  --bg:#0c1320;--surface:#131c2b;--surface-2:#1b2536;--ink:#eef2f7;--ink-2:#c3ccd8;--muted:#8d99a8;
+  --line:#26324480;--accent:#3dc48f;--accent-ink:#06261a;--accent-soft:#143526;--amber:#e3b561;--amber-soft:#3a2d12;
+  --navy:#060b14;--navy-ink:#e8eef5;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;text-wrap:pretty}
+.wrap{max-width:1120px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-right)) 96px max(16px,env(safe-area-inset-left))}
+h1,h2,h3,h4{font-family:Fraunces,Georgia,serif;letter-spacing:-.01em;line-height:1.1;margin:0}
+h1{font-size:clamp(34px,6vw,64px);font-weight:700}
+h2{font-size:clamp(26px,3.6vw,38px);font-weight:700;margin-top:72px;margin-bottom:8px}
+h3{font-size:clamp(20px,2.4vw,26px);font-weight:700}
+h4{font-size:17px;font-weight:700;font-family:Inter,system-ui,sans-serif}
+p{margin:0 0 12px}
+.kicker{font:600 11px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.lede{font-size:clamp(17px,1.6vw,20px);color:var(--ink-2);max-width:70ch}
+.hero{padding:64px 0 24px;border-bottom:1px solid var(--line)}
+.hero .meta{display:flex;flex-wrap:wrap;gap:10px 22px;color:var(--muted);font-size:13px;margin-top:22px}
+.hero .meta b{color:var(--ink);font-weight:600}
+.toc{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:28px 0 0;padding:0;list-style:none;counter-reset:toc}
+.toc li{counter-increment:toc;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px}
+.toc li::before{content:counter(toc,decimal-leading-zero);font-family:var(--mono);color:var(--accent);margin-right:10px;font-size:12px}
+.toc a{color:inherit;text-decoration:none;font-weight:600}
+.toc a:hover{color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+.navy{background:var(--navy);color:var(--navy-ink);border-color:transparent}
+.navy .kicker{color:#5fd3a4}
+.claim-hero{font-family:Fraunces,Georgia,serif;font-size:clamp(30px,5vw,54px);line-height:1.05;font-weight:700;margin:10px 0 14px;letter-spacing:-.015em}
+.claim{display:flex;flex-direction:column;gap:8px}
+.claim .q{font-family:Fraunces,Georgia,serif;font-size:clamp(20px,2.2vw,25px);line-height:1.2;font-weight:700}
+.claim .why{color:var(--ink-2);font-size:14px}
+.tag{display:inline-block;font:600 11px/1 Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:6px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);width:max-content}
+.tag.amber{background:var(--amber-soft);color:var(--amber)}
+.tag.neutral{background:var(--surface-2);color:var(--muted)}
+.screen{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px;align-items:start;padding:28px 0 36px;border-top:1px solid var(--line)}
+.screen.mobile{grid-template-columns:minmax(0,.55fr) minmax(0,1fr)}
+@media (max-width:820px){.screen,.screen.mobile{grid-template-columns:1fr}}
+.shot{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);box-shadow:0 18px 50px -30px rgba(15,27,45,.45)}
+.shot img{display:block;width:100%;height:auto}
+.shot.tall{max-height:720px;overflow-y:auto}
+.shot figcaption{font-size:12px;color:var(--muted);padding:8px 12px;border-top:1px solid var(--line);font-family:var(--mono)}
+.script{background:var(--surface-2);border-radius:12px;padding:14px 16px;font-size:14.5px;margin-top:12px}
+.script ol{margin:6px 0 0;padding-left:20px}
+.script li{margin:4px 0}
+.script li b{font-family:var(--mono);font-weight:500;color:var(--accent);font-size:12px;margin-right:6px}
+.onscreen{font-family:var(--mono);font-size:13px;color:var(--ink-2);background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:10px}
+.onscreen span{display:block}
+dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:14px 0 0;font-size:14px}
+dl.kv dt{color:var(--muted);font-weight:500}
+dl.kv dd{margin:0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font:600 11px/1 Inter,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:10px 10px;border-bottom:1px solid var(--line)}
+td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+.tableWrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.callout{border-left:4px solid var(--amber);background:var(--amber-soft);padding:14px 18px;border-radius:0 12px 12px 0;font-size:14.5px}
+.callout.green{border-left-color:var(--accent);background:var(--accent-soft)}
+code{font-family:var(--mono);font-size:.9em;background:var(--surface-2);padding:2px 6px;border-radius:6px}
+pre{font-family:var(--mono);font-size:13px;background:var(--navy);color:var(--navy-ink);padding:14px 16px;border-radius:12px;overflow-x:auto;margin:10px 0 0}
+.hash{display:flex;flex-wrap:wrap;gap:8px}
+.hash span{font-family:var(--mono);font-size:13px;padding:6px 10px;border-radius:8px;background:var(--surface-2);color:var(--ink-2)}
+ul.clean{margin:8px 0 0;padding-left:20px}
+ul.clean li{margin:5px 0}
+.num{font-family:var(--mono);font-size:12px;color:var(--accent)}
+footer{margin-top:72px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">Club de Inversión Familiar · campaña Instagram · octubre 2026</div>
+  <h1 style="margin-top:12px">La paga que enseña a invertir</h1>
+  <p class="lede" style="margin-top:16px">Dosier de campaña dirigido a padres y madres de adolescentes y veinteañeros. Contiene el concepto, los claims, 19 pantallazos de la aplicación con datos sintéticos (Familia García) y, para cada pantalla, el gancho, el guion de Reel y el texto en pantalla para que puedas montar los vídeos de promoción.</p>
+  <div class="meta">
+    <span><b>Público:</b> madres y padres de 40 a 58 años con hijos de 14 a 26</span>
+    <span><b>Objetivo:</b> registros de familias en clubdeinversionfamiliar.com</span>
+    <span><b>Formato principal:</b> Reels de 15–30 s con grabación de pantalla</span>
+    <span><b>Datos:</b> 100 % sintéticos, regenerables con <code>scripts/seed-demo.ts</code></span>
+  </div>
+  <ol class="toc">
+    <li><a href="#concepto">Concepto e insight</a></li>
+    <li><a href="#claims">Claims de la campaña</a></li>
+    <li><a href="#pantallas">Pantallas y guiones de Reel</a></li>
+    <li><a href="#movil">Versiones móviles</a></li>
+    <li><a href="#plan">Plan de publicación y formatos</a></li>
+    <li><a href="#hashtags">Hashtags, bio y CTA</a></li>
+    <li><a href="#produccion">Guía de producción y datos sintéticos</a></li>
+    <li><a href="#limites">Guardarraíles</a></li>
+  </ol>
+</header>
+
+<!-- 1. CONCEPTO -->
+<section id="concepto">
+  <h2>1 · Concepto e insight</h2>
+  <p class="lede">Los padres saben que sus hijos van a invertir: ya lo hacen en cripto, con apps de bróker o siguiendo a alguien en TikTok. Lo que no saben es cómo meterse en esa conversación sin dar un sermón. El Club convierte la paga en un juego mensual con reglas de inversor adulto: una lección, una decisión, un porqué escrito y una liga familiar que premia explicar bien, no acertar por suerte.</p>
+  <div class="grid g3" style="margin-top:20px">
+    <div class="card">
+      <span class="tag">Tensión</span>
+      <h4 style="margin-top:10px">«Mi hijo invierte y yo no sé ni qué le preguntar.»</h4>
+      <p style="color:var(--ink-2);font-size:14.5px;margin-top:6px">La educación financiera no llega del instituto. Llega de un vídeo de 40 segundos de un desconocido. El padre quiere estar en la foto y no sabe cómo.</p>
+    </div>
+    <div class="card">
+      <span class="tag">Promesa</span>
+      <h4 style="margin-top:10px">Un club de inversión real, a escala de paga.</h4>
+      <p style="color:var(--ink-2);font-size:14.5px;margin-top:6px">Importes pequeños (10–50 € al mes), datos de mercado de verdad, un presidente (tú) que publica la cartera del mes y una familia que compite por el mejor argumento.</p>
+    </div>
+    <div class="card">
+      <span class="tag">Prueba</span>
+      <h4 style="margin-top:10px">Cada pantalla enseña algo que el padre no sabía que podía hacer en casa.</h4>
+      <p style="color:var(--ink-2);font-size:14.5px;margin-top:6px">Academia por niveles, ficha de cada valor con PER y lectura técnica explicada, repaso de carteras archivadas, aviso por WhatsApp con enlace directo.</p>
+    </div>
+  </div>
+  <div class="card navy" style="margin-top:16px">
+    <div class="kicker">Tono de la campaña</div>
+    <p style="margin-top:10px;font-size:17px">Cómplice, sin paternalismo y sin promesas de dinero. Hablamos a un adulto inteligente que quiere criar a otro adulto inteligente. Vocabulario del día a día («la paga», «el porqué», «la liga»), nunca jerga de bróker. El protagonista del vídeo es la conversación en casa; la app es la excusa.</p>
+    <p style="margin:0;color:#9fb0c3;font-size:14px">Palabras que sí: aprender, explicar, en familia, porqué, decidir, liga, mes a mes. Palabras que no: ganar dinero, rentabilidad garantizada, hacerse rico, pelotazo, señal de compra.</p>
+  </div>
+</section>
+
+<!-- 2. CLAIMS -->
+<section id="claims">
+  <h2>2 · Claims de la campaña</h2>
+  <p class="lede">Un claim paraguas, seis ángulos para rotar en Reels y carruseles, y los cierres de llamada a la acción. Todos caben en una línea de texto sobre vídeo.</p>
+
+  <div class="card navy" style="margin-top:20px">
+    <div class="kicker">Claim paraguas</div>
+    <div class="claim-hero">La paga que enseña a invertir.</div>
+    <p style="color:#9fb0c3;font-size:15px;margin:0">Variantes: «La paga que enseña a invertir. En familia.» · «Convierte la paga en un club de inversión.» · «Tu paga, tu decisión, tu porqué.»</p>
+  </div>
+
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card claim"><span class="tag">Ángulo 1 · Urgencia tranquila</span><div class="q">«Tu hijo va a invertir igual. Mejor que aprenda contigo.»</div><div class="why">Reconoce la realidad sin alarmar. Funciona de apertura de campaña y como gancho hablado a cámara.</div></div>
+    <div class="card claim"><span class="tag">Ángulo 2 · Contra el ruido</span><div class="q">«Antes de que TikTok le enseñe a invertir, enséñale tú a preguntar por qué.»</div><div class="why">Diferencia el Club de los gurús: aquí no hay señales, hay argumentos. Ideal para la pantalla del diario de porqués.</div></div>
+    <div class="card claim"><span class="tag">Ángulo 3 · Método</span><div class="q">«50 € al mes, una lección y un porqué escrito. Así se aprende a invertir.»</div><div class="why">Concreto y repetible. Encaja con la Cartera del mes y con la lección del presidente.</div></div>
+    <div class="card claim"><span class="tag">Ángulo 4 · Competición sana</span><div class="q">«Una liga familiar donde gana quien mejor explica su decisión.»</div><div class="why">Reencuadra el ranking: puntos por logros y lecciones, no solo por rentabilidad. Para la pantalla de la Liga.</div></div>
+    <div class="card claim"><span class="tag">Ángulo 5 · Conversación</span><div class="q">«Pequeñas cantidades. Grandes conversaciones en la cena.»</div><div class="why">El beneficio emocional para el padre. Para vídeos con voz en off sobre el repaso de septiembre.</div></div>
+    <div class="card claim"><span class="tag">Ángulo 6 · Rol del padre</span><div class="q">«No le des consejos de bolsa. Dale un club. Y preside.»</div><div class="why">Convierte al padre en presidente: publica la cartera, escribe la lección, avisa por WhatsApp. Para las pantallas de gestión.</div></div>
+  </div>
+
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card">
+      <span class="tag neutral">Claims cortos para texto sobre vídeo</span>
+      <ul class="clean">
+        <li>«Invertir se aprende en casa. Como todo lo importante.»</li>
+        <li>«Hoy la paga no se gasta. Se decide.»</li>
+        <li>«El mejor profesor de finanzas de tu hijo eres tú. Con ayuda.»</li>
+        <li>«Acertar es suerte. Explicar es aprender.»</li>
+        <li>«Seis niveles, de la hucha al análisis técnico.»</li>
+        <li>«Cada mes, una cartera. Cada decisión, un porqué.»</li>
+        <li>«Lo que eligió cada uno, y qué pasó después.»</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag neutral">Cierres / llamadas a la acción</span>
+      <ul class="clean">
+        <li>«Crea el club de tu familia gratis en clubdeinversionfamiliar.com»</li>
+        <li>«Preside el club de tu familia. Enlace en la bio.»</li>
+        <li>«Primera cartera del mes en diez minutos. Enlace en la bio.»</li>
+        <li>«Invita a tus hijos. Ellos deciden; tú presides.»</li>
+      </ul>
+      <p style="margin-top:12px;font-size:13px;color:var(--muted)">Mantén un único CTA por pieza. En Reels, el CTA aparece en los dos últimos segundos y en la primera línea del caption.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 3. PANTALLAS -->
+<section id="pantallas">
+  <h2>3 · Pantallas y guiones de Reel</h2>
+  <p class="lede">Doce capturas de escritorio (1440 × 900) de la Familia García, con el gancho, el guion y el texto en pantalla de cada una. Las de página completa están pensadas para hacer scroll grabado. El orden es el del embudo: primero lo que ve el hijo, después lo que hace el padre.</p>
+
+  <!-- 01 -->
+  <article class="screen">
+    <figure class="shot"><img src="capturas/01-inicio-lucia.png" alt="Inicio de Lucía: saludo, siguiente lección, camino en la Academia y resumen de cartera" loading="lazy"><figcaption>01-inicio-lucia.png · 1440×900 · vista de miembro</figcaption></figure>
+    <div>
+      <span class="num">01</span><h3>Inicio del miembro: «Hola, Lucía»</h3>
+      <p style="color:var(--ink-2);margin-top:8px">Lo primero que ve una hija de 17 años al entrar: su siguiente lección, su camino por los seis niveles y su cartera con rentabilidad y puesto en la liga. Una pantalla que dice «esto es tuyo».</p>
+      <dl class="kv"><dt>Claim</dt><dd>«Tu paga, tu decisión, tu porqué.»</dd><dt>Gancho (0–2 s)</dt><dd>«Esto es lo que ve mi hija cuando entra a invertir su paga.»</dd><dt>Duración</dt><dd>15 s</dd></dl>
+      <div class="script"><b>Guion</b><ol>
+        <li><b>0–2</b> Plano de la pantalla con zoom al «Hola, Lucía».</li>
+        <li><b>2–7</b> Voz: «No es un bróker. Es un club. Tiene su lección pendiente, su nivel y su cartera.»</li>
+        <li><b>7–12</b> Scroll suave hasta «Tu cartera +28,87 %». Voz: «Y lo importante no es el número: es que sepa explicar por qué.»</li>
+        <li><b>12–15</b> CTA: «Crea el club de tu familia. Enlace en la bio.»</li>
+      </ol></div>
+      <div class="onscreen"><span>TEXTO EN PANTALLA</span><span>Lo que ve mi hija al entrar</span><span>No es un bróker. Es un club.</span></div>
+    </div>
+  </article>
+
+  <!-- 02 -->
+  <article class="screen">
+    <figure class="shot"><img src="capturas/02-liga.png" alt="Liga de inversión familiar con las cinco tarjetas de miembros y estadísticas" loading="lazy"><figcaption>02-liga.png · también 02b-liga-completa.png (página entera, para scroll)</figcaption></figure>
+    <div>
+      <span class="num">02</span><h3>La Liga de inversión familiar</h3>
+      <p style="color:var(--ink-2);margin-top:8px">Cinco miembros, cinco tarjetas: rentabilidad sobre lo aportado, nivel, puntos, logros y lecciones. Debajo, las estadísticas de la liga (patrimonio total, mejor cartera, mejor valor, más activo). Es la pantalla más «vídeo»: color, números y nombres de la familia.</p>
+      <dl class="kv"><dt>Claim</dt><dd>«Una liga familiar donde gana quien mejor explica su decisión.»</dd><dt>Gancho</dt><dd>«Mi hijo de 15 años va primero en la liga. Y yo, la última.»</dd><dt>Duración</dt><dd>20 s</dd></dl>
+      <div class="script"><b>Guion</b><ol>
+        <li><b>0–3</b> Zoom a la tarjeta de Hugo «1.º · Líder · +31,17 %». Voz: «Hugo, 15 años. Líder.»</li>
+        <li><b>3–8</b> Paneo hasta Marta «5.º · +6,27 %». Voz: «Marta, su madre, presidenta del club. Quinta. Y encantada.»</li>
+        <li><b>8–15</b> Scroll a estadísticas. Voz: «Porque la liga no premia solo acertar: puntúa lecciones, logros y, sobre todo, explicar cada decisión.»</li>
+        <li><b>15–20</b> CTA: «Monta la liga de tu familia. Gratis. Enlace en la bio.»</li>
+      </ol></div>
+      <div class="onscreen"><span>TEXTO EN PANTALLA</span><span>Hugo, 15 años: líder de la liga</span><span>Su madre: 5.ª y encantada</span><span>Acertar es suerte. Explicar es aprender.</span></div>
+    </div>
+  </article>
+
+  <!-- 03 -->
+  <article class="screen">
+    <figure class="shot"><img src="capturas/03-cartera-del-mes.png" alt="Cartera del mes de octubre: Banca española frente a un ETF mundial, con la lección del presidente" loading="lazy"><figcaption>03-cartera-del-mes.png · también 03b-cartera-del-mes-completa.png (opciones, decisiones de los demás)</figcaption></figure>
+    <div>
+      <span class="num">03</span><h3>La Cartera del mes: una lección y tres opciones</h3>
+      <p style="color:var(--ink-2);margin-top:8px">El corazón del método. El presidente publica un tema («Banca española frente a un ETF mundial»), una lección breve con la idea clave y tres opciones. Cada miembro tiene 50 € y un plazo, y antes de decidir debe investigar y escribir su porqué. En la versión completa se ven las decisiones ya enviadas por el resto de la familia.</p>
+      <dl class="kv"><dt>Claim</dt><dd>«50 € al mes, una lección y un porqué escrito.»</dd><dt>Gancho</dt><dd>«Este mes en casa no hay paga. Hay una decisión: Santander, BBVA o el mundo entero.»</dd><dt>Duración</dt><dd>25–30 s</dd></dl>
+      <div class="script"><b>Guion</b><ol>
+        <li><b>0–3</b> Título grande. Voz: «Octubre. Banca española frente a un ETF mundial.»</li>
+        <li><b>3–10</b> Scroll por la lección hasta la «Idea clave» en la tarjeta oscura. Voz: «Yo escribo la lección: qué comparamos y qué hay que mirar antes de decidir.»</li>
+        <li><b>10–18</b> Scroll a «Cómo decidir» y a las opciones. Voz: «Ellos tienen 50 euros, hasta el 25, y una regla: argumenta con datos, no con intuición.»</li>
+        <li><b>18–25</b> (03b) Decisiones de los demás con sus porqués. Voz: «Y al enviar, ven lo que pensaron los demás. Ahí empieza la conversación de la cena.»</li>
+        <li><b>25–30</b> CTA: «Publica tu primera cartera del mes. Enlace en la bio.»</li>
+      </ol></div>
+      <div class="onscreen"><span>TEXTO EN PANTALLA</span><span>Este mes no hay paga. Hay una decisión.</span><span>Una lección · 3 opciones · 50 € · un porqué</span></div>
+    </div>
+  </article>
+
+  <!-- 04/05 -->
+  <article class="screen">
+    <figure class="shot tall"><img src="capturas/05-repaso-septiembre.png" alt="Repaso de la cartera de septiembre: opciones de mejor a peor y cómo le ha ido a cada miembro con su porqué" loading="lazy"><figcaption>05-repaso-septiembre.png · página completa · antes: 04-historial.png (lista de carteras archivadas)</figcaption></figure>
+    <div>
+      <span class="num">04 · 05</span><h3>El repaso: qué eligió cada uno y qué pasó después</h3>
+      <p style="color:var(--ink-2);margin-top:8px">La cartera de septiembre, archivada. Arriba, las opciones ordenadas por rendimiento desde la publicación; debajo, cada miembro con su decisión, su porqué entre comillas y la frase que desactiva la culpa: «Nadie lo sabía entonces: lo que cuenta es si el porqué era bueno». Es la pantalla que mejor explica la filosofía del Club.</p>
+      <dl class="kv"><dt>Claim</dt><dd>«Pequeñas cantidades. Grandes conversaciones en la cena.»</dd><dt>Gancho</dt><dd>«En septiembre mi hija metió todo en Google. Su hermano, en Microsoft. Esto es lo que aprendieron.»</dd><dt>Duración</dt><dd>30 s</dd></dl>
+      <div class="script"><b>Guion</b><ol>
+        <li><b>0–4</b> Tarjeta «Con la perspectiva de hoy». Voz: «Un mes después, el Club nos enseña cómo fue.»</li>
+        <li><b>4–12</b> Tabla de opciones. Voz: «Google, +77. Procter, –4. Pero mira quién eligió qué… y por qué.»</li>
+        <li><b>12–24</b> Scroll por las tarjetas de miembros, parando en los porqués de Lucía («lo uso todos los días y el PER…») y Jorge («prefiero dormir tranquilo»). Voz: «Lucía argumentó con el PER. Jorge, con prudencia. Los dos aprendieron.»</li>
+        <li><b>24–30</b> Zoom a «Mirar atrás no es para lamentarse». CTA: «Así se habla de dinero en casa. Enlace en la bio.»</li>
+      </ol></div>
+      <div class="onscreen"><span>TEXTO EN PANTALLA</span><span>Un mes después: quién eligió qué</span><span>«Nadie lo sabía entonces. Lo que cuenta es el porqué.»</span></div>
+    </div>
+  </article>
+
+  <!-- 06 -->
+  <article class="screen">
+    <figure class="shot"><img src="capturas/06-academia.png" alt="Academia: itinerario de formación con seis niveles y progreso de la familia" loading="lazy"><figcaption>06-academia.png</figcaption></figure>
+    <div>
+      <span class="num">06</span><h3>La Academia: seis niveles, de la hucha al análisis técnico</h3>
+      <p style="color:var(--ink-2);margin-top:8px">Fundamentos, Productos, Construir una cartera, Analizar empresas, Análisis técnico, Disciplina y riesgo. Lecciones de menos de diez minutos con quiz; cada nivel desbloquea el siguiente. Debajo, el progreso de toda la familia. Responde a la objeción «yo tampoco sé de esto».</p>
+      <dl class="kv"><dt>Claim</dt><dd>«El mejor profesor de finanzas de tu hijo eres tú. Con ayuda.»</dd><dt>Gancho</dt><dd>«Yo tampoco sabía lo que era el PER. Mi hijo me lo explicó.»</dd><dt>Duración</dt><dd>15–20 s</dd></dl>
+      <div class="script"><b>Guion</b><ol>
+        <li><b>0–3</b> Las seis tarjetas de nivel. Voz: «Seis niveles. Nadie empieza sabiendo.»</li>
+        <li><b>3–10</b> Zoom a Nivel 1 «Completado» y Nivel 2 «En curso». Voz: «Ahorro, inflación, interés compuesto… y, cuando toca, PER, dividendos y análisis técnico.»</li>
+        <li><b>10–16</b> Scroll a «Progreso de la familia». Voz: «Y todos ven cómo va el resto. Incluida la madre.»</li>
+        <li><b>16–20</b> CTA: «Aprended juntos. Enlace en la bio.»</li>
+      </ol></div>
+      <div class="onscreen"><span>TEXTO EN PANTALLA</span><span>Seis niveles. Nadie empieza sabiendo.</span><span>Lecciones de 10 minutos con quiz</span></div>
+    </div>
+  </article>
+
+  <!-- 07 -->
+  <article class="screen">
+    <figure class="shot"><img src="capturas/07-ficha-santander.png" alt="Ficha de Banco Santander con lectura técnica explicada, sesgo y puntuación por bloques" loading="lazy"><figcaption>07-ficha-santander.png · también 07b-ficha-santander-completa.png (PER, dividendos, gráfico)</figcaption></figure>
+    <div>
+      <span class="num">07</span><h3>La ficha de un valor: datos de verdad, explicados</h3>
+      <p style="color:var(--ink-2);margin-top:8px">Banco Santander con precio real, rentabilidades a 1 semana/mes/año, y la «Lectura del Club» con el sesgo, la barra de puntuación de –2 a +2 y cada bloque (tendencia, momentum, volumen, volatilidad, PER) con su «¿Qué mide?». El aviso está escrito en grande: es una lectura para aprender, no una orden.</p>
+      <dl class="kv"><dt>Claim</dt><dd>«Antes de que TikTok le enseñe a invertir, enséñale tú a preguntar por qué.»</dd><dt>Gancho</dt><dd>«Esto no es una señal de compra. Es una clase de 30 segundos.»</dd><dt>Duración</dt><dd>25 s</dd></dl>
+      <div class="script"><b>Guion</b><ol>
+        <li><b>0–3</b> Cabecera «Banco Santander 12,03 €». Voz: «Un banco de verdad, con precio de verdad.»</li>
+        <li><b>3–10</b> Zoom a la barra «–2 vender · neutral · comprar +2» con el punto en –0,41. Voz: «El Club lo puntúa de menos dos a más dos y te dice en qué se fija.»</li>
+        <li><b>10–18</b> Scroll por los bloques; pausa en «Valoración (PER) · ¿Qué mide?». Voz: «Tendencia, momentum, volumen, PER… cada uno con su botón de “¿qué mide?”.»</li>
+        <li><b>18–25</b> Zoom a «Es una lectura automática para aprender, no una orden». CTA: «Aprender a preguntar por qué. Enlace en la bio.»</li>
+      </ol></div>
+      <div class="onscreen"><span>TEXTO EN PANTALLA</span><span>No es una señal. Es una clase.</span><span>«Tú decides y explicas tu porqué»</span></div>
+    </div>
+  </article>
+
+  <!-- 08 -->
+  <article class="screen">
+    <figure class="shot tall"><img src="capturas/08-operaciones-diario.png" alt="Operaciones: posiciones, registro de compra y venta e historial con entradas de diario" loading="lazy"><figcaption>08-operaciones-diario.png · página completa</figcaption></figure>
+    <div>
+      <span class="num">08</span><h3>Operaciones: la cartera con sus porqués</h3>
+      <p style="color:var(--ink-2);margin-top:8px">Valor, rentabilidad, efectivo, posiciones (ETF mundial, Apple, Alphabet) y el registro de cada compra con su fecha, bróker y, cuando viene de la cartera del mes, la etiqueta «Decisión del mes». Las compras se hacen en el bróker de la familia; aquí se anotan y se explican. Útil para mostrar que son importes de 50 € y que nada es ficticio.</p>
+      <dl class="kv"><dt>Claim</dt><dd>«Cada mes, una cartera. Cada decisión, un porqué.»</dd><dt>Gancho</dt><dd>«Así queda la cartera de una chica de 17 años después de cinco pagas.»</dd><dt>Duración</dt><dd>15 s</dd></dl>
+      <div class="script"><b>Guion</b><ol>
+        <li><b>0–4</b> Las cuatro cifras de arriba. Voz: «Cinco pagas de 50 euros. Aportado 350; vale 451.»</li>
+        <li><b>4–10</b> Tabla de posiciones. Voz: «Un ETF de todo el mundo, Apple y Alphabet. Comprados en su bróker, explicados aquí.»</li>
+        <li><b>10–15</b> Zoom a «Decisión del mes» en el historial. CTA: «La cartera se construye con porqués. Enlace en la bio.»</li>
+      </ol></div>
+      <div class="onscreen"><span>TEXTO EN PANTALLA</span><span>5 pagas · 350 € aportados</span><span>Cada compra con su porqué</span></div>
+    </div>
+  </article>
+
+  <!-- 09 -->
+  <article class="screen">
+    <figure class="shot"><img src="capturas/09-inicio-presidenta.png" alt="Inicio de la presidenta: tareas pendientes y usos de sus propuestas compartidas" loading="lazy"><figcaption>09-inicio-presidenta.png · vista de presidenta (Marta)</figcaption></figure>
+    <div>
+      <span class="num">09</span><h3>El padre o la madre preside: tareas y propuestas compartidas</h3>
+      <p style="color:var(--ink-2);margin-top:8px">La vista de Marta: «Previsualizar como miembro», sus tareas de presidenta («Prepara noviembre») y cuántas veces otras familias han usado su propuesta «Tecnología o consumo» (4 usos). Muestra que presidir cuesta poco y que las lecciones se comparten entre familias.</p>
+      <dl class="kv"><dt>Claim</dt><dd>«No le des consejos de bolsa. Dale un club. Y preside.»</dd><dt>Gancho</dt><dd>«Presidir el club de mi familia me lleva diez minutos al mes.»</dd><dt>Duración</dt><dd>15 s</dd></dl>
+      <div class="script"><b>Guion</b><ol>
+        <li><b>0–4</b> «Hola, Marta» con la barra de «Vista de presidente». Voz: «Yo soy la presidenta. Esto es lo que me pide el Club.»</li>
+        <li><b>4–10</b> Zoom a «Tareas del presidente · 1 pendiente · Prepara noviembre». Voz: «Una tarea: preparar noviembre. Con propuestas ya hechas por otras familias.»</li>
+        <li><b>10–15</b> Zoom a «4 usos en total». Voz: «Y mi lección de septiembre ya la han usado cuatro familias.» CTA en pantalla.</li>
+      </ol></div>
+      <div class="onscreen"><span>TEXTO EN PANTALLA</span><span>Presidir: 10 minutos al mes</span><span>Las lecciones se comparten entre familias</span></div>
+    </div>
+  </article>
+
+  <!-- 10 -->
+  <article class="screen">
+    <figure class="shot tall"><img src="capturas/10-comunicaciones-whatsapp.png" alt="Comunicaciones: plantilla del aviso por WhatsApp con vista previa personalizada y botones Enviar por WhatsApp" loading="lazy"><figcaption>10-comunicaciones-whatsapp.png · página completa</figcaption></figure>
+    <div>
+      <span class="num">10</span><h3>El aviso por WhatsApp, personalizado para cada hijo</h3>
+      <p style="color:var(--ink-2);margin-top:8px">La plantilla con marcadores, la vista previa «Así lo recibirá Jorge» (su nombre, sus 50 €, el plazo, el enlace directo) y la tabla con «Enviar por WhatsApp» por miembro. Es la pantalla que conecta el Club con el canal real de la familia y la que más hace sonreír a un padre.</p>
+      <dl class="kv"><dt>Claim</dt><dd>«Hoy la paga no se gasta. Se decide.»</dd><dt>Gancho</dt><dd>«El único WhatsApp que mis hijos contestan en menos de un minuto.»</dd><dt>Duración</dt><dd>20 s</dd></dl>
+      <div class="script"><b>Guion</b><ol>
+        <li><b>0–4</b> Vista previa del mensaje. Voz: «Cuando publico la cartera, el Club me escribe el WhatsApp.»</li>
+        <li><b>4–12</b> Zoom al texto «¡Hola, Jorge! … Tienes 50,00 € … hasta el 25/10 … Entra aquí y decide». Voz: «Personalizado: su nombre, su importe, su plazo y el enlace directo.»</li>
+        <li><b>12–17</b> Tabla con «Enviar por WhatsApp» / «Enviado». Voz: «Un botón por hijo. Y queda guardado quién lo recibió.»</li>
+        <li><b>17–20</b> Corte a un móvil real con el mensaje recibido (grabación propia). CTA.</li>
+      </ol></div>
+      <div class="onscreen"><span>TEXTO EN PANTALLA</span><span>El WhatsApp que sí contestan</span><span>Nombre · importe · plazo · enlace directo</span></div>
+      <p class="callout" style="margin-top:12px">Para el vídeo, sustituye <code>http://localhost:3005/cartera</code> de la vista previa por el dominio real: en producción el enlace sale como <code>https://clubdeinversionfamiliar.com/cartera</code>. Puedes repetir la captura contra producción con una familia de prueba o retocar el texto en edición.</p>
+    </div>
+  </article>
+
+  <!-- 11 -->
+  <article class="screen">
+    <figure class="shot tall"><img src="capturas/11-gestion-carteras.png" alt="Gestión de carteras: cartera publicada de octubre, borradores y propuestas sugeridas del repositorio" loading="lazy"><figcaption>11-gestion-carteras.png · página completa</figcaption></figure>
+    <div>
+      <span class="num">11</span><h3>Gestión de carteras: publicar un mes en un clic</h3>
+      <p style="color:var(--ink-2);margin-top:8px">La cartera de octubre publicada, los meses futuros en borrador y las propuestas sugeridas del repositorio listas para «Usar». Prueba la promesa de «diez minutos al mes»: no hace falta inventar la lección, se puede adoptar una de otra familia.</p>
+      <dl class="kv"><dt>Claim</dt><dd>«Primera cartera del mes en diez minutos.»</dd><dt>Gancho</dt><dd>«¿Y si no sé qué proponerles? Esto.»</dd><dt>Duración</dt><dd>15 s</dd></dl>
+      <div class="script"><b>Guion</b><ol>
+        <li><b>0–4</b> Cartera de octubre «Publicada». Voz: «Octubre, publicado.»</li>
+        <li><b>4–11</b> Scroll a propuestas sugeridas. Voz: «Para noviembre no tengo que inventar nada: elijo una propuesta del repositorio y la adapto.»</li>
+        <li><b>11–15</b> Botón «Usar». CTA: «Preside sin ser experto. Enlace en la bio.»</li>
+      </ol></div>
+      <div class="onscreen"><span>TEXTO EN PANTALLA</span><span>¿No sabes qué proponer? Elige una.</span><span>Propuestas de otras familias, listas para usar</span></div>
+    </div>
+  </article>
+
+  <!-- 12 -->
+  <article class="screen">
+    <figure class="shot"><img src="capturas/12-repositorio-propuestas.png" alt="Repositorio de propuestas: catálogo del Club y propuestas compartidas por familias" loading="lazy"><figcaption>12-repositorio-propuestas.png</figcaption></figure>
+    <div>
+      <span class="num">12</span><h3>El repositorio: lecciones compartidas entre familias</h3>
+      <p style="color:var(--ink-2);margin-top:8px">Catálogo de propuestas del Club y de otras familias, con el tema, las opciones y cuántas veces se ha usado cada una. Transmite comunidad: no estás solo presidiendo. Buena para un carrusel «5 carteras del mes para empezar».</p>
+      <dl class="kv"><dt>Claim</dt><dd>«Invertir se aprende en casa. Como todo lo importante.»</dd><dt>Gancho</dt><dd>«Cinco carteras del mes con las que empezar este domingo.»</dd><dt>Formato</dt><dd>Carrusel de 6 tarjetas (portada + 5 propuestas) o Reel de 15 s</dd></dl>
+      <div class="script"><b>Guion de carrusel</b><ol>
+        <li><b>1</b> Portada: «5 carteras del mes para empezar en casa».</li>
+        <li><b>2–6</b> Una propuesta por tarjeta: título, las tres opciones y una pregunta para la cena («¿Qué prefieres: un banco o el mundo entero?»).</li>
+        <li><b>7</b> Cierre con CTA y el claim paraguas.</li>
+      </ol></div>
+      <div class="onscreen"><span>TEXTO EN PANTALLA</span><span>5 carteras para empezar este domingo</span><span>Lecciones de familias para familias</span></div>
+    </div>
+  </article>
+</section>
+
+<!-- 4. MÓVIL -->
+<section id="movil">
+  <h2>4 · Versiones móviles (390 × 844)</h2>
+  <p class="lede">Instagram es vertical: estas capturas sirven para Stories y para Reels con el móvil «en mano». Están a 390 px CSS (iPhone 14/15); si necesitas más resolución, graba la pantalla de un móvil real o repite la captura con <code>deviceScaleFactor: 3</code>.</p>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-top:20px">
+    <figure class="shot"><img src="capturas/m01-inicio-movil.png" alt="Inicio en móvil" loading="lazy"><figcaption>m01-inicio-movil.png</figcaption></figure>
+    <figure class="shot"><img src="capturas/m02-cartera-movil.png" alt="Cartera del mes en móvil" loading="lazy"><figcaption>m02-cartera-movil.png</figcaption></figure>
+    <figure class="shot"><img src="capturas/m03-inversiones-movil.png" alt="Liga en móvil" loading="lazy"><figcaption>m03-inversiones-movil.png</figcaption></figure>
+    <figure class="shot"><img src="capturas/m04-academia-movil.png" alt="Academia en móvil" loading="lazy"><figcaption>m04-academia-movil.png</figcaption></figure>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card">
+      <h4>Story de 3 pantallas «La paga de octubre»</h4>
+      <ol class="clean" style="padding-left:20px;margin-top:8px">
+        <li><b>m02</b> con sticker de encuesta: «¿Banco o ETF mundial?»</li>
+        <li><b>m03</b> con texto: «Hugo, 15 años, va primero». Sticker de pregunta: «¿Quién ganaría en tu casa?»</li>
+        <li><b>m01</b> con el enlace: «Crea el club de tu familia».</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h4>Reel «en mano»</h4>
+      <p style="font-size:14.5px;color:var(--ink-2)">Graba a una persona adulta con el móvil en la cocina abriendo el WhatsApp del Club y entrando a la cartera (m02). Corte a plano cenital de la pantalla con scroll. Voz: «Domingo por la tarde. La paga ya está decidida… y explicada.» El móvil real transmite más que cualquier captura.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 5. PLAN -->
+<section id="plan">
+  <h2>5 · Plan de publicación (4 semanas)</h2>
+  <p class="lede">Tres Reels, un carrusel y Stories a la semana. Cada semana rota un ángulo del claim para no repetir el mismo mensaje. Publica Reels martes/jueves/sábado entre 20:30 y 21:30, cuando los padres ya han cenado.</p>
+  <div class="tableWrap card" style="padding:0;margin-top:20px">
+    <table>
+      <thead><tr><th>Semana</th><th>Ángulo</th><th>Reel 1</th><th>Reel 2</th><th>Reel 3</th><th>Carrusel</th></tr></thead>
+      <tbody>
+        <tr><td><b>1</b> · Apertura</td><td>Urgencia tranquila</td><td>Pantalla 02 (Liga): «Mi hijo de 15 va primero»</td><td>Pantalla 01 (Inicio): «Lo que ve mi hija al entrar»</td><td>Pantalla 03 (Cartera): «Este mes no hay paga, hay una decisión»</td><td>«Qué es un club de inversión familiar» (5 tarjetas)</td></tr>
+        <tr><td><b>2</b> · Método</td><td>Método + contra el ruido</td><td>Pantalla 07 (Ficha): «No es una señal, es una clase»</td><td>Pantalla 06 (Academia): «Yo tampoco sabía qué era el PER»</td><td>Pantalla 08 (Operaciones): «5 pagas, 350 €»</td><td>«6 niveles de la Academia» (7 tarjetas)</td></tr>
+        <tr><td><b>3</b> · Conversación</td><td>Conversación en casa</td><td>Pantalla 05 (Repaso): «En septiembre mi hija metió todo en Google»</td><td>Reel «en mano» con móvil real</td><td>Testimonio a cámara de un padre o madre (30 s)</td><td>«5 preguntas para la cena sobre dinero» (6 tarjetas)</td></tr>
+        <tr><td><b>4</b> · Preside</td><td>Rol del padre</td><td>Pantalla 10 (WhatsApp): «El WhatsApp que sí contestan»</td><td>Pantalla 09 + 11 (Presidir): «Diez minutos al mes»</td><td>Pantalla 12 (Repositorio): «5 carteras para empezar»</td><td>«Cómo montar el club en 10 minutos» (paso a paso)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card"><span class="tag">Reels</span><p style="margin-top:10px;font-size:14.5px;color:var(--ink-2)">9:16, 15–30 s, subtítulos quemados siempre (el 80 % se ve sin sonido). Primer fotograma con la cara o el número grande, nunca con la barra lateral. Música tranquila, sin trending de humor.</p></div>
+    <div class="card"><span class="tag">Carruseles</span><p style="margin-top:10px;font-size:14.5px;color:var(--ink-2)">4:5, 5–7 tarjetas, una idea por tarjeta, tipografía grande. Última tarjeta siempre con CTA y el claim paraguas. Son el formato que más se guarda entre padres.</p></div>
+    <div class="card"><span class="tag">Stories</span><p style="margin-top:10px;font-size:14.5px;color:var(--ink-2)">Diarias en semanas 1 y 4. Encuestas («¿Banco o ETF?»), cajas de preguntas («¿A qué edad empezaste a hablar de dinero con tus hijos?») y el enlace a la web. Destacado «Empieza aquí».</p></div>
+  </div>
+</section>
+
+<!-- 6. HASHTAGS -->
+<section id="hashtags">
+  <h2>6 · Hashtags, bio y CTA</h2>
+  <div class="grid g2" style="margin-top:20px">
+    <div class="card">
+      <h4>Hashtags (elige 8–12 por pieza)</h4>
+      <p style="font-size:13px;color:var(--muted);margin-top:6px">Mezcla de nicho (padres, adolescentes) y tema (educación financiera). Evita los de trading.</p>
+      <div class="hash" style="margin-top:10px">
+        <span>#educacionfinanciera</span><span>#finanzasenfamilia</span><span>#padresdeadolescentes</span><span>#madresdeadolescentes</span><span>#invertirenfamilia</span><span>#pagasemanal</span><span>#finanzaspersonales</span><span>#finanzasparajovenes</span><span>#ahorroeinversion</span><span>#crianzaconsciente</span><span>#adolescentes</span><span>#veinteañeros</span><span>#aprenderainvertir</span><span>#clubdeinversionfamiliar</span><span>#lapagaqueenseña</span>
+      </div>
+    </div>
+    <div class="card">
+      <h4>Bio de Instagram</h4>
+      <p style="margin-top:8px;font-size:15px">📈 La paga que enseña a invertir<br>Un club de inversión para tu familia: una lección, una decisión y un porqué al mes.<br>Tú presides. Ellos deciden.<br>👇 Crea el club de tu familia, gratis</p>
+      <p style="font-size:13px;color:var(--muted)">Enlace: clubdeinversionfamiliar.com · Destacados: «Empieza aquí», «Cartera del mes», «La Liga», «Preguntas».</p>
+      <h4 style="margin-top:16px">Caption tipo</h4>
+      <p style="margin-top:8px;font-size:14.5px;color:var(--ink-2)">Primera línea = gancho del Reel. Segunda = el claim. Tercera = CTA con «enlace en la bio». Después, 2–3 líneas de contexto honesto y los hashtags. Termina siempre con una pregunta para comentar («¿A qué edad empezaríais vosotros?»).</p>
+    </div>
+  </div>
+</section>
+
+<!-- 7. PRODUCCIÓN -->
+<section id="produccion">
+  <h2>7 · Guía de producción y datos sintéticos</h2>
+  <div class="grid g2" style="margin-top:20px">
+    <div class="card">
+      <h4>La Familia García (datos inventados)</h4>
+      <p style="font-size:14.5px;color:var(--ink-2);margin-top:8px">Marta (presidenta), Jorge, Lucía, Hugo y Carla. Pagas de 50 € de junio a octubre, compras con sus porqués, septiembre archivado con repaso, octubre publicado con plazo 25/10, una propuesta compartida con 4 usos y un aviso por WhatsApp. Todo generado por <code>scripts/seed-demo.ts</code>, que se niega a ejecutarse contra la base de producción.</p>
+      <pre>npx prisma dev start clubinversion
+npx tsx scripts/seed-demo.ts
+# servidor local en http://localhost:3005
+# entrar con marta@demo.local o lucia@demo.local
+# (contraseña en el propio script)</pre>
+      <p style="font-size:13px;color:var(--muted);margin-top:10px">Las rentabilidades que salen (+31 %, +77 % en Google…) dependen de los precios reales del día en que se siembra: si vuelves a ejecutar el script dentro de un mes, cambiarán. Los vídeos deben llevar el aviso «datos de ejemplo».</p>
+    </div>
+    <div class="card">
+      <h4>Cómo grabar las pantallas</h4>
+      <ul class="clean">
+        <li><b>Escritorio:</b> ventana a 1440 × 900 con zoom del navegador al 110–125 % para que el texto se lea en 9:16 tras recortar. Oculta la barra de pestañas.</li>
+        <li><b>Modo oscuro:</b> el botón «Oscuro» de la barra lateral cambia toda la app; vale para alternar el look entre Reels.</li>
+        <li><b>Vista de presidente:</b> con Marta, «Previsualizar como miembro» permite grabar lo que ve cada hijo sin cambiar de sesión.</li>
+        <li><b>Scroll:</b> lento y a velocidad constante (0,5 pantalla/s). Para el repaso de septiembre, graba el scroll y acelera ×1,5 en edición.</li>
+        <li><b>Zoom en edición:</b> las fichas de valor y la barra de puntuación necesitan zoom al 200 % para leerse en móvil.</li>
+        <li><b>Enlaces:</b> en local aparece <code>localhost:3005</code> en el WhatsApp; tápalo o repite esa captura en producción.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h4>Inventario de capturas (docs/marketing/capturas)</h4>
+    <div class="tableWrap" style="margin-top:8px"><table>
+      <thead><tr><th>Archivo</th><th>Pantalla</th><th>Sesión</th><th>Tamaño</th></tr></thead>
+      <tbody>
+        <tr><td><code>01-inicio-lucia.png</code></td><td>Inicio del miembro</td><td>Lucía</td><td>1440×900</td></tr>
+        <tr><td><code>02-liga.png</code> · <code>02b-liga-completa.png</code></td><td>Liga de inversión</td><td>Lucía</td><td>1440×900 · página completa</td></tr>
+        <tr><td><code>03-cartera-del-mes.png</code> · <code>03b-…-completa.png</code></td><td>Cartera del mes (octubre)</td><td>Lucía</td><td>1440×900 · página completa</td></tr>
+        <tr><td><code>04-historial.png</code></td><td>Historial de carteras</td><td>Lucía</td><td>1440×900</td></tr>
+        <tr><td><code>05-repaso-septiembre.png</code></td><td>Repaso de septiembre</td><td>Lucía</td><td>página completa</td></tr>
+        <tr><td><code>06-academia.png</code></td><td>Academia</td><td>Lucía</td><td>1440×900</td></tr>
+        <tr><td><code>07-ficha-santander.png</code> · <code>07b-…-completa.png</code></td><td>Ficha SAN.MC</td><td>Lucía</td><td>1440×900 · página completa</td></tr>
+        <tr><td><code>08-operaciones-diario.png</code></td><td>Operaciones</td><td>Lucía</td><td>página completa</td></tr>
+        <tr><td><code>09-inicio-presidenta.png</code></td><td>Inicio con tareas</td><td>Marta</td><td>1440×900</td></tr>
+        <tr><td><code>10-comunicaciones-whatsapp.png</code></td><td>Comunicaciones</td><td>Marta</td><td>página completa</td></tr>
+        <tr><td><code>11-gestion-carteras.png</code></td><td>Gestión de carteras</td><td>Marta</td><td>página completa</td></tr>
+        <tr><td><code>12-repositorio-propuestas.png</code></td><td>Repositorio</td><td>Marta</td><td>1440×900</td></tr>
+        <tr><td><code>m01…m04</code></td><td>Inicio, Cartera, Liga, Academia</td><td>Lucía</td><td>390×844</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- 8. GUARDARRAÍLES -->
+<section id="limites">
+  <h2>8 · Guardarraíles</h2>
+  <div class="grid g2" style="margin-top:20px">
+    <div class="callout">
+      <b>Nada de promesas de rentabilidad.</b> Las cifras de los vídeos son de una familia inventada y de un periodo concreto. Rotula siempre «Datos de ejemplo. Invertir conlleva riesgo de pérdida» y no uses «+77 %» como titular: úsalo dentro de la historia del porqué, como hace la propia pantalla del repaso.
+    </div>
+    <div class="callout">
+      <b>No es asesoramiento.</b> El Club es educativo: nunca recomienda comprar ni vender, y los vídeos tampoco. Si enseñas la ficha de un valor, deja visible el aviso «lectura automática para aprender, no una orden».
+    </div>
+    <div class="callout green">
+      <b>Menores.</b> No muestres a menores reales con datos de cartera. Si grabas a tus hijos, que salgan de espaldas o solo manos y pantalla, y usa los datos sintéticos de la Familia García.
+    </div>
+    <div class="callout green">
+      <b>Compras reales.</b> Las operaciones se hacen en el bróker de la familia con el adulto titular; el Club solo las anota. Dilo claro cuando enseñes Operaciones para no parecer un bróker para menores.
+    </div>
+  </div>
+</section>
+
+<footer>Club de Inversión Familiar · dosier interno de campaña · pantallazos con datos sintéticos generados el 17 de octubre de 2026 · <code>docs/marketing/dosier-instagram.html</code></footer>
+</div>
+</body>
+</html>
