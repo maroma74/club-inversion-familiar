@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { destroySession, requireAdmin, uniqueInviteCode } from "@/lib/auth";
-import { invitationEmail, sendEmail } from "@/lib/email";
-import { appUrl } from "@/lib/appUrl";
-import { firstName } from "@/lib/names";
 import { rateLimit } from "@/lib/ratelimit";
 import { nameText } from "@/lib/validation";
 import { familyInviteSlots, noSlotsMessage } from "@/lib/familyInvites";
+import { loadInviteCapacity } from "@/lib/inviteCapacity";
+import { deliverInvitation } from "@/lib/invitationDelivery";
+import { normalizePhone } from "@/lib/communications";
 import type { FormState } from "./auth";
 
 const refresh = () => {
@@ -21,6 +21,7 @@ const refresh = () => {
 const invitationSchema = z.object({
   name: nameText(80).optional(),
   email: z.string().trim().toLowerCase().email("Email no válido").optional().or(z.literal("")),
+  phone: z.string().trim().max(30).optional().or(z.literal("")),
   kind: z.enum(["MEMBER", "ADMIN", "NEW_FAMILY"]).default("MEMBER"),
   note: nameText(200).optional(),
   expiresDays: z.coerce.number().int().min(0).max(365).default(14),
@@ -32,6 +33,8 @@ export async function createInvitationAction(_prev: FormState, formData: FormDat
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
   const email = d.email || null;
+  const phone = d.phone ? normalizePhone(d.phone) : null;
+  if (d.phone && !phone) return { error: "El móvil no parece válido. Escríbelo con prefijo (+34 612 345 678) o los nueve dígitos." };
   const limit = await rateLimit(`invite:${admin.id}`, 30, 60 * 60 * 1000);
   if (!limit.ok) return { error: "Has creado muchas invitaciones seguidas. Prueba dentro de un rato." };
   // Solo se mira dentro de la propia familia: la lista de correos de otras familias no es asunto de nadie.
@@ -39,11 +42,12 @@ export async function createInvitationAction(_prev: FormState, formData: FormDat
   const pending = await prisma.invitation.count({ where: { familyId: admin.familyId, usedAt: null, revokedAt: null } });
   if (pending >= 50) return { error: "Demasiadas invitaciones pendientes; anula alguna antes de crear más" };
   const newFamily = d.kind === "NEW_FAMILY";
+  let fromPack = false;
   if (newFamily) {
-    // La regla de las cinco familias: entre fundadas y pendientes vivas, nunca más de cinco (src/lib/familyInvites.ts)
-    const rows = await prisma.invitation.findMany({ where: { familyId: admin.familyId, newFamily: true }, select: { usedAt: true, revokedAt: true, expiresAt: true } });
-    const slots = familyInviteSlots(rows);
-    if (slots.free <= 0) return { error: noSlotsMessage(slots) };
+    // La regla de las cinco familias (src/lib/familyInvites.ts): primero las cinco del club; después el paquete personal o sin límite
+    const cap = await loadInviteCapacity(admin);
+    if (cap.source === "none") return { error: cap.pool ? noSlotsMessage(cap.pool) : "No te quedan invitaciones para familias nuevas." };
+    fromPack = cap.source !== "pool";
   }
   const code = await uniqueInviteCode();
   await prisma.invitation.create({
@@ -52,8 +56,10 @@ export async function createInvitationAction(_prev: FormState, formData: FormDat
       code,
       name: d.name || null,
       email,
+      phone,
       role: newFamily ? "ADMIN" : d.kind,
       newFamily,
+      fromPack,
       note: d.note || null,
       expiresAt: d.expiresDays > 0 ? new Date(Date.now() + d.expiresDays * 86400000) : null,
       createdById: admin.id,
@@ -70,35 +76,9 @@ export async function sendInvitationAction(_prev: FormState, formData: FormData)
   const admin = await requireAdmin();
   const parsed = sendSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const inv = await prisma.invitation.findFirst({ where: { id: parsed.data.id, familyId: admin.familyId }, include: { family: true } });
-  if (!inv) return { error: "Invitación no encontrada" };
-  if (inv.usedAt) return { error: "Esta invitación ya se ha usado" };
-  if (inv.revokedAt) return { error: "Esta invitación está anulada; reactívala antes de enviarla" };
-  if (inv.expiresAt && inv.expiresAt.getTime() < Date.now()) return { error: "Esta invitación ha caducado; reactívala antes de enviarla" };
-  const to = inv.email ?? parsed.data.email ?? "";
-  if (!to) return { error: "Indica a qué email enviarla" };
-  // Una invitación, un destinatario: una vez enviada no se reutiliza para escribir a otras direcciones.
-  if (inv.sentTo && inv.sentTo !== to) return { error: `Esta invitación ya se envió a ${inv.sentTo}. Para otra persona, crea una invitación nueva.` };
-  // Límites de envío: 10 minutos entre reenvíos de la misma invitación y 30 correos por familia cada 24 horas.
-  if (inv.sentAt && Date.now() - inv.sentAt.getTime() < 10 * 60 * 1000) return { error: "Esta invitación se envió hace menos de 10 minutos. Espera un poco antes de reenviarla." };
-  const daily = await rateLimit(`invite-mail:${admin.familyId}`, 30, 24 * 60 * 60 * 1000);
-  if (!daily.ok) return { error: "Se ha alcanzado el límite de 30 correos de invitación al día" };
-  const origin = appUrl();
-  const message = invitationEmail({
-    to,
-    inviteeName: inv.name ? firstName(inv.name) : null,
-    familyName: inv.family.name,
-    presidentName: firstName(admin.name),
-    code: inv.code,
-    link: `${origin}/registro?codigo=${inv.code}`,
-    expiresAt: inv.expiresAt,
-    newFamily: inv.newFamily,
-  });
-  const result = await sendEmail(message);
-  if (!result.sent) return { error: result.error };
-  await prisma.invitation.update({ where: { id: inv.id }, data: { sentAt: new Date(), sentTo: to } });
-  refresh();
-  return { ok: `Invitación enviada a ${to}` };
+  const result = await deliverInvitation(admin, parsed.data.id, parsed.data.email ?? "");
+  if (result.ok) refresh();
+  return result;
 }
 
 export async function revokeInvitationAction(formData: FormData) {
@@ -117,11 +97,11 @@ export async function deleteInvitationAction(formData: FormData) {
 /** Vuelve a activar una invitación anulada o caducada con nueva fecha de caducidad (14 días). */
 export async function renewInvitationAction(formData: FormData) {
   const admin = await requireAdmin();
-  const inv = await prisma.invitation.findFirst({ where: { id: String(formData.get("id")), familyId: admin.familyId, usedAt: null }, select: { newFamily: true } });
+  const inv = await prisma.invitation.findFirst({ where: { id: String(formData.get("id")), familyId: admin.familyId, usedAt: null }, select: { newFamily: true, fromPack: true } });
   if (!inv) return;
-  if (inv.newFamily) {
-    // Reactivar una invitación de familia vuelve a ocupar un hueco: solo si queda alguno libre
-    const rows = await prisma.invitation.findMany({ where: { familyId: admin.familyId, newFamily: true }, select: { usedAt: true, revokedAt: true, expiresAt: true } });
+  if (inv.newFamily && !inv.fromPack) {
+    // Reactivar una invitación de las cinco del club vuelve a ocupar un hueco: solo si queda alguno libre
+    const rows = await prisma.invitation.findMany({ where: { familyId: admin.familyId, newFamily: true, fromPack: false }, select: { usedAt: true, revokedAt: true, expiresAt: true } });
     if (familyInviteSlots(rows).free <= 0) return;
   }
   await prisma.invitation.updateMany({

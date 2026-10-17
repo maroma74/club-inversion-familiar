@@ -124,6 +124,21 @@ export async function requireAdmin(): Promise<CurrentUser> {
   return user;
 }
 
+/** Administración de la web (estadísticas globales y paquetes de invitaciones): solo usuarios con `siteAdmin`. */
+export async function requireSiteAdmin(): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (!user.siteAdmin) redirect("/inicio");
+  return user;
+}
+
+/** Deja constancia de un acceso con éxito (entrada o registro) para la administración de la web. */
+export async function recordLogin(userId: string, ip: string | null) {
+  await Promise.all([
+    prisma.loginEvent.create({ data: { userId, ip } }),
+    prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } }),
+  ]);
+}
+
 /** Código único de 8 caracteres que no choca con códigos de familia ni de invitación. */
 export async function uniqueInviteCode() {
   for (let i = 0; i < 20; i++) {

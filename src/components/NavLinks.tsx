@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-type Item = { num: string; label: string; href: string; note?: string; admin?: boolean };
+type Item = { num: string; label: string; href: string; note?: string; admin?: boolean; site?: boolean };
 type Group = { header: string; items: Item[] };
 
 const GROUPS: Group[] = [
@@ -22,8 +22,19 @@ const GROUPS: Group[] = [
       { num: "09", label: "Materias primas", href: "/materias-primas" },
     ],
   },
-  { header: "Club", items: [{ num: "10", label: "Familia", href: "/familia" }, { num: "11", label: "Invitaciones", href: "/invitaciones", note: "presidente", admin: true }, { num: "12", label: "Comunicaciones", href: "/comunicaciones", note: "presidente", admin: true }] },
+  {
+    header: "Club",
+    items: [
+      { num: "10", label: "Familia", href: "/familia" },
+      { num: "11", label: "Invitaciones", href: "/invitaciones", note: "presidente", admin: true },
+      { num: "12", label: "Comunicaciones", href: "/comunicaciones", note: "presidente", admin: true },
+      { num: "13", label: "Invitar a familias", href: "/invitar" },
+      { num: "14", label: "Administración", href: "/admin", note: "web", site: true },
+    ],
+  },
 ];
+
+const visible = (i: Item, isAdmin: boolean, isSiteAdmin: boolean) => (!i.admin || isAdmin) && (!i.site || isSiteAdmin);
 
 function isActive(path: string, href: string) {
   return path === href || path.startsWith(href + "/");
@@ -41,7 +52,7 @@ function AlertMark() {
 }
 
 /** Navegación lateral de escritorio (dentro de la barra navy). */
-export function NavLinks({ isAdmin, alertHref = null }: { isAdmin: boolean; alertHref?: string | null }) {
+export function NavLinks({ isAdmin, isSiteAdmin = false, alertHref = null }: { isAdmin: boolean; isSiteAdmin?: boolean; alertHref?: string | null }) {
   const path = usePathname();
   return (
     <nav aria-label="Principal" className="flex flex-col px-3 py-1 gap-0.5 flex-1">
@@ -49,7 +60,7 @@ export function NavLinks({ isAdmin, alertHref = null }: { isAdmin: boolean; aler
         <div key={g.header} className="flex flex-col gap-0.5">
           <div className="nav-header text-[11px] tracking-[0.12em] uppercase font-semibold" style={{ padding: "14px 10px 4px" }}>{g.header}</div>
           {g.items
-            .filter((i) => !i.admin || isAdmin)
+            .filter((i) => visible(i, isAdmin, isSiteAdmin))
             .map((i) => (
               <Link key={i.href} href={i.href} aria-current={isActive(path, i.href) ? "page" : undefined} data-active={isActive(path, i.href) ? "true" : "false"} data-alert={alertHref === i.href ? "true" : "false"} className="nav-link flex items-center gap-2.5 w-full text-left text-[14px] no-underline whitespace-nowrap border border-transparent" style={{ padding: "8px 10px" }}>
                 <span className="nav-num font-mono text-[11px] w-[20px]">{i.num}</span>
@@ -68,7 +79,7 @@ export function NavLinks({ isAdmin, alertHref = null }: { isAdmin: boolean; aler
  * Cabecera fija para móvil con menú desplegable: enlaces por grupos, usuario, tema y salir.
  * `footer` recibe los controles que necesitan acciones de servidor (botón Salir) desde el layout.
  */
-export function MobileNav({ isAdmin, familyName, userName, userMeta, userAvatar, footer, alertHref = null }: { isAdmin: boolean; familyName: string; userName: string; userMeta: string; userAvatar?: React.ReactNode; footer: React.ReactNode; alertHref?: string | null }) {
+export function MobileNav({ isAdmin, isSiteAdmin = false, familyName, userName, userMeta, userAvatar, footer, alertHref = null }: { isAdmin: boolean; isSiteAdmin?: boolean; familyName: string; userName: string; userMeta: string; userAvatar?: React.ReactNode; footer: React.ReactNode; alertHref?: string | null }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -127,7 +138,7 @@ export function MobileNav({ isAdmin, familyName, userName, userMeta, userAvatar,
                 <div key={g.header} className="flex flex-col gap-0.5">
                   <div className="nav-header text-[11px] tracking-[0.12em] uppercase font-semibold" style={{ padding: "14px 10px 4px" }}>{g.header}</div>
                   {g.items
-                    .filter((i) => !i.admin || isAdmin)
+                    .filter((i) => visible(i, isAdmin, isSiteAdmin))
                     .map((i) => (
                       <Link key={i.href} href={i.href} aria-current={isActive(path, i.href) ? "page" : undefined} data-active={isActive(path, i.href) ? "true" : "false"} data-alert={alertHref === i.href ? "true" : "false"} className="nav-link flex items-center gap-3 w-full text-left text-[16px] no-underline border border-transparent" style={{ padding: "12px 12px" }}>
                         <span className="nav-num font-mono text-[12px] w-[22px]">{i.num}</span>

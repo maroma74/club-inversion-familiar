@@ -11,6 +11,11 @@ import { CopyButton } from "@/components/CopyButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { InvitationForm, JoinModeForm, RegenerateCodeForm, SendInvitationForm } from "./forms";
 import { familyInviteSlots, isLiveInvitation } from "@/lib/familyInvites";
+import { loadInviteCapacity } from "@/lib/inviteCapacity";
+import Link from "next/link";
+import { InviteWhatsApp } from "@/components/InviteWhatsApp";
+import { invitationWhatsAppText } from "@/lib/invitationMessages";
+import { formatPhone } from "@/lib/communications";
 
 type Status = "pendiente" | "usada" | "caducada" | "anulada";
 const STATUS_STYLE: Record<Status, string> = { pendiente: "bg-amber-100 text-amber-700", usada: "bg-green-100 text-green-700", caducada: "bg-slate-100 text-slate-500", anulada: "bg-red-100 text-red-700" };
@@ -25,10 +30,12 @@ export default async function InvitacionesPage() {
     // La familia que nos dio una de sus cinco invitaciones (si el club nació así)
     prisma.invitation.findFirst({ where: { newFamily: true, usedBy: { familyId: admin.familyId } }, select: { family: { select: { name: true } } } }),
   ]);
-  const familyInvites = invitations.filter((i) => i.newFamily);
+  // Las cinco del club: las invitaciones de familia que no salieron de un paquete personal
+  const familyInvites = invitations.filter((i) => i.newFamily && !i.fromPack);
   const slots = familyInviteSlots(familyInvites);
   const founded = familyInvites.filter((i) => i.usedAt);
   const liveFamily = familyInvites.filter((i) => isLiveInvitation(i));
+  const cap = await loadInviteCapacity(admin);
   const pendingMembers = members.filter((m) => m.status === "PENDING");
   const activeMembers = members.filter((m) => m.status === "ACTIVE");
   const activeAdmins = activeMembers.filter((m) => m.role === "ADMIN").length;
@@ -64,6 +71,7 @@ export default async function InvitacionesPage() {
         </div>
         <p className="m-0 text-sm max-w-[70ch] [text-wrap:pretty]" style={{ color: "rgba(248,250,252,0.82)" }}>
           El Club crece de familia en familia: cada club puede invitar a <b style={{ color: "#ffffff" }}>cinco familias</b> y cada una de ellas, a cinco más. {invitedBy ? <>Vosotros entrasteis con una invitación de <b style={{ color: "#ffffff" }}>{invitedBy.family.name}</b>. </> : null}Elige bien a quién se las das: una invitación usada ocupa su hueco para siempre; una pendiente se libera si la anulas.
+          {cap.unlimited ? <> Tú además no tienes límite: cuando las cinco se agoten, las siguientes no cuentan.</> : cap.pack.granted > 0 ? <> Además tienes un paquete de {cap.pack.granted} de la administración ({cap.pack.free} {cap.pack.free === 1 ? "libre" : "libres"}); se usa cuando las cinco se agotan. <Link href="/invitar" style={{ color: "#34d399" }}>Ver mis invitaciones</Link>.</> : null}
         </p>
         <ol className="m-0 p-0 list-none grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))" }}>
           {Array.from({ length: slots.limit }, (_, n) => {
@@ -89,8 +97,8 @@ export default async function InvitacionesPage() {
       <div className="grid lg:grid-cols-3 gap-4 mb-6">
         <div className="card lg:col-span-2">
           <h2 className="font-semibold mb-1">Nueva invitación personal</h2>
-          <p className="text-xs text-slate-500 mb-3">Código de un solo uso. Si indicas el email, solo podrá usarse con ese email. Después puedes enviarla por correo desde la lista o copiar el enlace para compartirlo por WhatsApp.</p>
-          <InvitationForm familySlotsFree={slots.free} />
+          <p className="text-xs text-slate-500 mb-3">Código de un solo uso. Si indicas el email, solo podrá usarse con ese email. Después puedes enviarla por WhatsApp (al móvil que indiques, o eligiendo el contacto) o por correo desde la lista, o copiar el enlace.</p>
+          <InvitationForm familySlotsFree={cap.unlimited ? Infinity : cap.available} />
         </div>
         <div className="space-y-4">
           <div className="card">
@@ -135,7 +143,7 @@ export default async function InvitacionesPage() {
                     <tr key={i.id} className="border-t border-slate-100">
                       <td className="px-5 py-2">
                         <div className="font-medium">{i.name ? firstName(i.name) : "Sin nombre"}</div>
-                        <div className="text-xs text-slate-400">{i.email ?? "cualquier email"}{i.note ? ` · ${i.note}` : ""}</div>
+                        <div className="text-xs text-slate-400">{i.email ?? "cualquier email"}{i.phone ? ` · ${formatPhone(i.phone)}` : ""}{i.note ? ` · ${i.note}` : ""}</div>
                       </td>
                       <td className="px-2 py-2 font-mono tracking-wider">{i.code}</td>
                       <td className="px-2 py-2">
@@ -149,6 +157,7 @@ export default async function InvitacionesPage() {
                       <td className="px-5 py-2 text-right whitespace-nowrap">
                         {st === "pendiente" && (
                           <>
+                            <span className="inline-block mr-2"><InviteWhatsApp id={i.id} phone={i.phone} sharedAt={i.sharedAt?.toISOString() ?? null} text={invitationWhatsAppText({ inviteeName: i.name ? firstName(i.name) : null, inviterName: firstName(admin.name), familyName: family.name, newFamily: i.newFamily, link: linkFor(i.code), code: i.code, expiresAt: i.expiresAt })} /></span>
                             <span className="inline-block mr-2"><SendInvitationForm id={i.id} email={i.email} resend={Boolean(i.sentAt)} /></span>
                             <span className="inline-block mr-2"><CopyButton text={linkFor(i.code)} label="Copiar enlace" /></span>
                             <form action={revokeInvitationAction} className="inline"><input type="hidden" name="id" value={i.id} /><button className="text-xs text-slate-400 hover:text-red-600 mr-2">Anular</button></form>

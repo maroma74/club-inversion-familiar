@@ -23,11 +23,15 @@ export function InvitationForm({ familySlotsFree }: { familySlotsFree: number })
         <input name="email" type="email" className="input" placeholder="lucia@ejemplo.com" />
       </div>
       <div>
+        <label className="label">Móvil (opcional, para enviarla por WhatsApp)</label>
+        <input name="phone" type="tel" className="input" placeholder="+34 612 345 678" maxLength={30} />
+      </div>
+      <div>
         <label className="label">Tipo de invitación</label>
         <select name="kind" className="input" defaultValue="MEMBER">
           <option value="MEMBER">Entrar en mi familia como miembro</option>
           <option value="ADMIN">Entrar en mi familia como presidente</option>
-          <option value="NEW_FAMILY" disabled={familySlotsFree <= 0}>{familySlotsFree > 0 ? `Crear una familia nueva (será su presidente) · ${familySlotsFree} de 5 ${familySlotsFree === 1 ? "libre" : "libres"}` : "Crear una familia nueva · sin invitaciones libres"}</option>
+          <option value="NEW_FAMILY" disabled={familySlotsFree <= 0}>{familySlotsFree === Infinity ? "Crear una familia nueva (será su presidente) · sin límite" : familySlotsFree > 0 ? `Crear una familia nueva (será su presidente) · ${familySlotsFree} ${familySlotsFree === 1 ? "disponible" : "disponibles"}` : "Crear una familia nueva · sin invitaciones libres"}</option>
         </select>
       </div>
       <div>

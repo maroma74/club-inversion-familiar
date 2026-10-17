@@ -52,8 +52,28 @@ model User {
   sessionVersion     Int            @default(0)
   passwordResets     PasswordReset[] @relation("PasswordResetUser")
   passwordResetsIssued PasswordReset[] @relation("PasswordResetIssuer")
+  /// Administración de la web (estadísticas de todas las familias, paquetes de invitaciones). No da acceso a los datos de otras familias.
+  siteAdmin          Boolean        @default(false)
+  /// Paquete de invitaciones para familias nuevas asignado por la administración, además de las cinco del club (solo las usa el presidente).
+  familyInvitePack   Int            @default(0)
+  /// Invitaciones para familias nuevas sin límite (administración de la web).
+  unlimitedFamilyInvites Boolean    @default(false)
+  lastLoginAt        DateTime?
+  loginEvents        LoginEvent[]
 
   @@index([familyId, status])
+}
+
+/// Un acceso con éxito (entrada con contraseña o registro). Solo lo consulta la administración de la web.
+model LoginEvent {
+  id     String   @id @default(cuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  at     DateTime @default(now())
+  ip     String?
+
+  @@index([at])
+  @@index([userId, at])
 }
 
 /// Enlace de un solo uso, emitido por el presidente, para que un miembro fije una contraseña nueva.
@@ -103,6 +123,12 @@ model Invitation {
   sentTo      String?   // dirección a la que se envió
   /// Invitación para crear una familia nueva: quien la usa funda su club y es su presidente.
   newFamily   Boolean   @default(false)
+  /// Salió de un paquete personal (o de un usuario sin límite), no de las cinco del club.
+  fromPack    Boolean   @default(false)
+  /// Móvil del invitado (formato internacional) para mandarle la invitación por WhatsApp.
+  phone       String?
+  /// Última vez que se compartió por WhatsApp (independiente del correo: `sentAt`/`sentTo`).
+  sharedAt    DateTime?
 
   @@index([familyId, createdAt])
 }

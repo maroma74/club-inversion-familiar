@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { checkJoinCode, createSession, destroySession, hashPassword, uniqueInviteCode, verifyPassword } from "@/lib/auth";
+import { checkJoinCode, createSession, destroySession, hashPassword, recordLogin, uniqueInviteCode, verifyPassword } from "@/lib/auth";
 import { clearAttempts, clientIp, rateLimit } from "@/lib/ratelimit";
 import { nameText, newPasswordSchema } from "@/lib/validation";
 
@@ -99,6 +99,7 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
     throw e;
   }
   await createSession({ id: userId, sessionVersion: 0 });
+  await recordLogin(userId, ip);
   redirect(status === "PENDING" ? "/pendiente" : "/inicio");
 }
 
@@ -126,6 +127,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   if (!user || !valid) return { error: "Email o contraseña incorrectos" };
   await Promise.all([clearAttempts(`login:${ip}:${email}`), clearAttempts(`login:email:${email}`)]);
   await createSession(user);
+  await recordLogin(user.id, ip);
   redirect("/inicio");
 }
 

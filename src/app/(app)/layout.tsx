@@ -37,6 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <a href="#contenido" className="skip-link">Saltar al contenido</a>
       <MobileNav
         isAdmin={user.role === "ADMIN"}
+        isSiteAdmin={user.siteAdmin}
         alertHref={alertHref}
         familyName={user.family.name}
         userName={firstName(user.name)}
@@ -58,7 +59,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div className="text-[11px] opacity-70 truncate">{user.family.name}</div>
           </div>
         </Link>
-        <NavLinks isAdmin={user.role === "ADMIN"} alertHref={alertHref} />
+        <NavLinks isAdmin={user.role === "ADMIN"} isSiteAdmin={user.siteAdmin} alertHref={alertHref} />
         {/* Pie: nombre y nivel en su propia fila (ancho completo) y los botones debajo, para que el nombre no se recorte */}
         <div className="flex flex-col gap-2 border-t border-[rgba(248,250,252,0.12)]" style={{ padding: "12px 20px 14px" }}>
           <Link href="/perfil" className="flex items-center gap-2.5 min-w-0 no-underline" title="Mi perfil y foto">

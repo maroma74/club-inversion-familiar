@@ -100,7 +100,7 @@ export async function getAdminTasks(familyId: string): Promise<AdminTask[]> {
   }
 
   // 5. La regla de las cinco familias: si quedan invitaciones libres y ninguna pendiente, recordar que el club crece invitando
-  const familyInvites = await prisma.invitation.findMany({ where: { familyId, newFamily: true }, select: { usedAt: true, revokedAt: true, expiresAt: true } });
+  const familyInvites = await prisma.invitation.findMany({ where: { familyId, newFamily: true, fromPack: false }, select: { usedAt: true, revokedAt: true, expiresAt: true } });
   const slots = familyInviteSlots(familyInvites);
   if (slots.free > 0 && slots.pending === 0) {
     tasks.push({ id: "invite-families", tone: "info", title: `Te quedan ${slots.free} de 5 invitaciones para otras familias`, text: slots.used === 0 ? "El Club solo crece de familia en familia. Piensa en una familia con hijos adolescentes que quiera aprender a invertir y dale una de tus cinco invitaciones." : `Ya has fundado ${slots.used} ${slots.used === 1 ? "club" : "clubes"}. Cada familia que entra puede invitar a cinco más.`, href: "/invitaciones#familias", cta: "Invitar a una familia" });
