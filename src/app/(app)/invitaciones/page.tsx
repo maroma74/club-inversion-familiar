@@ -10,6 +10,7 @@ import { ResetLinkButton } from "./ResetLinkButton";
 import { CopyButton } from "@/components/CopyButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { InvitationForm, JoinModeForm, RegenerateCodeForm, SendInvitationForm } from "./forms";
+import { familyInviteSlots, isLiveInvitation } from "@/lib/familyInvites";
 
 type Status = "pendiente" | "usada" | "caducada" | "anulada";
 const STATUS_STYLE: Record<Status, string> = { pendiente: "bg-amber-100 text-amber-700", usada: "bg-green-100 text-green-700", caducada: "bg-slate-100 text-slate-500", anulada: "bg-red-100 text-red-700" };
@@ -17,11 +18,17 @@ const STATUS_STYLE: Record<Status, string> = { pendiente: "bg-amber-100 text-amb
 export default async function InvitacionesPage() {
   const admin = await requireAdmin();
   const origin = appUrl();
-  const [family, invitations, members] = await Promise.all([
+  const [family, invitations, members, invitedBy] = await Promise.all([
     prisma.family.findUniqueOrThrow({ where: { id: admin.familyId } }),
-    prisma.invitation.findMany({ where: { familyId: admin.familyId }, orderBy: { createdAt: "desc" }, include: { usedBy: { select: { name: true } }, createdBy: { select: { name: true } } } }),
+    prisma.invitation.findMany({ where: { familyId: admin.familyId }, orderBy: { createdAt: "desc" }, include: { usedBy: { select: { name: true, family: { select: { name: true } } } }, createdBy: { select: { name: true } } } }),
     prisma.user.findMany({ where: { familyId: admin.familyId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, email: true, role: true, status: true, createdAt: true, avatarUpdatedAt: true, _count: { select: { trades: true } } } }),
+    // La familia que nos dio una de sus cinco invitaciones (si el club nació así)
+    prisma.invitation.findFirst({ where: { newFamily: true, usedBy: { familyId: admin.familyId } }, select: { family: { select: { name: true } } } }),
   ]);
+  const familyInvites = invitations.filter((i) => i.newFamily);
+  const slots = familyInviteSlots(familyInvites);
+  const founded = familyInvites.filter((i) => i.usedAt);
+  const liveFamily = familyInvites.filter((i) => isLiveInvitation(i));
   const pendingMembers = members.filter((m) => m.status === "PENDING");
   const activeMembers = members.filter((m) => m.status === "ACTIVE");
   const activeAdmins = activeMembers.filter((m) => m.role === "ADMIN").length;
@@ -50,11 +57,40 @@ export default async function InvitacionesPage() {
         </div>
       )}
 
+      <section id="familias" className="card card-roomy gap-3 mb-6" style={{ background: "var(--brand-navy)", color: "#f8fafc", borderColor: "transparent" }} aria-labelledby="cinco-familias">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="cinco-familias" className="m-0 text-[22px]" style={{ color: "#ffffff" }}>Tus cinco invitaciones para otras familias</h2>
+          <span className="tabular-nums text-sm" style={{ color: "rgba(248,250,252,0.75)" }}>{slots.free} {slots.free === 1 ? "libre" : "libres"} · {slots.pending} {slots.pending === 1 ? "pendiente" : "pendientes"} · {slots.used} {slots.used === 1 ? "club fundado" : "clubes fundados"}</span>
+        </div>
+        <p className="m-0 text-sm max-w-[70ch] [text-wrap:pretty]" style={{ color: "rgba(248,250,252,0.82)" }}>
+          El Club crece de familia en familia: cada club puede invitar a <b style={{ color: "#ffffff" }}>cinco familias</b> y cada una de ellas, a cinco más. {invitedBy ? <>Vosotros entrasteis con una invitación de <b style={{ color: "#ffffff" }}>{invitedBy.family.name}</b>. </> : null}Elige bien a quién se las das: una invitación usada ocupa su hueco para siempre; una pendiente se libera si la anulas.
+        </p>
+        <ol className="m-0 p-0 list-none grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))" }}>
+          {Array.from({ length: slots.limit }, (_, n) => {
+            const f = founded[n];
+            const p = !f ? liveFamily[n - founded.length] : undefined;
+            const tone = f ? { background: "rgba(16,185,129,0.18)", borderColor: "rgba(16,185,129,0.6)" } : p ? { background: "rgba(229,160,22,0.14)", borderColor: "rgba(229,160,22,0.6)" } : { background: "rgba(248,250,252,0.06)", borderColor: "rgba(248,250,252,0.2)", borderStyle: "dashed" };
+            return (
+              <li key={n} className="rounded-[10px] border px-3 py-2.5 min-h-[72px] flex flex-col gap-0.5" style={tone}>
+                <span className="text-[11px] font-semibold tracking-[0.1em] uppercase" style={{ color: f ? "#34d399" : p ? "#fcd34d" : "rgba(248,250,252,0.6)" }}>{f ? "Club fundado" : p ? "Pendiente" : `Invitación ${n + 1}`}</span>
+                {f ? (
+                  <><span className="font-heading text-[15px] leading-tight" style={{ color: "#ffffff" }}>{f.usedBy?.family.name ?? "Familia"}</span><span className="text-xs" style={{ color: "rgba(248,250,252,0.7)" }}>{firstName(f.usedBy?.name)} · {f.usedAt ? fmtDate(f.usedAt) : ""}</span></>
+                ) : p ? (
+                  <><span className="font-heading text-[15px] leading-tight" style={{ color: "#ffffff" }}>{p.name ?? p.email ?? "Sin nombre"}</span><span className="text-xs font-mono tracking-wider" style={{ color: "rgba(248,250,252,0.7)" }}>{p.code}{p.expiresAt ? ` · caduca el ${fmtDate(p.expiresAt)}` : ""}</span></>
+                ) : (
+                  <span className="text-sm" style={{ color: "rgba(248,250,252,0.7)" }}>Libre: dásela a una familia que quiera aprender a invertir con sus hijos.</span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
       <div className="grid lg:grid-cols-3 gap-4 mb-6">
         <div className="card lg:col-span-2">
           <h2 className="font-semibold mb-1">Nueva invitación personal</h2>
           <p className="text-xs text-slate-500 mb-3">Código de un solo uso. Si indicas el email, solo podrá usarse con ese email. Después puedes enviarla por correo desde la lista o copiar el enlace para compartirlo por WhatsApp.</p>
-          <InvitationForm />
+          <InvitationForm familySlotsFree={slots.free} />
         </div>
         <div className="space-y-4">
           <div className="card">

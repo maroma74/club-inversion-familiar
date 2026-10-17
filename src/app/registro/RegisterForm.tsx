@@ -25,7 +25,7 @@ export function RegisterForm({ initialCode, preview, allowCreate = true }: { ini
           <div className="mb-5 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm">
             {ok.newFamily ? (
               <>
-                <b>Invitación de {ok.invitingFamily}</b> para crear el club de inversión de tu familia{ok.name ? `, a nombre de ${ok.name}` : ""}. Serás su presidente y podrás invitar a tu familia y a otras.
+                <b>Invitación de {ok.invitingFamily}</b> para crear el club de inversión de tu familia{ok.name ? `, a nombre de ${ok.name}` : ""}. Serás su presidente, invitarás a tu familia y tendrás cinco invitaciones para otras familias.
                 {ok.email && <div className="text-xs text-slate-600 mt-1">Regístrate con el email {ok.email}.</div>}
               </>
             ) : ok.personal ? (

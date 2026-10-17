@@ -10,7 +10,7 @@ function Msg({ state }: { state: { error?: string; ok?: string } | undefined }) 
   return null;
 }
 
-export function InvitationForm() {
+export function InvitationForm({ familySlotsFree }: { familySlotsFree: number }) {
   const [state, action, pending] = useActionState(createInvitationAction, undefined);
   return (
     <form action={action} className="grid sm:grid-cols-2 gap-3">
@@ -27,7 +27,7 @@ export function InvitationForm() {
         <select name="kind" className="input" defaultValue="MEMBER">
           <option value="MEMBER">Entrar en mi familia como miembro</option>
           <option value="ADMIN">Entrar en mi familia como presidente</option>
-          <option value="NEW_FAMILY">Crear una familia nueva (será su presidente)</option>
+          <option value="NEW_FAMILY" disabled={familySlotsFree <= 0}>{familySlotsFree > 0 ? `Crear una familia nueva (será su presidente) · ${familySlotsFree} de 5 ${familySlotsFree === 1 ? "libre" : "libres"}` : "Crear una familia nueva · sin invitaciones libres"}</option>
         </select>
       </div>
       <div>
@@ -39,7 +39,7 @@ export function InvitationForm() {
         <input name="note" className="input" placeholder="Hijo mayor, empieza en noviembre" maxLength={200} />
       </div>
       <div className="sm:col-span-2 flex items-center gap-3">
-        <button className="btn-primary" disabled={pending}>{pending ? "Creando…" : "Crear invitación"}</button>
+        <button className="btn-primary whitespace-nowrap" disabled={pending}>{pending ? "Creando…" : "Crear invitación"}</button>
         <Msg state={state} />
       </div>
     </form>

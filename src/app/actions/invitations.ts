@@ -9,6 +9,7 @@ import { appUrl } from "@/lib/appUrl";
 import { firstName } from "@/lib/names";
 import { rateLimit } from "@/lib/ratelimit";
 import { nameText } from "@/lib/validation";
+import { familyInviteSlots, noSlotsMessage } from "@/lib/familyInvites";
 import type { FormState } from "./auth";
 
 const refresh = () => {
@@ -39,9 +40,10 @@ export async function createInvitationAction(_prev: FormState, formData: FormDat
   if (pending >= 50) return { error: "Demasiadas invitaciones pendientes; anula alguna antes de crear más" };
   const newFamily = d.kind === "NEW_FAMILY";
   if (newFamily) {
-    // Cada familia puede tener como mucho 10 invitaciones de familia nueva sin usar: el club crece de forma controlada
-    const pendingNew = await prisma.invitation.count({ where: { familyId: admin.familyId, newFamily: true, usedAt: null, revokedAt: null } });
-    if (pendingNew >= 10) return { error: "Ya tienes 10 invitaciones para familias nuevas sin usar; anula alguna antes de crear más" };
+    // La regla de las cinco familias: entre fundadas y pendientes vivas, nunca más de cinco (src/lib/familyInvites.ts)
+    const rows = await prisma.invitation.findMany({ where: { familyId: admin.familyId, newFamily: true }, select: { usedAt: true, revokedAt: true, expiresAt: true } });
+    const slots = familyInviteSlots(rows);
+    if (slots.free <= 0) return { error: noSlotsMessage(slots) };
   }
   const code = await uniqueInviteCode();
   await prisma.invitation.create({
@@ -115,6 +117,13 @@ export async function deleteInvitationAction(formData: FormData) {
 /** Vuelve a activar una invitación anulada o caducada con nueva fecha de caducidad (14 días). */
 export async function renewInvitationAction(formData: FormData) {
   const admin = await requireAdmin();
+  const inv = await prisma.invitation.findFirst({ where: { id: String(formData.get("id")), familyId: admin.familyId, usedAt: null }, select: { newFamily: true } });
+  if (!inv) return;
+  if (inv.newFamily) {
+    // Reactivar una invitación de familia vuelve a ocupar un hueco: solo si queda alguno libre
+    const rows = await prisma.invitation.findMany({ where: { familyId: admin.familyId, newFamily: true }, select: { usedAt: true, revokedAt: true, expiresAt: true } });
+    if (familyInviteSlots(rows).free <= 0) return;
+  }
   await prisma.invitation.updateMany({
     where: { id: String(formData.get("id")), familyId: admin.familyId, usedAt: null },
     data: { revokedAt: null, expiresAt: new Date(Date.now() + 14 * 86400000) },

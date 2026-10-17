@@ -68,7 +68,8 @@ Antes de usarla en serio, cambia `AUTH_SECRET` en `.env` por una cadena larga y 
 - En Cloud Run el servicio corre con una cuenta de servicio propia con permisos mínimos (cliente de Cloud SQL y lectura de sus tres secretos), no con la cuenta por defecto del proyecto. La imagen base es Node 22 fijada por digest y el contenedor usa la zona horaria `Europe/Madrid`, de modo que «hoy» y «este mes» coinciden con los de la familia.
 - Los precios manuales son por familia y solo los fija el presidente. Los miembros pendientes de aprobación no participan en la liga ni reciben paga.
 - Los enlaces de invitación se construyen con `APP_URL`, nunca con cabeceras de la petición. Los códigos se generan con un generador criptográfico.
-- **Invitaciones para familias nuevas.** Con el registro público cerrado, el club crece por invitación: en Invitaciones, el presidente elige el tipo «Crear una familia nueva» y quien use ese código funda su propio club (pone el nombre de su familia y entra como presidente), con lo que a su vez puede invitar a su familia y a otras. Máximo 10 invitaciones de este tipo sin usar por familia; la familia nueva se crea en la misma transacción que su presidente. En la base, `Invitation.newFamily`.
+- **Invitaciones para familias nuevas.** Con el registro público cerrado, el club crece por invitación: en Invitaciones, el presidente elige el tipo «Crear una familia nueva» y quien use ese código funda su propio club (pone el nombre de su familia y entra como presidente), con lo que a su vez puede invitar a su familia y a otras. La familia nueva se crea en la misma transacción que su presidente. En la base, `Invitation.newFamily`.
+- **La regla de las cinco familias.** Cada familia puede invitar como máximo a otras cinco (`src/lib/familyInvites.ts`): cuentan las invitaciones de familia ya usadas (clubes fundados, que ocupan su hueco para siempre) y las pendientes vivas (anular o dejar caducar una libera el hueco; reactivarla vuelve a ocuparlo solo si queda alguno). La pantalla de Invitaciones muestra los cinco huecos con la familia que entró con cada uno y de qué familia vino la propia invitación; el Inicio del presidente recuerda las que quedan libres.
 - La imagen Docker es «standalone», sin código fuente ni dependencias de desarrollo, y corre como usuario `node`.
 
 ## Despliegue en Google Cloud (producción)
@@ -147,6 +148,10 @@ Variables de entorno: `DATABASE_URL`, `SEC_USER_AGENT` (contacto para la SEC), `
 - **Configuración** (`src/lib/perConfig.ts`): percentiles de «barata» (25) y «cara» (75), mínimo de puntos, puntuación de cada señal y peso en la recomendación. El peso también se cambia con la variable `PER_WEIGHT` (0 a 0,4; 0 desactiva el bloque).
 - **Limitaciones**: el BPA es el contable (GAAP) de la SEC, así que un año con partidas extraordinarias distorsiona el PER (por ejemplo, Microsoft en 2018 por el impuesto de la reforma fiscal de EE. UU.). Compara cada acción solo con su propia historia, no con su sector. Un PER bajo no es una orden de compra.
 - **Pruebas**: `npm test` (31 pruebas del cálculo y 5 de la integración con la recomendación, con el ejecutor integrado de Node). `npm run per:check -- MSFT AAPL` calcula el PER con datos reales y lo imprime por año y por periodo: para Microsoft, el PER de los últimos años se mueve sobre todo entre 28 y 38, con extremos de 22 y 41.
+
+## Portada pública
+
+`/` es la portada para quien no tiene sesión (quien la tiene va directo a `/inicio`): la caja de entrada en la cabecera y, debajo, los objetivos de los clubes familiares, cómo funciona un mes (con maquetas de la interfaz real y datos inventados), qué hay dentro, la regla de las cinco familias y las preguntas frecuentes. Está en `src/components/landing/Landing.tsx` con estilos `.lp-*` en `globals.css`; la caja de entrada es `src/app/login/LoginForm.tsx`, la misma que usa `/login`. Sin JavaScript propio: la única animación es la gráfica del héroe, que respeta `prefers-reduced-motion`.
 
 ## Invitaciones y entrada al club
 

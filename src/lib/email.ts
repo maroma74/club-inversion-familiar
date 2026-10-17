@@ -58,7 +58,7 @@ export function invitationEmail(opts: { to: string; inviteeName: string | null; 
   const caduca = opts.expiresAt ? `La invitación caduca el ${opts.expiresAt.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}.` : "La invitación no caduca.";
   const subject = opts.newFamily ? "Invitación para crear el Club de Inversión de tu familia" : `Invitación al Club de Inversión Familiar de ${opts.familyName}`;
   const intro = opts.newFamily
-    ? `${opts.presidentName}, de ${opts.familyName}, te invita a crear el club de inversión de tu propia familia: una liga familiar para aprender a invertir con una paga mensual, carteras propuestas por el presidente, una academia y un diario de inversión. Tú serás el presidente de tu club y podrás invitar a tu familia.`
+    ? `${opts.presidentName}, de ${opts.familyName}, te invita a crear el club de inversión de tu propia familia: una liga familiar para aprender a invertir con una paga mensual, carteras propuestas por el presidente, una academia y un diario de inversión. Tú serás el presidente de tu club, invitarás a tu familia y tendrás cinco invitaciones para otras familias: ${opts.familyName} te ha dado una de las suyas.`
     : `${opts.presidentName} te invita a unirte al club de inversión de ${opts.familyName}: una liga familiar para aprender a invertir con una paga mensual, carteras propuestas por el presidente, una academia y un diario de inversión.`;
   const text = [
     saludo,
