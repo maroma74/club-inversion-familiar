@@ -64,6 +64,8 @@ model User {
   unlimitedFamilyInvites Boolean    @default(false)
   lastLoginAt        DateTime?
   loginEvents        LoginEvent[]
+  /// Cuándo vio (o se saltó) la bienvenida para miembros nuevos; null = aún no la ha visto
+  welcomedAt         DateTime?
 
   @@index([familyId, status])
 }

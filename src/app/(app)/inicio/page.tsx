@@ -86,6 +86,18 @@ export default async function InicioPage() {
         <DiaryDialog label="Escribir en el diario" side="NOTE" />
       </header>
 
+      {!user.welcomedAt && !showSetup && !user.previewAsMember && (
+        <section aria-labelledby="bienvenida-aviso" className="card card-snug gap-2" style={{ borderColor: "var(--color-accent)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="max-w-[60ch]">
+              <h2 id="bienvenida-aviso" className="m-0 text-[20px]">¿Primera vez en el club?</h2>
+              <p className="m-0 mt-1 text-sm text-neutral-700">En dos minutos te contamos cómo funciona: tu paga, cómo es un mes y tu primera misión.</p>
+            </div>
+            <Link href="/bienvenida" className="btn-primary">Ver la bienvenida</Link>
+          </div>
+        </section>
+      )}
+
       {showSetup && setup ? (
         <SetupCard steps={setup.steps} done={setup.done} total={setup.total} current={setup.current} />
       ) : (

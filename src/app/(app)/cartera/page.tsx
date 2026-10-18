@@ -49,6 +49,8 @@ export default async function CarteraPage() {
   const myDecision = p.decisions.find((d) => d.userId === user.id) ?? null;
   const open = p.status === "PUBLISHED" && !isDeadlinePassed(p);
   const canDecide = open && !myDecision && myAllocation > 0;
+  // Quien nunca ha decidido en una cartera del mes ve una guía corta antes del formulario
+  const firstDecision = canDecide && (await prisma.monthlyDecision.count({ where: { userId: user.id } })) === 0;
   const others = p.decisions.filter((d) => d.userId !== user.id);
   const memberNames = new Map(p.allocations.map((a) => [a.userId, firstName(a.user.name)]));
   const deciders = p.allocations.filter((a) => a.amount > 0);
@@ -152,6 +154,29 @@ export default async function CarteraPage() {
           ))}
         </div>
       </section>
+
+      {canDecide && firstDecision && (
+        <section aria-labelledby="primera-decision" className="card card-roomy gap-4" style={{ borderColor: "var(--color-accent)" }}>
+          <div>
+            <h2 id="primera-decision" className="m-0 text-[22px]">Tu primera decisión, paso a paso</h2>
+            <p className="m-0 mt-1 text-sm text-neutral-700 max-w-[64ch]">No hace falta saber de bolsa. Hace falta mirar con calma y escribir lo que piensas.</p>
+          </div>
+          <ol className="m-0 p-0 list-none grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))" }}>
+            <li className="flex gap-3">
+              <span aria-hidden="true" className="setup-num shrink-0">1</span>
+              <div><b>Lee la lección</b><p className="m-0 mt-1 text-sm text-neutral-700 [text-wrap:pretty]">Está arriba. Te dice qué se compara este mes y en qué fijarte.</p></div>
+            </li>
+            <li className="flex gap-3">
+              <span aria-hidden="true" className="setup-num shrink-0">2</span>
+              <div><b>Abre cada opción</b><p className="m-0 mt-1 text-sm text-neutral-700 [text-wrap:pretty]">Pulsa «Analizar». Mira cómo ha ido el precio, la lectura del Club (y su «¿Qué mide?») y, si es una empresa, si su PER está alto o bajo.</p></div>
+            </li>
+            <li className="flex gap-3">
+              <span aria-hidden="true" className="setup-num shrink-0">3</span>
+              <div><b>Escribe tu porqué</b><p className="m-0 mt-1 text-sm text-neutral-700 [text-wrap:pretty]">Responde a tres preguntas: ¿qué hace esta empresa o fondo?, ¿por qué crees que le irá bien? y ¿qué te haría cambiar de opinión?</p></div>
+            </li>
+          </ol>
+        </section>
+      )}
 
       {canDecide && (
         <section id="decidir" aria-label="Tu decisión" className="card card-roomy scroll-mt-20">

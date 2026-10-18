@@ -49,6 +49,7 @@ export default async function AyudaPage() {
         </div>
         <p className="m-0 text-sm text-neutral-700 max-w-[70ch]">{onboarding.complete ? "Ya has hecho todo lo básico. A partir de aquí, cada mes es una cartera nueva, una decisión y un porqué." : "Se marcan solos cuando los haces. Empieza por el primero que esté pendiente."}</p>
         <OnboardingChecklist steps={onboarding.steps} done={onboarding.done} total={onboarding.total} />
+        {!isAdmin && <p className="m-0 text-sm"><Link href="/bienvenida" className="text-accent-700">Ver otra vez la bienvenida: tu paga, cómo es un mes y tu primera misión →</Link></p>}
       </section>
 
       <section id="como-funciona" className="flex flex-col gap-3" aria-labelledby="cf-title">

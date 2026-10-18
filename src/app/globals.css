@@ -635,6 +635,33 @@ table thead th { font-size: 11px; letter-spacing: 0.08em; text-transform: upperc
 :root[data-theme="dark"] .setup-message { background: #16281f; color: #f1f5f9; }
 .setup-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding-top: 16px; border-top: 1px solid var(--color-divider); }
 
+/* ---------- Bienvenida para miembros nuevos (/bienvenida) ---------- */
+.welcome { max-width: 760px; }
+.welcome-pip { display: block; width: 28px; height: 6px; border-radius: 999px; background: var(--color-neutral-300); }
+.welcome-pip[data-state="done"] { background: #34d399; }
+.welcome-pip[data-state="now"] { background: #047857; width: 44px; }
+.welcome-card { display: flex; flex-direction: column; gap: 22px; padding: clamp(22px, 4vw, 40px); border-radius: 16px; background: var(--color-surface); border: 1px solid var(--color-divider); box-shadow: var(--shadow-md); }
+.welcome-card h1 { font-size: clamp(30px, 5vw, 42px); letter-spacing: -0.025em; }
+.welcome-lede { margin: 0; font-size: clamp(16px, 1.6vw, 18px); line-height: 1.55; color: var(--color-text); max-width: 60ch; text-wrap: pretty; }
+.welcome-facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.welcome-facts li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; align-items: baseline; padding: 16px 0; border-top: 1px solid var(--color-divider); font-size: 15.5px; line-height: 1.5; text-wrap: pretty; }
+.welcome-facts li:first-child { border-top: 0; padding-top: 4px; }
+.welcome-figure { font-family: var(--font-heading); font-weight: 800; font-size: 26px; letter-spacing: -0.02em; color: var(--color-accent-700); line-height: 1.1; }
+@media (max-width: 520px) { .welcome-facts li { grid-template-columns: 1fr; gap: 4px; } }
+.welcome-timeline { margin: 0; padding: 0; list-style: none; counter-reset: wt; display: flex; flex-direction: column; }
+.welcome-timeline li { counter-increment: wt; position: relative; padding: 0 0 18px 48px; font-size: 15.5px; line-height: 1.5; text-wrap: pretty; }
+.welcome-timeline li::before { content: counter(wt); position: absolute; left: 0; top: -2px; width: 30px; height: 30px; border-radius: 999px; display: grid; place-items: center; background: #047857; color: #ffffff; font: 700 14px/1 var(--font-numeric); }
+/* La línea que une los pasos del mes */
+.welcome-timeline li:not(:last-child)::after { content: ""; position: absolute; left: 14px; top: 30px; bottom: 0; width: 2px; background: var(--color-divider); }
+.welcome-check { padding: 18px; border-radius: 12px; background: var(--color-surface-2); }
+.welcome-option { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--color-divider); background: var(--color-surface); cursor: pointer; font-size: 15px; }
+.welcome-option:hover { border-color: var(--color-neutral-500); }
+.welcome-option input { accent-color: #047857; width: 18px; height: 18px; }
+.welcome-option.is-right { border-color: #047857; background: var(--color-accent-100); }
+.welcome-option.is-wrong { border-color: var(--brand-amber); background: var(--color-amber-100); }
+.welcome-mission { display: flex; flex-direction: column; gap: 6px; padding: 18px 20px; border-radius: 12px; background: var(--color-surface-2); border: 1px solid var(--color-divider); }
+.welcome-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 18px; border-top: 1px solid var(--color-divider); }
+
 /* ---------- Foto de perfil ---------- */
 .avatar { display: inline-block; border-radius: 999px; object-fit: cover; flex: none; vertical-align: middle; }
 .avatar-initial { display: inline-flex; align-items: center; justify-content: center; background: var(--brand-emerald, #10b981); color: #0e2138; font-family: var(--font-heading); font-weight: 800; line-height: 1; }

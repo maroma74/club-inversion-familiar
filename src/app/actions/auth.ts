@@ -106,8 +106,8 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
   }
   await createSession({ id: userId, sessionVersion: 0 });
   await recordLogin(userId, ip);
-  // Quien acaba de fundar un club entra directamente en el asistente de puesta en marcha
-  redirect(status === "PENDING" ? "/pendiente" : newFamilyName ? "/empezar" : "/inicio");
+  // Quien funda un club entra en el asistente de puesta en marcha; quien entra en uno, en la bienvenida
+  redirect(status === "PENDING" ? "/pendiente" : newFamilyName ? "/empezar" : "/bienvenida");
 }
 
 const loginSchema = z.object({ email: emailSchema, password: z.string().min(1, "Indica la contraseña").max(128) });
