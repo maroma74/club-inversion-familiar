@@ -7,7 +7,7 @@ import { familyOverview } from "@/lib/league";
 import { allowanceWhere } from "@/lib/allowance";
 import { eur, ymOf } from "@/lib/format";
 import { CopyButton } from "@/components/CopyButton";
-import { AllowanceForm, ContributionForm, PayAllowanceForm } from "./forms";
+import { AllowanceForm, ContributionForm, FamilyNameEditor, PayAllowanceForm } from "./forms";
 import { ContributionList } from "./ContributionList";
 
 const lessonsText = (n: number) => `${n} ${n === 1 ? "lección" : "lecciones"}`;
@@ -33,7 +33,7 @@ export default async function FamiliaPage() {
   return (
     <div className="flex flex-col gap-7">
       <header>
-        <div className="card-kicker">{user.family.name}</div>
+        {isAdmin ? <FamilyNameEditor name={user.family.name} /> : <div className="card-kicker">{user.family.name}</div>}
         <h1 className="mt-1 mb-1">Nuestra familia</h1>
         <p className="m-0 text-neutral-700 max-w-[62ch]">{members.length} {members.length === 1 ? "miembro" : "miembros"} aprendiendo a invertir juntos. El presidente reparte la paga cada mes.</p>
       </header>

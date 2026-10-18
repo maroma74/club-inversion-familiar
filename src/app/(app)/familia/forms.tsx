@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { addContributionAction, payMonthlyAllowanceAction, setAllowanceAction } from "@/app/actions/invest";
+import { renameFamilyAction } from "@/app/actions/family";
 import { eur } from "@/lib/format";
 
 function Msg({ state }: { state: { error?: string; ok?: string } | undefined }) {
@@ -15,6 +16,37 @@ function Msg({ state }: { state: { error?: string; ok?: string } | undefined }) 
   }
   if (state.ok) return <p role="status" className="m-0 text-sm text-accent-700">{state.ok}</p>;
   return null;
+}
+
+/** Nombre de la familia con botón «Editar» (solo el presidente): al pulsarlo, campo en línea con Guardar y Cancelar. */
+export function FamilyNameEditor({ name }: { name: string }) {
+  const [editing, setEditing] = useState(false);
+  const [state, action, pending] = useActionState(renameFamilyAction, undefined);
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (editing) inputRef.current?.select(); }, [editing]);
+  // Al guardar bien se vuelve a la vista normal con el nombre nuevo
+  useEffect(() => { if (state?.ok) setEditing(false); }, [state]);
+
+  if (!editing) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="card-kicker">{name}</span>
+        <button type="button" className="btn-ghost text-xs py-0.5" onClick={() => setEditing(true)} aria-label={`Editar el nombre de la familia (${name})`}>Editar</button>
+        {state?.ok && <span role="status" className="text-xs text-accent-700">{state.ok}</span>}
+      </div>
+    );
+  }
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-2 mb-3" onKeyDown={(e) => { if (e.key === "Escape") setEditing(false); }}>
+      <div className="field">
+        <label htmlFor="familia-nombre">Nombre de la familia</label>
+        <input ref={inputRef} id="familia-nombre" name="name" defaultValue={name} required minLength={2} maxLength={60} className="input w-[min(100%,320px)]" autoComplete="off" />
+      </div>
+      <button className="btn-primary" disabled={pending}>{pending ? "Guardando…" : "Guardar"}</button>
+      <button type="button" className="btn-ghost" onClick={() => setEditing(false)} disabled={pending}>Cancelar</button>
+      {state?.error && <p role="alert" className="m-0 w-full text-sm text-neutral-800">{state.error}</p>}
+    </form>
+  );
 }
 
 export function AllowanceForm({ current }: { current: number }) {
