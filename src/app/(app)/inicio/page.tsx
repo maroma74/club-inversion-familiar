@@ -11,6 +11,8 @@ import { MacroCard } from "@/components/MacroCard";
 import { AdminTasks } from "@/components/AdminTasks";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { loadOnboarding } from "@/lib/onboardingData";
+import { loadSetupSummary } from "@/lib/setupData";
+import { SetupCard } from "@/components/SetupCard";
 import { getCurrentPortfolio, isDeadlinePassed, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
 
 const SIDE: Record<string, string> = { BUY: "Compra", SELL: "Venta", NOTE: "Nota" };
@@ -50,6 +52,9 @@ export default async function InicioPage() {
   const level = myProgress?.level ?? 1;
   const firstPending = pendingTrades[0];
   const onboarding = await loadOnboarding(user);
+  // Presidente con el club sin poner en marcha: el asistente es su único siguiente paso (sustituye a tareas y primeros pasos)
+  const setup = user.role === "ADMIN" && !user.previewAsMember ? await loadSetupSummary(user.familyId, user.id) : null;
+  const showSetup = !!setup && !setup.complete && !setup.dismissed;
 
   // Una sola acción principal, por prioridad: decisión del mes > compra sin explicar > lección.
   const step = monthlyPending
@@ -81,6 +86,9 @@ export default async function InicioPage() {
         <DiaryDialog label="Escribir en el diario" side="NOTE" />
       </header>
 
+      {showSetup && setup ? (
+        <SetupCard steps={setup.steps} done={setup.done} total={setup.total} current={setup.current} />
+      ) : (
       <section aria-labelledby="siguiente-paso" className="card card-roomy gap-3" style={{ borderColor: "var(--color-accent)" }}>
         <div id="siguiente-paso" className="card-kicker">Tu siguiente paso · {step.kicker}</div>
         <h2 className="m-0 [text-wrap:balance]">{step.title}</h2>
@@ -93,10 +101,11 @@ export default async function InicioPage() {
           {step.kind === "monthly" && firstPending && <DiaryDialog label="Explicar una compra pendiente" symbol={firstPending.symbol} side="BUY" tradeId={firstPending.id} className="btn-ghost" />}
         </div>
       </section>
+      )}
 
-      {user.role === "ADMIN" && <AdminTasks familyId={user.familyId} />}
+      {user.role === "ADMIN" && !showSetup && <AdminTasks familyId={user.familyId} />}
 
-      {!onboarding.complete && (
+      {!onboarding.complete && !showSetup && (
         <section aria-labelledby="primeros-pasos" className="card card-roomy gap-2">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 id="primeros-pasos" className="m-0">Tus primeros pasos</h3>

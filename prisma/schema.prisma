@@ -14,6 +14,10 @@ model Family {
   /// Cómo se entra con el código general: CODE (directo), CODE_APPROVAL (queda pendiente de aprobación), INVITE_ONLY (solo con invitación personal)
   joinMode         String       @default("CODE")
   monthlyAllowance Float        @default(100)
+  /// Cuándo confirmó el presidente la paga (asistente de puesta en marcha o Familia); null = sigue la de por defecto
+  allowanceSetAt   DateTime?
+  /// El presidente cerró el asistente de puesta en marcha sin terminarlo
+  setupDismissedAt DateTime?
   createdAt        DateTime     @default(now())
   users            User[]
   invitations      Invitation[]

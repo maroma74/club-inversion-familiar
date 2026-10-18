@@ -5,6 +5,7 @@ import { getPortfolioReview } from "@/lib/monthlyHistory";
 import { isDeadlinePassed, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
 import { eur, fmtDate, signed } from "@/lib/format";
 import { Markdown } from "@/components/Markdown";
+import { FamilyReviewGuide } from "@/components/FamilyReviewGuide";
 import type { DecisionReview, OptionReview } from "@/lib/monthlyReview";
 
 const analysisHref = (kind: string, symbol: string) => (kind === "COMMODITY" ? `/materias-primas/${encodeURIComponent(symbol)}` : kind === "CRYPTO" ? `/cripto/${encodeURIComponent(symbol)}` : kind === "ETF" ? `/etf/${encodeURIComponent(symbol)}` : `/acciones/${encodeURIComponent(symbol)}`);
@@ -52,6 +53,16 @@ export default async function RepasoPage({ params }: { params: Promise<{ id: str
             {review.best.pickedBy.length ? ` La eligieron ${review.best.pickedBy.join(", ")}.` : " No la eligió nadie."} Mirar atrás no es para lamentarse, sino para comprobar si el porqué de cada elección sigue teniendo sentido.
           </div>
         </section>
+      )}
+
+      {settled && (
+        <details id="repaso-familia" className="card card-roomy gap-3 scroll-mt-6" open>
+          <summary className="cursor-pointer list-none flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="m-0 text-[22px]">Cómo hacer el repaso en familia</h2>
+            <span className="text-sm text-accent-700">Mostrar u ocultar</span>
+          </summary>
+          <div className="mt-3"><FamilyReviewGuide /></div>
+        </details>
       )}
 
       <section className="flex flex-col gap-3">

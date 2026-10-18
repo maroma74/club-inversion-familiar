@@ -195,8 +195,9 @@ export async function setAllowanceAction(_prev: FormState, formData: FormData): 
   const admin = await requireAdmin();
   const amount = parseMoney(formData.get("amount"), { allowZero: true });
   if (amount === null) return { error: "Importe no válido (entre 0 y 1.000.000 €)" };
-  await prisma.family.update({ where: { id: admin.familyId }, data: { monthlyAllowance: amount } });
+  await prisma.family.update({ where: { id: admin.familyId }, data: { monthlyAllowance: amount, allowanceSetAt: new Date() } });
   revalidatePath("/familia");
+  revalidatePath("/empezar");
   return { ok: `Paga mensual fijada en ${eur(amount)}` };
 }
 

@@ -5,6 +5,8 @@ import { loadOnboarding } from "@/lib/onboardingData";
 import { audienceLabel, FAQ, GLOSSARY, HELP, HOW_IT_WORKS } from "@/lib/helpContent";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { HelpSearch } from "./HelpSearch";
+import { loadSetupSummary } from "@/lib/setupData";
+import { resumeSetupAction } from "@/app/actions/setup";
 
 export const metadata: Metadata = { title: "Ayuda · Club de Inversión Familiar" };
 
@@ -14,6 +16,7 @@ export default async function AyudaPage() {
   const onboarding = await loadOnboarding(user);
   const groups = HELP;
   const isAdmin = user.role === "ADMIN";
+  const setup = isAdmin ? await loadSetupSummary(user.familyId, user.id) : null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -23,10 +26,26 @@ export default async function AyudaPage() {
         <p className="m-0 text-neutral-700 max-w-[70ch] [text-wrap:pretty]">Primeros pasos, el ciclo de cada mes y qué hace cada parte de la web. Si algo no está aquí, pregunta al presidente de tu club.</p>
       </header>
 
+      {isAdmin && (
+        <section className="card card-roomy gap-3" style={{ borderColor: "var(--color-accent)" }} aria-labelledby="asistente-title">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="max-w-[62ch]">
+              <h2 id="asistente-title" className="m-0 text-[24px]">Asistente para poner en marcha el club</h2>
+              <p className="m-0 mt-2 text-neutral-700 [text-wrap:pretty]">Te acompaña en siete pasos: la paga, invitar a tus hijos, elegir la cartera del mes, publicarla, avisarles por WhatsApp, acompañarles mientras deciden y hacer el primer repaso en familia. Cada paso explica por qué importa.</p>
+            </div>
+            {setup?.dismissed ? (
+              <form action={resumeSetupAction}><button className="btn-primary">Retomar el asistente</button></form>
+            ) : (
+              <Link href="/empezar" className="btn-primary">{setup?.complete ? "Ver el asistente" : setup && setup.done > 0 ? `Continuar · ${setup.done} de ${setup.total}` : "Empezar"}</Link>
+            )}
+          </div>
+        </section>
+      )}
+
       <section id="primeros-pasos" className="card card-roomy gap-3" style={{ borderColor: onboarding.complete ? "var(--color-divider)" : "var(--color-accent)" }} aria-labelledby="pp-title">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="pp-title" className="m-0 text-[24px]">{onboarding.complete ? "Primeros pasos completados" : "Tus primeros pasos"}</h2>
-          {isAdmin && <span className="text-sm text-neutral-700">Como presidente, primero pones en marcha el club</span>}
+
         </div>
         <p className="m-0 text-sm text-neutral-700 max-w-[70ch]">{onboarding.complete ? "Ya has hecho todo lo básico. A partir de aquí, cada mes es una cartera nueva, una decisión y un porqué." : "Se marcan solos cuando los haces. Empieza por el primero que esté pendiente."}</p>
         <OnboardingChecklist steps={onboarding.steps} done={onboarding.done} total={onboarding.total} />

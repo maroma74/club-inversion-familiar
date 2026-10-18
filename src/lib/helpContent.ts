@@ -168,6 +168,7 @@ export const HELP: HelpGroup[] = [
         id: "gestion", title: "Gestión de carteras", audience: "presidente", href: "/cartera/gestion", cta: "Ir a Gestión de carteras",
         summary: "Crear, publicar, cerrar y reabrir las carteras del mes, y preparar las de los meses siguientes.",
         points: [
+          "Si es tu primera vez, el asistente «Poner en marcha el club» (en Ayuda y en Inicio) te lleva paso a paso: paga, invitaciones, cartera, publicación, aviso y repaso.",
           "Crea una cartera desde cero o con «Usar» en una propuesta sugerida del repositorio: queda en borrador hasta que la publiques.",
           "En el borrador escribes la lección (con vista previa), añades las opciones (busca por nombre o símbolo), fijas el mínimo y el máximo a elegir, el plazo y el importe de cada miembro.",
           "Al publicar se reparte la paga y los miembros pueden decidir. Solo se publica la del mes actual o la del siguiente.",

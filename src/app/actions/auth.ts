@@ -93,6 +93,9 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
           data: { usedAt: new Date(), usedById: user.id },
         });
         if (r.count !== 1) throw new Error("INVITACION_USADA");
+        // El móvil que puso quien invitó pasa a la cuenta: así el aviso por WhatsApp llega sin tener que rellenar el perfil
+        const inv = await tx.invitation.findUnique({ where: { code: invitationCode }, select: { phone: true } });
+        if (inv?.phone) await tx.user.update({ where: { id: user.id }, data: { phone: inv.phone } });
       }
       return user.id;
     });
@@ -103,7 +106,8 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
   }
   await createSession({ id: userId, sessionVersion: 0 });
   await recordLogin(userId, ip);
-  redirect(status === "PENDING" ? "/pendiente" : "/inicio");
+  // Quien acaba de fundar un club entra directamente en el asistente de puesta en marcha
+  redirect(status === "PENDING" ? "/pendiente" : newFamilyName ? "/empezar" : "/inicio");
 }
 
 const loginSchema = z.object({ email: emailSchema, password: z.string().min(1, "Indica la contraseña").max(128) });

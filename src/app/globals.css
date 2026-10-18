@@ -599,6 +599,42 @@ table thead th { font-size: 11px; letter-spacing: 0.08em; text-transform: upperc
 
 @media (prefers-reduced-motion: reduce) { .lp-hero-line { animation: none; stroke-dashoffset: 0; } .lp-faq summary::after { transition: none; } }
 
+/* ---------- Asistente de puesta en marcha (/empezar) ---------- */
+.setup-layout { display: grid; gap: 20px; align-items: start; }
+@media (min-width: 1024px) { .setup-layout { grid-template-columns: 264px minmax(0, 1fr); gap: 28px; } .setup-rail { position: sticky; top: 20px; } }
+.setup-layout > * { min-width: 0; }
+.setup-rail { padding: 16px 12px 12px; border: 1px solid var(--color-divider); border-radius: var(--radius); background: var(--color-surface); }
+.setup-rail ol { position: relative; }
+/* La línea que une los pasos: pasa por detrás de los círculos */
+.setup-rail ol::before { content: ""; position: absolute; left: 21px; top: 18px; bottom: 18px; width: 2px; background: var(--color-divider); }
+.setup-rail-link { position: relative; display: flex; align-items: center; gap: 12px; padding: 8px 8px; border-radius: 10px; text-decoration: none; color: var(--color-text); }
+.setup-rail-link:hover { background: var(--color-surface-2); color: var(--color-text); }
+.setup-rail-link[aria-current="step"] { background: var(--color-accent-100); }
+.setup-rail-link[aria-current="step"] .setup-dot { box-shadow: 0 0 0 4px var(--color-surface), 0 0 0 6px #10b981; }
+.setup-dot { position: relative; z-index: 1; flex: none; width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; font: 700 13px/1 var(--font-numeric); background: var(--color-surface); color: var(--color-text-muted); border: 2px solid var(--color-neutral-400); }
+.setup-rail-link[data-state="done"] .setup-dot, .setup-dot.is-done { background: #047857; border-color: #047857; color: #ffffff; }
+.setup-row .setup-dot { width: 24px; height: 24px; }
+.setup-num { width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; font: 700 13px/1 var(--font-numeric); background: var(--color-accent-100); color: var(--color-accent-800); }
+@media (max-width: 1023px) {
+  /* En móvil y tableta la lista de pasos va en horizontal, con desplazamiento propio */
+  .setup-rail ol { flex-direction: row; overflow-x: auto; gap: 4px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .setup-rail ol::before { display: none; }
+  .setup-rail-link { flex-direction: column; gap: 6px; min-width: 86px; text-align: center; }
+  .setup-rail-link .block { font-size: 12px; }
+}
+.setup-panel { min-width: 0; }
+.setup-why { padding: 14px 16px; border-radius: 10px; background: var(--color-surface-2); border: 1px solid var(--color-divider); }
+.setup-tips { padding: 14px 16px; border-radius: 10px; background: var(--color-amber-100); }
+.setup-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--color-divider); }
+.setup-row:first-child { border-top: 0; }
+.setup-proposal { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: var(--radius); border: 1px solid var(--color-divider); background: var(--color-surface); box-shadow: var(--shadow-sm); }
+.setup-chip { display: inline-flex; align-items: center; min-height: 38px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--color-divider); background: var(--color-surface); color: var(--color-text); font: 600 14px/1 var(--font-body); cursor: pointer; }
+.setup-chip:hover { background: var(--color-surface-2); }
+.setup-chip.is-on { background: #047857; border-color: #047857; color: #ffffff; }
+.setup-message { margin: 0; white-space: pre-wrap; font: 400 14px/1.5 var(--font-body); padding: 12px 14px; border-radius: 10px; background: #e7f3e3; color: #0e2138; max-width: 52ch; }
+:root[data-theme="dark"] .setup-message { background: #16281f; color: #f1f5f9; }
+.setup-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding-top: 16px; border-top: 1px solid var(--color-divider); }
+
 /* ---------- Foto de perfil ---------- */
 .avatar { display: inline-block; border-radius: 999px; object-fit: cover; flex: none; vertical-align: middle; }
 .avatar-initial { display: inline-flex; align-items: center; justify-content: center; background: var(--brand-emerald, #10b981); color: #0e2138; font-family: var(--font-heading); font-weight: 800; line-height: 1; }

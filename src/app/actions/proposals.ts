@@ -9,6 +9,7 @@ import { rateLimit } from "@/lib/ratelimit";
 import { proposalProblems, PROPOSAL_LIMITS } from "@/lib/proposals";
 import { describeSymbol } from "@/lib/symbolInfo";
 import { symbolSchema } from "@/lib/validation";
+import { adoptProposal } from "@/lib/adoptProposal";
 import type { FormState } from "./auth";
 
 const refresh = (portfolioId?: string) => {
@@ -86,35 +87,10 @@ export async function adoptProposalAction(_prev: FormState, formData: FormData):
   const admin = await requireAdmin();
   const parsed = useSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { proposalId, month } = parsed.data;
-  const limit = await rateLimit(`adopt:${admin.id}`, 20, 60 * 60 * 1000);
-  if (!limit.ok) return { error: "Has creado muchas carteras seguidas desde el repositorio. Prueba dentro de un rato." };
-
-  const proposal = await prisma.proposal.findUnique({ where: { id: proposalId }, include: { options: { orderBy: { order: "asc" } } } });
-  if (!proposal) return { error: "La propuesta ya no está en el repositorio" };
-  if (await prisma.monthlyPortfolio.findUnique({ where: { familyId_month: { familyId: admin.familyId, month } } })) return { error: "Ya tienes una cartera para ese mes: elige otro" };
-
-  const members = await prisma.user.findMany({ where: { familyId: admin.familyId, status: "ACTIVE" }, select: { id: true } });
-  const created = await prisma.$transaction(async (tx) => {
-    const p = await tx.monthlyPortfolio.create({
-      data: {
-        familyId: admin.familyId,
-        month,
-        sourceProposalId: proposal.id,
-        title: proposal.title,
-        lesson: proposal.lesson,
-        minChoices: proposal.minChoices,
-        maxChoices: proposal.maxChoices,
-        createdById: admin.id,
-        allocations: { create: members.map((m) => ({ userId: m.id, amount: admin.family.monthlyAllowance })) },
-        options: { create: proposal.options.map((o, i) => ({ symbol: o.symbol, name: o.name, kind: o.kind, note: o.note, order: i })) },
-      },
-    });
-    await tx.proposal.update({ where: { id: proposal.id }, data: { uses: { increment: 1 } } });
-    return p;
-  });
-  refresh(created.id);
-  redirect(`/cartera/gestion/${created.id}`);
+  const r = await adoptProposal(admin, parsed.data.proposalId, parsed.data.month);
+  if ("error" in r) return r;
+  refresh(r.id);
+  redirect(`/cartera/gestion/${r.id}`);
 }
 
 /** Una familia retira del repositorio una propuesta suya (las del club y las de otras familias no se pueden tocar). */
