@@ -55,3 +55,6 @@ tsconfig.tsbuildinfo
 
 # Informes de revisión de diseño generados en local
 .impeccable/critique/
+
+# Vídeos promocionales generados (pesan; se regeneran con scripts/video)
+docs/marketing/videos/*.mp4
