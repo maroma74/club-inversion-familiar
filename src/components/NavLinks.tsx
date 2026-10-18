@@ -60,7 +60,8 @@ function AlertMark() {
 export function NavLinks({ isAdmin, isSiteAdmin = false, alertHref = null }: { isAdmin: boolean; isSiteAdmin?: boolean; alertHref?: string | null }) {
   const path = usePathname();
   return (
-    <nav aria-label="Principal" className="flex flex-col px-3 py-1 gap-0.5 flex-1">
+    // min-h-0 + overflow: en pantallas bajas el menú desplaza dentro de la barra lateral en vez de quedar cortado
+    <nav aria-label="Principal" className="sidebar-scroll flex flex-col px-3 py-1 gap-0.5 flex-1 min-h-0 overflow-y-auto overscroll-contain">
       {GROUPS.map((g) => (
         <div key={g.header} className="flex flex-col gap-0.5">
           <div className="nav-header text-[11px] tracking-[0.12em] uppercase font-semibold" style={{ padding: "14px 10px 4px" }}>{g.header}</div>

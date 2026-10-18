@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { loginAction } from "@/app/actions/auth";
+import { PasswordInput } from "@/components/PasswordInput";
 
 /** Caja de entrada: la misma en /login y en la portada. */
 export function LoginForm({ compact = false }: { compact?: boolean }) {
@@ -16,7 +17,7 @@ export function LoginForm({ compact = false }: { compact?: boolean }) {
         </div>
         <div>
           <label className="label" htmlFor="password">Contraseña</label>
-          <input id="password" name="password" type="password" required className="input" autoComplete="current-password" />
+          <PasswordInput id="password" name="password" required autoComplete="current-password" />
         </div>
         {state?.error && <p role="alert" className="text-sm text-red-600">{state.error}</p>}
         <button className="btn-primary w-full" disabled={pending}>{pending ? "Entrando…" : "Entrar en mi club"}</button>

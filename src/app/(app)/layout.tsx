@@ -50,7 +50,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </>
         }
       />
-      <aside className="sidebar hidden md:flex md:flex-[0_0_248px] md:min-w-[220px] flex-col md:min-h-screen md:sticky md:top-0 md:max-h-screen">
+      <aside className="sidebar hidden md:flex md:flex-[0_0_248px] md:min-w-[220px] flex-col md:sticky md:top-0 md:h-screen md:self-start">
         <Link href="/inicio" className="flex items-center gap-3 no-underline" style={{ padding: "18px 20px 14px" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/isotipo.svg" alt="" width={40} height={40} className="rounded-xl shrink-0" />

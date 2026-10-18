@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { registerAction } from "@/app/actions/auth";
+import { NewPasswordFields } from "@/components/NewPasswordFields";
 
 export type Preview =
   | { error: string }
@@ -80,11 +81,7 @@ export function RegisterForm({ initialCode, preview, allowCreate = true }: { ini
             <label className="label" htmlFor="email">Email</label>
             <input id="email" name="email" type="email" required defaultValue={ok?.email ?? ""} className="input" autoComplete="email" />
           </div>
-          <div>
-            <label className="label" htmlFor="password">Contraseña</label>
-            <input id="password" name="password" type="password" required minLength={10} maxLength={72} className="input" autoComplete="new-password" />
-            <p className="text-xs text-slate-500 mt-1">Al menos 10 caracteres.</p>
-          </div>
+          <NewPasswordFields idPrefix="reg" inline />
           {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
           <button className="btn-primary w-full" disabled={pending}>{pending ? "Creando…" : mode === "create" || ok?.newFamily ? "Crear mi familia y entrar" : ok?.approval ? "Solicitar entrada" : "Unirme y entrar"}</button>
         </form>

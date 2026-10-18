@@ -285,6 +285,15 @@ figcaption { font-size: 11px; margin-top: 4px; color: var(--color-text-muted); }
 .input:hover { border-color: var(--color-neutral-500); }
 .input:focus-visible { border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18); outline: none; }
 .input:disabled { opacity: 0.6; }
+/* Contraseña con el ojo para verla: el botón se superpone a la derecha del campo */
+.pw-field { position: relative; display: block; }
+.pw-input { padding-right: 46px; }
+.pw-input::-ms-reveal, .pw-input::-ms-clear { display: none; }
+.pw-toggle { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); display: grid; place-items: center; width: 38px; height: 34px; border: 0; border-radius: 8px; background: transparent; color: var(--color-text-muted); cursor: pointer; }
+.pw-toggle:hover { color: var(--color-text); background: var(--color-surface-2); }
+.pw-toggle[aria-pressed="true"] { color: var(--color-accent-700); }
+.pw-hint-bad { color: var(--color-amber-700); }
+.pw-hint-ok { color: var(--color-accent-700); }
 textarea.input { min-height: 90px; resize: vertical; }
 .radio { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
 .radio input, .seg-opt input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
@@ -358,6 +367,11 @@ table thead th { font-size: 11px; letter-spacing: 0.08em; text-transform: upperc
 .sidebar .nav-link[data-active="true"] { background: rgba(16, 185, 129, 0.18); color: #ffffff; border-color: rgba(16, 185, 129, 0.5); }
 .sidebar .nav-num { color: var(--brand-emerald-light); }
 .sidebar .nav-header { color: rgba(248, 250, 252, 0.7); }
+/* Barra de desplazamiento del menú lateral, discreta sobre navy */
+.sidebar-scroll { scrollbar-width: thin; scrollbar-color: rgba(248, 250, 252, 0.25) transparent; }
+.sidebar-scroll::-webkit-scrollbar { width: 8px; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(248, 250, 252, 0.22); border-radius: 999px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
 
 /* Enlace «Saltar al contenido»: solo visible al enfocarlo con el teclado */
 .skip-link { position: absolute; left: 12px; top: -64px; z-index: 100; padding: 10px 16px; border-radius: 999px; background: #ffffff; color: var(--brand-navy); font-weight: 700; text-decoration: none; box-shadow: var(--shadow-md); }

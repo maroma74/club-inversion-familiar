@@ -14,6 +14,7 @@ const registerSchema = z.object({
   name: nameText(60, 2),
   email: emailSchema,
   password: newPasswordSchema,
+  confirm: z.string().max(128).default(""),
   mode: z.enum(["create", "join"]),
   familyName: nameText(60).optional(),
   inviteCode: z.string().trim().toUpperCase().max(20).optional(),
@@ -31,6 +32,8 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
   const parsed = registerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
+  // La contraseña se escribe dos veces en el alta: si no coinciden, no se crea la cuenta
+  if (d.password !== d.confirm) return { error: "Las dos contraseñas no coinciden. Escribe la misma en ambas cajas." };
 
   const ip = await clientIp();
   const limit = await rateLimit(`register:${ip}`, 10, 60 * 60 * 1000);
