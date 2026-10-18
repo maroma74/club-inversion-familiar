@@ -662,6 +662,11 @@ table thead th { font-size: 11px; letter-spacing: 0.08em; text-transform: upperc
 .welcome-mission { display: flex; flex-direction: column; gap: 6px; padding: 18px 20px; border-radius: 12px; background: var(--color-surface-2); border: 1px solid var(--color-divider); }
 .welcome-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 18px; border-top: 1px solid var(--color-divider); }
 
+/* ---------- «Visualizar como» un miembro: barra fija de solo lectura ---------- */
+.viewing-as { position: sticky; top: 0; z-index: 30; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 20px; padding: 10px 14px; border-radius: 12px; font-size: 14px; background: var(--brand-navy); color: #f8fafc; box-shadow: var(--shadow-md); }
+.viewing-as[data-blocked="true"] { background: var(--brand-amber); color: #0e2138; }
+@media (max-width: 767px) { .viewing-as { top: 60px; } }
+
 /* ---------- Foto de perfil ---------- */
 .avatar { display: inline-block; border-radius: 999px; object-fit: cover; flex: none; vertical-align: middle; }
 .avatar-initial { display: inline-flex; align-items: center; justify-content: center; background: var(--brand-emerald, #10b981); color: #0e2138; font-family: var(--font-heading); font-weight: 800; line-height: 1; }

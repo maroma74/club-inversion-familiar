@@ -191,7 +191,7 @@ export default async function InvitacionesPage() {
               const lastAdmin = m.role === "ADMIN" && activeAdmins <= 1;
               return (
                 <tr key={m.id} className="border-t border-slate-100">
-                  <td className="px-5 py-2"><div className="flex items-center gap-2.5"><Avatar id={m.id} name={m.name} updatedAt={m.avatarUpdatedAt} size={32} /><div><div className="font-medium">{firstName(m.name)}{isMe ? " (tú)" : ""}</div><div className="text-xs text-slate-400">{m.email}</div></div></div></td>
+                  <td className="px-5 py-2"><div className="flex items-center gap-2.5"><Avatar id={m.id} name={m.name} updatedAt={m.avatarUpdatedAt} size={32} /><div><Link href={`/familia/miembro/${m.id}`} className="font-medium text-inherit hover:underline">{firstName(m.name)}{isMe ? " (tú)" : ""}</Link><div className="text-xs text-slate-400">{m.email}</div></div></div></td>
                   <td className="px-2 py-2">
                     <form action={setMemberRoleAction} className="inline-flex items-center gap-1">
                       <input type="hidden" name="userId" value={m.id} />

@@ -1,10 +1,11 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { randomInt } from "crypto";
 import { prisma } from "./prisma";
 import { isAcceptableSecret, secretProblem } from "./secretPolicy";
+import { safeInternalPath } from "./validation";
 
 // Firebase Hosting solo deja pasar la cookie llamada __session hacia Cloud Run, así que la sesión
 // (y el modo «ver como miembro» del presidente) viajan juntos en esa única cookie.
@@ -45,8 +46,9 @@ type SessionUser = { id: string; sessionVersion: number };
  * Emite la cookie de sesión. El claim `sv` es la versión de sesión del usuario: al cambiar la contraseña
  * sube en la base de datos y las cookies anteriores dejan de valer aunque no hayan caducado.
  */
-export async function createSession(user: SessionUser, viewAs: ViewAs = null) {
-  const token = await new SignJWT({ sub: user.id, sv: user.sessionVersion, ...(viewAs ? { viewAs } : {}) })
+export async function createSession(user: SessionUser, viewAs: ViewAs = null, viewAsUserId: string | null = null) {
+  // `vu`: el presidente está viendo el club como ese miembro (solo lectura); ver getCurrentUser
+  const token = await new SignJWT({ sub: user.id, sv: user.sessionVersion, ...(viewAs ? { viewAs } : {}), ...(viewAsUserId ? { vu: viewAsUserId } : {}) })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("30d")
@@ -66,7 +68,7 @@ export async function destroySession() {
   store.delete(COOKIE);
 }
 
-export async function getSession(): Promise<{ userId: string; viewAs: ViewAs; sessionVersion: number } | null> {
+export async function getSession(): Promise<{ userId: string; viewAs: ViewAs; sessionVersion: number; viewAsUserId: string | null } | null> {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
   if (!token) return null;
@@ -75,7 +77,7 @@ export async function getSession(): Promise<{ userId: string; viewAs: ViewAs; se
     if (typeof payload.sub !== "string") return null;
     // Las sesiones emitidas antes de existir el claim cuentan como versión 0 (la inicial de todos los usuarios).
     const sv = typeof payload.sv === "number" ? payload.sv : 0;
-    return { userId: payload.sub, viewAs: payload.viewAs === "member" ? "member" : null, sessionVersion: sv };
+    return { userId: payload.sub, viewAs: payload.viewAs === "member" ? "member" : null, sessionVersion: sv, viewAsUserId: typeof payload.vu === "string" ? payload.vu : null };
   } catch {
     return null;
   }
@@ -92,7 +94,8 @@ export async function bumpSessionVersion(userId: string): Promise<number> {
 }
 
 type DbUser = NonNullable<Awaited<ReturnType<typeof loadUser>>>;
-export type CurrentUser = DbUser & { realRole: string; previewAsMember: boolean };
+/** `impersonator`: el presidente que está viendo el club como este miembro (la sesión real es la suya). */
+export type CurrentUser = DbUser & { realRole: string; previewAsMember: boolean; impersonator: { id: string; name: string } | null };
 
 async function loadUser(id: string) {
   return prisma.user.findUnique({ where: { id }, include: { family: true } });
@@ -107,8 +110,41 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!session) return null;
   const user = await loadUser(session.userId);
   if (!user || user.sessionVersion !== session.sessionVersion) return null;
+  // «Visualizar como»: el presidente ve exactamente lo que ve un miembro de su familia, en solo lectura
+  if (session.viewAsUserId && user.role === "ADMIN" && session.viewAsUserId !== user.id) {
+    const target = await loadUser(session.viewAsUserId);
+    if (target && target.familyId === user.familyId && target.status === "ACTIVE") {
+      await blockWritesWhileViewingAs();
+      return { ...target, realRole: target.role, previewAsMember: false, impersonator: { id: user.id, name: user.name } };
+    }
+  }
   const previewAsMember = user.role === "ADMIN" && session.viewAs === "member";
-  return { ...user, realRole: user.role, role: previewAsMember ? "MEMBER" : user.role, previewAsMember };
+  return { ...user, realRole: user.role, role: previewAsMember ? "MEMBER" : user.role, previewAsMember, impersonator: null };
+}
+
+/**
+ * Mientras el presidente ve el club como otro miembro, nada se guarda en nombre de ese miembro: cualquier acción
+ * de servidor (envío de formulario) se corta aquí y se vuelve a la página con el aviso de solo lectura. Las páginas
+ * se pintan con normalidad. Salir de la vista no pasa por aquí (usa la sesión real).
+ */
+async function blockWritesWhileViewingAs() {
+  const h = await headers();
+  if (!h.get("next-action")) return;
+  let back = "/inicio";
+  try {
+    const ref = h.get("referer");
+    if (ref) back = new URL(ref).pathname;
+  } catch {}
+  redirect(`${safeInternalPath(back.split("?")[0])}?solo-lectura=1`);
+}
+
+/** El presidente real de la sesión, aunque esté viendo el club como otro miembro (para entrar y salir de esa vista). */
+export async function getSessionAdmin() {
+  const session = await getSession();
+  if (!session) return null;
+  const user = await loadUser(session.userId);
+  if (!user || user.sessionVersion !== session.sessionVersion || user.role !== "ADMIN" || user.status !== "ACTIVE") return null;
+  return user;
 }
 
 export async function requireUser(): Promise<CurrentUser> {

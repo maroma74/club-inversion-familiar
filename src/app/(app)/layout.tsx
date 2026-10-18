@@ -8,6 +8,8 @@ import { logoutAction } from "@/app/actions/auth";
 import { MobileNav, NavLinks } from "@/components/NavLinks";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ViewAsBar } from "@/components/ViewAsBar";
+import { ViewingAsBar } from "@/components/ViewingAsBar";
+import { Suspense } from "react";
 import { Avatar } from "@/components/Avatar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -76,7 +78,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
       <main id="contenido" tabIndex={-1} className="app-main flex-1 min-w-0 max-w-[1240px] outline-none">
-        {user.realRole === "ADMIN" && <ViewAsBar previewAsMember={user.previewAsMember} />}
+        {user.impersonator ? (
+          <Suspense fallback={null}><ViewingAsBar memberName={firstName(user.name)} memberId={user.id} /></Suspense>
+        ) : (
+          user.realRole === "ADMIN" && <ViewAsBar previewAsMember={user.previewAsMember} />
+        )}
         {children}
       </main>
     </div>

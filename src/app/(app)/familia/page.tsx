@@ -56,6 +56,7 @@ export default async function FamiliaPage() {
                 <div className="text-sm">Nivel {p?.level ?? 1} · {p?.levelName ?? "Novato"} · {lessonsText(p?.lessonsPassed ?? 0)}</div>
                 <div className="text-xs text-neutral-700 tabular-nums">Aportado {eur(r?.contributed ?? 0)} · valor {eur(r?.totalValue ?? 0)}</div>
                 {isAdmin && emailOf.get(m.id) && <div className="text-xs text-neutral-700 truncate">{emailOf.get(m.id)}</div>}
+                {isAdmin && <div className="pt-1"><Link href={`/familia/miembro/${m.id}`} className="btn-secondary py-1 text-xs">{m.id === user.id ? "Ver mi ficha" : `Ficha de ${firstName(m.name)}`}</Link></div>}
               </li>
             );
           })}
