@@ -1,7 +1,8 @@
 // Servidor estático mínimo para componer los vídeos promocionales en el navegador (localhost = contexto seguro
-// para WebCodecs). Sirve esta carpeta y, bajo /hijos/, /presi/ y /brand/, las capturas de los recorridos y el logo.
-// Uso: node scripts/video/serve.mjs, abre en Chrome http://localhost:4317/?v=presi (o ?v=hijos) y ejecuta
-// renderVideo() en la consola: descarga el MP4 de 1080×1920. preview(segundos) pinta un fotograma suelto.
+// para WebCodecs). Sirve esta carpeta y, bajo /hijos/, /presi/ y /brand/, las capturas de los recorridos y el logo;
+// bajo /videos/, los MP4 ya generados (para revisarlos).
+// Uso: node scripts/video/serve.mjs, abre en Chrome http://localhost:4317/?v=presi (o ?v=hijos) con &f=vertical,
+// horizontal o cuadrado, y ejecuta renderVideo() en la consola: descarga el MP4. preview(segundos) pinta un fotograma.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -11,6 +12,7 @@ const roots = {
   "/hijos/": "C:/dev/FinanzasFamilia/docs/marketing/onboarding-hijos/",
   "/presi/": "C:/dev/FinanzasFamilia/docs/marketing/onboarding-presidente/",
   "/brand/": "C:/dev/FinanzasFamilia/public/",
+  "/videos/": path.resolve(here, "../../docs/marketing/videos/"),
 };
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".png": "image/png", ".svg": "image/svg+xml", ".json": "application/json", ".mp4": "video/mp4" };
 
