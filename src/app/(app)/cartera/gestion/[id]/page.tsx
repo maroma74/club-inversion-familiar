@@ -10,6 +10,9 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { todayYmd } from "@/lib/validation";
 import { ShareProposalForm } from "../../repositorio/forms";
 import { AddOptionForm, AllocationsForm, PortfolioDetailsForm, PublishForm, ScheduleForm } from "../forms";
+import { aiConfigured } from "@/lib/ai";
+import { previewAllocation } from "@/lib/decisionCoach";
+import { DecisionCoach } from "../../DecisionCoach";
 
 export default async function GestionDetallePage({ params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
@@ -121,6 +124,23 @@ export default async function GestionDetallePage({ params }: { params: Promise<{
           )}
         </div>
       </section>
+
+      {p.status !== "CLOSED" && aiConfigured() && !admin.impersonator && (
+        p.options.length > 0 ? (
+          <DecisionCoach
+            portfolioId={p.id}
+            userId={admin.id}
+            name={firstName(admin.name)}
+            options={p.options.map((o) => ({ symbol: o.symbol, name: o.name, href: o.kind === "COMMODITY" ? `/materias-primas/${encodeURIComponent(o.symbol)}` : o.kind === "CRYPTO" ? `/cripto/${encodeURIComponent(o.symbol)}` : o.kind === "ETF" ? `/etf/${encodeURIComponent(o.symbol)}` : `/acciones/${encodeURIComponent(o.symbol)}` }))}
+            preview={{ amount: eur(previewAllocation(p.allocations, admin.id, admin.family.monthlyAllowance)), disabledForMembers: !admin.family.tutorEnabled }}
+          />
+        ) : (
+          <section className="card card-snug gap-1">
+            <div className="card-kicker" style={{ textTransform: "none", letterSpacing: "0.02em" }}>TutorIA</div>
+            <p className="m-0 text-sm text-neutral-700">Cuando la cartera tenga al menos una opción, podrás probar aquí cómo la explica TutorIA a los miembros.</p>
+          </section>
+        )
+      )}
 
       {p.status !== "CLOSED" && withoutAllocation.length > 0 && (
         <section className="card card-snug gap-1" style={{ borderColor: "#e5a016" }}>

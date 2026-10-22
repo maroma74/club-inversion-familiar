@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { COACH_MAX_MESSAGES, COACH_MAX_USER_CHARS, buildCoachSystemPrompt, coachRules, parseCoachMessages, type CoachContext } from "./decisionCoach";
+import { COACH_MAX_MESSAGES, COACH_MAX_USER_CHARS, buildCoachSystemPrompt, coachRules, parseCoachMessages, previewAllocation, type CoachContext } from "./decisionCoach";
 import { hasSummary, parseCoachReply } from "./coachSummary";
 
 const ctx: CoachContext = {
@@ -97,4 +97,12 @@ test("el bloque <resumen> sale aparte para copiarlo, también a medio llegar", (
   ]);
   assert.deepEqual(parseCoachReply("Vale:\n<resumen>Elijo VW").at(-1), { type: "resumen", text: "Elijo VW", done: false });
   assert.deepEqual(parseCoachReply("Vale:\n<resu"), [{ type: "text", text: "Vale:" }]);
+});
+
+test("el presidente prueba con su importe, si no con la media asignada y si no con la paga de la familia", () => {
+  const a = [{ userId: "hija", amount: 20 }, { userId: "hijo", amount: 30 }, { userId: "otro", amount: 0 }];
+  assert.equal(previewAllocation([...a, { userId: "presi", amount: 15 }], "presi", 100), 15);
+  assert.equal(previewAllocation(a, "presi", 100), 25);
+  assert.equal(previewAllocation([], "presi", 40), 40);
+  assert.equal(previewAllocation([], "presi", 0), 20);
 });

@@ -14,8 +14,9 @@ const ANCHOR = "ayuda-decision";
  * TutorIA («Ayuda para tomar la decisión»): conversación con el tutor de IA de la cartera del mes. La conversación se
  * guarda solo en este dispositivo, para poder salir a «Analizar» una opción y volver sin perderla.
  */
-export function DecisionCoach({ portfolioId, userId, name, options }: { portfolioId: string; userId: string; name: string; options: Opt[] }) {
-  const storeKey = `cartera-ayuda:${portfolioId}:${userId}`;
+export function DecisionCoach({ portfolioId, userId, name, options, preview }: { portfolioId: string; userId: string; name: string; options: Opt[]; preview?: { amount: string; disabledForMembers: boolean } }) {
+  // La prueba del presidente se guarda aparte, para no mezclarla con su propia ayuda de la cartera del mes
+  const storeKey = `${preview ? "cartera-ayuda-prueba" : "cartera-ayuda"}:${portfolioId}:${userId}`;
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [streaming, setStreaming] = useState<string | null>(null);
@@ -92,7 +93,7 @@ export function DecisionCoach({ portfolioId, userId, name, options }: { portfoli
     let acc = "";
     let failure: string | null = null;
     try {
-      const res = await fetch("/api/cartera/ayuda", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ portfolioId, messages: next }), signal: ctrl.signal });
+      const res = await fetch("/api/cartera/ayuda", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ portfolioId, messages: next, preview: !!preview }), signal: ctrl.signal });
       if (!res.ok || !res.body) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(data?.error ?? "No se ha podido contactar con la ayuda. Inténtalo de nuevo.");
@@ -159,13 +160,25 @@ export function DecisionCoach({ portfolioId, userId, name, options }: { portfoli
           <TutorIAIcon size={64} className="max-sm:w-12 max-sm:h-12" />
           <div className="min-w-0">
             <div className="card-kicker" style={{ textTransform: "none", letterSpacing: "0.02em" }}>TutorIA</div>
-            <h2 id="ayuda-decision-titulo" className="m-0 mt-0.5 text-[22px]">¿Te ayudo a decidir, {name}?</h2>
-            <p className="m-0 mt-1 text-sm text-neutral-700 max-w-[64ch] [text-wrap:pretty]">
-              TutorIA es un tutor con inteligencia artificial que conoce la lección y las opciones de este mes. Te hará preguntas, te explicará lo que no entiendas y, cuando lo tengas claro, te preparará un resumen para tu porqué. La decisión es tuya.
-            </p>
+            {preview ? (
+              <>
+                <h2 id="ayuda-decision-titulo" className="m-0 mt-0.5 text-[22px]">Prueba TutorIA con esta cartera</h2>
+                <p className="m-0 mt-1 text-sm text-neutral-700 max-w-[68ch] [text-wrap:pretty]">
+                  Habla con él como si fueras un miembro con {preview.amount} para invertir, y mira cómo explica la lección y las opciones. Usa la cartera tal como está ahora: si cambias la lección o las opciones, la siguiente respuesta ya lo tiene en cuenta. Es solo una prueba: no se guarda ninguna decisión.
+                  {preview.disabledForMembers && " Ahora mismo TutorIA está desactivado para los miembros de tu club; puedes probarlo igualmente."}
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 id="ayuda-decision-titulo" className="m-0 mt-0.5 text-[22px]">¿Te ayudo a decidir, {name}?</h2>
+                <p className="m-0 mt-1 text-sm text-neutral-700 max-w-[64ch] [text-wrap:pretty]">
+                  TutorIA es un tutor con inteligencia artificial que conoce la lección y las opciones de este mes. Te hará preguntas, te explicará lo que no entiendas y, cuando lo tengas claro, te preparará un resumen para tu porqué. La decisión es tuya.
+                </p>
+              </>
+            )}
           </div>
         </div>
-        {!open && <TutorIAButton onClick={start} disabled={!ready} />}
+        {!open && <TutorIAButton onClick={start} disabled={!ready} label={preview ? "Probar TutorIA" : "TutorIA"} />}
       </div>
 
       {open && (
@@ -182,7 +195,7 @@ export function DecisionCoach({ portfolioId, userId, name, options }: { portfoli
             )}
           </div>
 
-          {!pending && messages.at(-1)?.role === "assistant" && hasSummary(messages.at(-1)!.content) && (
+          {!preview && !pending && messages.at(-1)?.role === "assistant" && hasSummary(messages.at(-1)!.content) && (
             <p className="m-0 text-sm flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="text-neutral-700">Pega cada texto en su casilla del paso 2, «Explica», de tu decisión.</span>
               <a href="#decidir" className="btn-secondary">Ir a mi decisión</a>
@@ -302,11 +315,11 @@ function SummaryPiece({ piece, options }: { piece: Exclude<CoachPiece, { type: "
 }
 
 /** Botón de TutorIA: el búho y el nombre. */
-export function TutorIAButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+export function TutorIAButton({ onClick, disabled, label = "TutorIA" }: { onClick: () => void; disabled?: boolean; label?: string }) {
   return (
-    <button type="button" className="btn-secondary" style={{ paddingBlock: 4, paddingLeft: 5 }} onClick={onClick} disabled={disabled} aria-label="TutorIA: ayuda para tomar la decisión">
+    <button type="button" className="btn-secondary" style={{ paddingBlock: 4, paddingLeft: 5 }} onClick={onClick} disabled={disabled} aria-label={`${label}: ayuda para tomar la decisión`}>
       <TutorIAIcon size={32} />
-      TutorIA
+      {label}
     </button>
   );
 }

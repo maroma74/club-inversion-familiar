@@ -164,3 +164,15 @@ export function parseCoachMessages(input: unknown): { ok: true; messages: CoachM
   if (messages.at(-1)!.role !== "user") return { ok: false, error: "Falta tu mensaje." };
   return { ok: true, messages };
 }
+
+/**
+ * Importe con el que el presidente prueba TutorIA: el suyo en esa cartera; si no tiene, la media de lo asignado
+ * a los demás; y si aún no hay nada asignado, la paga habitual de la familia.
+ */
+export function previewAllocation(allocations: { userId: string; amount: number }[], userId: string, allowance: number): number {
+  const own = allocations.find((a) => a.userId === userId)?.amount ?? 0;
+  if (own > 0) return own;
+  const given = allocations.filter((a) => a.amount > 0);
+  if (given.length) return Math.round((given.reduce((s, a) => s + a.amount, 0) / given.length) * 100) / 100;
+  return allowance > 0 ? allowance : 20;
+}
