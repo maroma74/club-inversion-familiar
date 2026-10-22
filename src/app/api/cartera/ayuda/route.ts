@@ -89,7 +89,7 @@ export async function POST(req: Request) {
           if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") send({ t: "text", v: ev.delta.text });
         }
         const final = await stream.finalMessage();
-        console.log(JSON.stringify({ event: "ai-ayuda", userId: user.id, portfolioId: p.id, model: final.model, stop: final.stop_reason, input: final.usage.input_tokens, output: final.usage.output_tokens, cacheRead: final.usage.cache_read_input_tokens ?? 0 }));
+        console.log(JSON.stringify({ event: "ai-ayuda", userId: user.id, portfolioId: p.id, model: final.model, stop: final.stop_reason, input: final.usage.input_tokens, cacheWrite: final.usage.cache_creation_input_tokens ?? 0, cacheRead: final.usage.cache_read_input_tokens ?? 0, output: final.usage.output_tokens }));
         if (final.stop_reason === "refusal") send({ t: "error", v: "El asistente no puede responder a eso. Prueba a preguntarlo de otra forma." });
         else if (final.stop_reason === "max_tokens") send({ t: "error", v: "La respuesta se ha cortado. Pídele que siga o que lo diga más corto." });
         else send({ t: "done" });

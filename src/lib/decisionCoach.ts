@@ -41,6 +41,7 @@ export function coachRules(ctx: CoachContext): string[] {
     ctx.maxChoices === 1 ? "" : "Lo que no reparta se queda como efectivo en su cartera.",
     "Por cada opción elegida escribe por qué la elige (y, si quiere, qué le haría vender), y además una idea general sobre lo que ha aprendido de la lección.",
     "Cuando envía la decisión ya no puede cambiarla: se compra al precio de ese momento y queda en su cartera y en su diario.",
+    `Se compran fracciones: aunque una participación cueste más que su importe, se invierte exactamente lo que elija (por ejemplo, ${eur(ctx.allocation)} en un valor que cueste el doble compran media participación).`,
     deadline,
     "Al cerrar el mes la familia hace un repaso: gana quien mejor explicó su decisión, no quien más acertó, porque acertar a corto plazo es en buena parte suerte.",
   ].filter(Boolean);

@@ -27,6 +27,7 @@ test("las reglas dicen el importe, cuántas opciones, el plazo y cómo se gana e
   assert.match(r, /se queda como efectivo/);
   assert.match(r, /26 de octubre \(quedan 4 días\)/);
   assert.match(r, /quien mejor explicó/);
+  assert.match(r, /Se compran fracciones: .*20,00 € en un valor que cueste el doble compran media participación/);
   const single = coachRules({ ...ctx, maxChoices: 1 }).join("\n");
   assert.match(single, /una sola opción/);
   assert.doesNotMatch(single, /efectivo/);
