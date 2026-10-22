@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSiteAdmin } from "@/lib/auth";
-import { checkAiConnection, setAiModel } from "@/lib/ai";
+import { checkAiConnection, resetCoachPrompt, setAiModel, setCoachPrompt } from "@/lib/ai";
+import { COACH_PLACEHOLDERS, COACH_PROMPT_MAX, DEFAULT_COACH_PROMPT } from "@/lib/decisionCoach";
 import { aiModelName, isAiModel } from "@/lib/aiModels";
 import type { FormState } from "./auth";
 
@@ -54,4 +55,26 @@ export async function setAiModelAction(_prev: FormState, formData: FormData): Pr
   await setAiModel(model, me.id);
   revalidatePath("/admin");
   return { ok: `Guardado: los análisis usarán ${aiModelName(model)}.` };
+}
+
+/** Guarda el prompt de TutorIA o vuelve al de por defecto. Avisa si falta alguna variable importante. */
+export async function saveCoachPromptAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const me = await requireSiteAdmin();
+  if (formData.get("intent") === "reset") {
+    await resetCoachPrompt();
+    revalidatePath("/admin");
+    return { ok: "Restaurado: TutorIA vuelve a usar el prompt de por defecto." };
+  }
+  const text = String(formData.get("prompt") ?? "").replace(/\r\n/g, "\n").trim();
+  if (text.length < 50) return { error: "El prompt es demasiado corto: explica al tutor qué papel tiene y cómo debe conversar." };
+  if (text.length > COACH_PROMPT_MAX) return { error: `El prompt es demasiado largo: como máximo ${COACH_PROMPT_MAX.toLocaleString("es-ES")} caracteres.` };
+  if (text === DEFAULT_COACH_PROMPT.trim()) await resetCoachPrompt();
+  else await setCoachPrompt(text, me.id);
+  revalidatePath("/admin");
+  const uses = (key: string) => new RegExp(String.raw`\{\{\s*${key}\s*\}\}`).test(text);
+  const notes = [
+    ...(!uses("NOMBRE_USUARIO") ? ["no usa {{NOMBRE_USUARIO}}, así que el tutor no sabrá cómo se llama"] : []),
+    ...COACH_PLACEHOLDERS.filter((p) => (p.key === "CARTERA_DEL_MES" || p.key === "REGLAS_MES") && !uses(p.key)).map((p) => `no usa {{${p.key}}}: esos datos se añaden al final`),
+  ];
+  return { ok: notes.length ? `Guardado. Ojo: ${notes.join("; ")}.` : "Guardado: TutorIA usará este prompt desde el próximo mensaje." };
 }

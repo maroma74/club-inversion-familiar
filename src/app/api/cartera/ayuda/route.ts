@@ -7,7 +7,7 @@ import { firstName } from "@/lib/names";
 import { getPrices } from "@/lib/prices";
 import { getClubRecommendations } from "@/lib/club";
 import { clubSignalText, getPortfolioFull, isDeadlinePassed, monthLabelLong } from "@/lib/monthly";
-import { aiConfigured, aiErrorMessage, getAiModel, getAnthropic, hasServerFallback } from "@/lib/ai";
+import { aiConfigured, aiErrorMessage, getAiModel, getAnthropic, getCoachPrompt, hasServerFallback } from "@/lib/ai";
 import { buildCoachSystemPrompt, parseCoachMessages } from "@/lib/decisionCoach";
 
 /**
@@ -43,11 +43,12 @@ export async function POST(req: Request) {
   const limit = await rateLimit(`ai-ayuda:${user.id}`, MAX_PER_DAY, 24 * 3600 * 1000);
   if (!limit.ok) return fail("Has usado mucho la ayuda hoy. Vuelve mañana o pregunta al presidente del club.", 429);
 
-  const [family, prices, recs, model] = await Promise.all([
+  const [family, prices, recs, model, prompt] = await Promise.all([
     prisma.family.findUnique({ where: { id: user.familyId }, select: { name: true } }),
     getPrices(p.options.map((o) => o.symbol), p.familyId),
     getClubRecommendations(p.options.filter((o) => o.kind !== "CRYPTO").map((o) => o.symbol)),
     getAiModel(),
+    getCoachPrompt(),
   ]);
   const system = buildCoachSystemPrompt({
     firstName: firstName(user.name),
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
       const r = recs.get(o.symbol.toUpperCase());
       return { symbol: o.symbol, name: o.name, kind: o.kind, note: o.note, priceEur: prices.get(o.symbol.toUpperCase())?.priceEur ?? null, signal: r ? clubSignalText(r.action) : null };
     }),
-  });
+  }, prompt.text);
 
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({

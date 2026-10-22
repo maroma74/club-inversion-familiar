@@ -259,7 +259,7 @@ function Bubble({ role, text, symbols, options = [] }: { role: "user" | "assista
 function SummaryPiece({ piece, options }: { piece: Exclude<CoachPiece, { type: "text" }>; options: Opt[] }) {
   const [copied, setCopied] = useState(false);
   const opt = "symbol" in piece ? options.find((o) => o.symbol.toUpperCase() === piece.symbol.toUpperCase()) : null;
-  const label = piece.type === "porque" ? `Por qué eliges ${opt?.symbol ?? piece.symbol}` : piece.type === "vender" ? `Qué te haría vender ${opt?.symbol ?? piece.symbol} (opcional)` : "Tu idea general";
+  const label = piece.type === "porque" ? `Por qué eliges ${opt?.symbol ?? piece.symbol}` : piece.type === "vender" ? `Qué te haría vender ${opt?.symbol ?? piece.symbol} (opcional)` : piece.type === "resumen" ? "Tu justificación, lista para copiar" : "Tu idea general";
 
   async function copy() {
     try {

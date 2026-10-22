@@ -32,16 +32,32 @@ test("las reglas dicen el importe, cuántas opciones, el plazo y cómo se gana e
   assert.doesNotMatch(single, /efectivo/);
 });
 
-test("el prompt lleva el nombre, las opciones con sus datos, la lección y las etiquetas del resumen", () => {
+test("el prompt por defecto sustituye sus variables: nombre, cartera con sus datos y lección, y reglas", () => {
   const p = buildCoachSystemPrompt(ctx);
-  assert.match(p, /Hablas con Pablo, de la Familia Ruiz/);
+  assert.doesNotMatch(p, /\{\{/);
+  assert.match(p, /por su nombre: Pablo\./);
+  assert.match(p, /Cartera disponible este mes: «Núcleo global de bajo coste» \(cartera de octubre de 2026\)/);
   assert.match(p, /VWCE\.DE: Vanguard FTSE All-World \(ETF/);
   assert.match(p, /precio ahora: 128,40 €/);
   assert.match(p, /qué investigar, según el presidente: ¿Cuántas empresas/);
   assert.match(p, /SAN\.MC: Banco Santander \(acción de una empresa\)$/m);
   assert.match(p, /Fíjate en las comisiones\./);
-  assert.match(p, /<porque valor="SÍMBOLO">/);
-  assert.match(p, /<idea>/);
+  assert.match(p, /Reglas y límites de inversión de este mes: \n- Este mes tiene 20,00 €/);
+  // Las instrucciones de la app van siempre al final
+  assert.match(p, /# INSTRUCCIONES DE LA APP[\s\S]*<resumen> y <\/resumen>[\s\S]*como si lo escribiera Pablo/);
+  assert.ok(p.trimEnd().endsWith("con sus propias razones."));
+});
+
+test("un prompt cambiado admite espacios en las variables y, si no usa la cartera o las reglas, se añaden", () => {
+  const p = buildCoachSystemPrompt(ctx, "Eres un tutor de la {{ FAMILIA }} y hablas con {{NOMBRE_USUARIO}} de su paga. Sé breve y claro siempre.");
+  assert.match(p, /^Eres un tutor de la Familia Ruiz y hablas con Pablo de su paga\./);
+  assert.match(p, /# CARTERA DEL MES\n«Núcleo global de bajo coste»/);
+  assert.match(p, /# REGLAS DEL MES\n- Este mes tiene 20,00 €/);
+  assert.match(p, /# INSTRUCCIONES DE LA APP/);
+  const withData = buildCoachSystemPrompt(ctx, "Tutor. Cartera: {{CARTERA_DEL_MES}}. Reglas: {{REGLAS_MES}}. Hablas con {{NOMBRE_USUARIO}}.");
+  assert.doesNotMatch(withData, /# CARTERA DEL MES|# REGLAS DEL MES/);
+  // El texto de las variables no se interpreta como patrón de reemplazo ($&, $1…)
+  assert.match(buildCoachSystemPrompt({ ...ctx, firstName: "A$&B" }, "Hola {{NOMBRE_USUARIO}}, {{CARTERA_DEL_MES}} {{REGLAS_MES}}"), /^Hola A\$&B,/);
 });
 
 test("la conversación válida empieza y acaba en el miembro y alterna turnos", () => {
@@ -68,4 +84,14 @@ test("el resumen se separa en piezas para copiar, también a medio llegar", () =
   assert.deepEqual(partial.at(-1), { type: "porque", symbol: "VWCE.DE", text: "Elijo VWCE porque", done: false });
   assert.deepEqual(parseCoachReply("Vale, aquí va.\n<porq"), [{ type: "text", text: "Vale, aquí va." }]);
   assert.deepEqual(parseCoachReply('Vale.\n<porque valor="VW'), [{ type: "text", text: "Vale." }]);
+});
+
+test("el bloque <resumen> sale aparte para copiarlo, también a medio llegar", () => {
+  const pieces = parseCoachReply("Aquí tienes el resumen de tu razonamiento:\n<resumen>Elijo VWCE porque reparte el riesgo entre miles de empresas.</resumen>");
+  assert.deepEqual(pieces, [
+    { type: "text", text: "Aquí tienes el resumen de tu razonamiento:" },
+    { type: "resumen", text: "Elijo VWCE porque reparte el riesgo entre miles de empresas.", done: true },
+  ]);
+  assert.deepEqual(parseCoachReply("Vale:\n<resumen>Elijo VW").at(-1), { type: "resumen", text: "Elijo VW", done: false });
+  assert.deepEqual(parseCoachReply("Vale:\n<resu"), [{ type: "text", text: "Vale:" }]);
 });

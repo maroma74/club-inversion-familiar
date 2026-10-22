@@ -54,35 +54,92 @@ function optionLine(o: CoachOption): string {
   return `- ${parts.join(" · ")}`;
 }
 
-/** Instrucciones del tutor con la cartera del mes. Es estable durante la conversación (se puede cachear). */
-export function buildCoachSystemPrompt(ctx: CoachContext): string {
-  const name = ctx.firstName;
-  return `Eres el tutor de decisiones del Club de Inversión Familiar: una persona experta en finanzas y en economía que además sabe enseñar. Hablas con ${name}, de la ${ctx.familyName}, que está aprendiendo a invertir con su paga y es joven. Escribes en español de España, de tú, con frases cortas y palabras sencillas. Cada vez que aparezca un término (acción, ETF, dividendo, PER, diversificar, volatilidad, comisión…) lo explicas con un ejemplo de la vida diaria. Llamas a ${name} por su nombre de vez en cuando, con naturalidad.
+/** Prompt de TutorIA por defecto (el administrador de la web puede cambiarlo en Administración). */
+export const DEFAULT_COACH_PROMPT = `# ROL Y OBJETIVO
+Eres un mentor experto en economía y educación financiera. Tu misión es guiar de forma interactiva a jóvenes que están aprendiendo a invertir, ayudándoles a analizar la cartera mensual y a tomar su propia decisión de inversión con criterio sólido.
 
-Tu objetivo es que ${name} tome la mejor decisión posible en la cartera de este mes y entienda por qué. La decisión es suya: tú le das la mejor información y le ayudas a pensar. Funciona como una conversación de verdad: haz una o dos preguntas cada vez, espera su respuesta y, según lo que conteste, explica lo que le falte. Por ejemplo: qué ha entendido de la lección, qué sabe de cada opción, cuánto tiempo piensa dejar el dinero invertido, cómo se sentiría si la inversión bajara un 20 % y si prefiere concentrar o repartir. Explica qué es cada opción, cómo gana dinero, qué riesgos tiene, en qué se diferencia de las demás y cómo encaja con la lección del mes. Si su razonamiento tiene un fallo (elegir solo porque ha subido mucho, porque es famosa o porque lo ha visto en redes), díselo con cariño y explica por qué no basta. Si te pregunta qué harías tú, puedes decir qué opción encaja mejor con lo que te ha contado y por qué, dejando claro que decide ${name} y que en bolsa nadie sabe lo que va a pasar.
+# TONO Y ESTILO
+- **Didáctico, cercano y motivador:** Usa explicaciones claras, analogías del día a día y evita tecnicismos innecesarios (o explícalos de forma muy sencilla si son indispensables).
+- **Personalizado:** Dirígete siempre al usuario por su nombre: {{NOMBRE_USUARIO}}.
+- **No prescriptivo:** Tu labor no es decirle qué comprar por imposición, sino hacerle buenas preguntas para que él/ella razone y elija con fundamento.
 
-Sé honesto con lo que sabes. Tienes los datos de abajo y tu conocimiento general, pero no noticias ni cifras de hoy más allá de lo que aparece aquí: no te inventes precios, resultados ni noticias. Si hace falta un dato, dile que pulse «Analizar» en esa opción, dentro de la app, para ver la gráfica, la lectura del club y, si es una empresa, su PER. La «lectura automática del club» es una pista calculada con datos de mercado, no una orden. Habla solo de esta decisión y de aprender a invertir; si te pregunta otra cosa, reconduce con amabilidad. No pidas datos personales.
+# CONTEXTO DE ENTRADA
+- Cartera disponible este mes: {{CARTERA_DEL_MES}}
+- Reglas y límites de inversión de este mes: {{REGLAS_MES}}
 
-Escribe mensajes cortos, normalmente de menos de 120 palabras. Usa **negritas** o listas solo cuando ayuden a leer.
+# FLUJO DE INTERACCIÓN (Sigue este orden estrictamente)
 
-Cuando ${name} te diga qué va a elegir, o te pida el resumen, comprueba que cumple las reglas del mes (número de opciones e importe) y termina con un resumen para que lo copie en su decisión. Antes del resumen, dile en una frase que puede copiar cada parte en el formulario y cambiar lo que quiera para que suene a ${name}. Escribe el resumen en primera persona, como si lo escribiera ${name}, con sus propias razones de la conversación y palabras sencillas, usando exactamente estas etiquetas:
-<porque valor="SÍMBOLO">De 2 a 4 frases: por qué elijo este valor.</porque> (una por cada valor elegido)
-<vender valor="SÍMBOLO">Una frase: qué me haría vender (un precio, un dato o un plazo).</vender> (una por cada valor elegido)
-<idea>De 2 a 4 frases: qué he aprendido de la lección y cómo lo aplico en mi decisión.</idea>
-No escribas el resumen hasta que ${name} haya elegido.
+1. **Bienvenida y encuadre inicial:**
+   - Saluda a {{NOMBRE_USUARIO}} con entusiasmo.
+   - Presenta en 2 o 3 frases muy sencillas el menú de opciones disponibles este mes y las reglas clave que aplican.
+   - Haz **una sola pregunta inicial** sobre su objetivo o perfil (por ejemplo: si busca mayor rentabilidad asumiendo algo de variación, o si prefiere estabilidad/seguridad este mes).
 
-<cartera_del_mes>
-Cartera de ${ctx.monthLabel}: ${ctx.title}
+2. **Diálogo guiado (Paso a paso):**
+   - No lances varias preguntas a la vez; haz preguntas de una en una para mantener una conversación ágil.
+   - Con cada respuesta de {{NOMBRE_USUARIO}}, valida su razonamiento, aporta un dato o perspectiva didáctica relevante de la cartera y formula la siguiente pregunta para acotar la elección.
 
-Reglas de este mes:
-${coachRules(ctx).map((r) => `- ${r}`).join("\n")}
+3. **Cierre y justificación final:**
+   - Una vez que {{NOMBRE_USUARIO}} haya definido claramente su elección de activos, genera un bloque de texto final claro y sintetizado.
+   - Presenta el texto en un bloque fácil de copiar bajo la siguiente instrucción:
+     *"Aquí tienes el resumen de tu razonamiento. Puedes copiar y pegar este texto directamente en el campo de justificación de tu operación:"*
+   - El texto resumido debe incluir:
+     - Activo(s) seleccionado(s).
+     - Motivo principal de la elección alineado con su objetivo y las reglas del mes.
+     - Nivel de riesgo/expectativa asumida de forma consciente.`;
+
+export const COACH_PROMPT_MAX = 20_000;
+
+/** Variables que el prompt puede usar; la app las sustituye por los datos de cada miembro y cartera. */
+export const COACH_PLACEHOLDERS = [
+  { key: "NOMBRE_USUARIO", help: "nombre de pila de quien decide" },
+  { key: "CARTERA_DEL_MES", help: "título, cada opción (tipo, precio, lectura del club, qué investigar) y la lección del presidente" },
+  { key: "REGLAS_MES", help: "importe, cuántas opciones elegir, plazo y cómo funciona el repaso" },
+  { key: "FAMILIA", help: "nombre del club de la familia" },
+] as const;
+
+/**
+ * Instrucciones de la app que se añaden siempre al final, aunque se cambie el prompt: que no invente datos,
+ * que no se salga del tema y el formato del texto final, que la app necesita para poner el botón «Copiar».
+ */
+export function coachFixedInstructions(name: string): string {
+  return `# INSTRUCCIONES DE LA APP
+- Usa solo los datos de este contexto y tu conocimiento general. No inventes precios, resultados ni noticias recientes: si hace falta un dato, pide a ${name} que pulse «Analizar» en esa opción, dentro de la app, para ver la gráfica, la lectura del club y, si es una empresa, su PER. La «lectura automática del club» es una pista calculada con datos de mercado, no una orden.
+- Habla solo de la decisión de este mes y de aprender a invertir; si te pregunta otra cosa, reconduce con amabilidad. No pidas datos personales.
+- Escribe el texto final para copiar entre las etiquetas <resumen> y </resumen>, sin nada más dentro: la app lo muestra aparte con un botón «Copiar». Escríbelo en primera persona, como si lo escribiera ${name}, con sus propias razones.`;
+}
+
+/** Datos de la cartera del mes, tal como los ve el tutor. */
+export function coachPortfolio(ctx: CoachContext): string {
+  return `«${ctx.title}» (cartera de ${ctx.monthLabel})
 
 Opciones entre las que elegir:
 ${ctx.options.map(optionLine).join("\n")}
 
 Lección del mes, escrita por el presidente del club:
-${ctx.lesson.trim()}
-</cartera_del_mes>`;
+${ctx.lesson.trim()}`;
+}
+
+const placeholder = (key: string) => new RegExp(String.raw`\{\{\s*${key}\s*\}\}`, "g");
+
+/**
+ * Prompt de sistema: la plantilla con sus variables sustituidas y las instrucciones de la app al final. Si la
+ * plantilla no usa la cartera o las reglas, se añaden igualmente para que el tutor nunca hable sin datos.
+ */
+export function buildCoachSystemPrompt(ctx: CoachContext, template: string = DEFAULT_COACH_PROMPT): string {
+  const values: Record<(typeof COACH_PLACEHOLDERS)[number]["key"], string> = {
+    NOMBRE_USUARIO: ctx.firstName,
+    CARTERA_DEL_MES: coachPortfolio(ctx),
+    REGLAS_MES: coachRules(ctx).map((r) => `\n- ${r}`).join(""),
+    FAMILIA: ctx.familyName,
+  };
+  let prompt = template.trim();
+  const missing: string[] = [];
+  for (const [key, value] of Object.entries(values)) {
+    if (placeholder(key).test(prompt)) prompt = prompt.replace(placeholder(key), () => value);
+    else if (key === "CARTERA_DEL_MES") missing.push(`# CARTERA DEL MES\n${value}`);
+    else if (key === "REGLAS_MES") missing.push(`# REGLAS DEL MES${value}`);
+  }
+  return [prompt, ...missing, coachFixedInstructions(ctx.firstName)].join("\n\n");
 }
 
 /** Valida la conversación que manda el navegador: turnos alternos, empieza y acaba en el miembro, con límites. */

@@ -3,9 +3,11 @@ import { requireSiteAdmin } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
 import { firstName } from "@/lib/names";
 import { getFamiliesActivity, getSiteStats, getSiteUsers } from "@/lib/siteAdmin";
-import { aiConfigured, getAiModel } from "@/lib/ai";
+import { aiConfigured, getAiModel, getCoachPrompt } from "@/lib/ai";
+import { COACH_PLACEHOLDERS, COACH_PROMPT_MAX, coachFixedInstructions } from "@/lib/decisionCoach";
+import { TutorIAIcon } from "@/components/TutorIA";
 import { aiModelName } from "@/lib/aiModels";
-import { AiCheckForm, AiModelForm, PackForm } from "./forms";
+import { AiCheckForm, AiModelForm, CoachPromptForm, PackForm } from "./forms";
 
 const fmtDateTime = (d: Date) => d.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" });
 const STATE: Record<"activa" | "dormida" | "sin-accesos", { label: string; cls: string }> = {
@@ -29,7 +31,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const me = await requireSiteAdmin();
   const { q = "" } = await searchParams;
   const query = q.trim().slice(0, 60);
-  const [stats, families, users, aiModel] = await Promise.all([getSiteStats(), getFamiliesActivity(), getSiteUsers(query), getAiModel()]);
+  const [stats, families, users, aiModel, coachPrompt] = await Promise.all([getSiteStats(), getFamiliesActivity(), getSiteUsers(query), getAiModel(), getCoachPrompt()]);
   const maxDay = Math.max(1, ...stats.loginsByDay.map((d) => d.count));
   const activeFamilies = families.filter((f) => f.state === "activa").length;
 
@@ -77,6 +79,33 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </p>
         <AiModelForm current={aiModel} />
         {aiConfigured() && <AiCheckForm />}
+      </section>
+
+      <section className="card gap-3" aria-labelledby="tutoria-title">
+        <div className="flex items-start gap-3">
+          <TutorIAIcon size={48} />
+          <div className="min-w-0">
+            <h3 id="tutoria-title" className="m-0">TutorIA: cómo habla con los miembros</h3>
+            <p className="m-0 mt-1 text-sm text-neutral-700 max-w-[80ch] [text-wrap:pretty]">
+              Es el prompt del tutor de la cartera del mes. Los cambios se aplican desde el siguiente mensaje de cualquier conversación.
+              {coachPrompt.custom && coachPrompt.updatedAt ? ` Último cambio: ${fmtDateTime(coachPrompt.updatedAt)}${coachPrompt.updatedBy ? `, por ${firstName(coachPrompt.updatedBy)}` : ""}.` : ""}
+            </p>
+          </div>
+        </div>
+        <div className="text-sm flex flex-col gap-1">
+          <div className="font-medium">Variables que la app rellena con los datos de cada miembro</div>
+          <ul className="m-0 p-0 list-none flex flex-col gap-1">
+            {COACH_PLACEHOLDERS.map((p) => (
+              <li key={p.key} className="[text-wrap:pretty]"><code className="tag tag-neutral" style={{ fontSize: 12 }}>{`{{${p.key}}}`}</code> <span className="text-neutral-700">{p.help}</span></li>
+            ))}
+          </ul>
+        </div>
+        <CoachPromptForm text={coachPrompt.text} custom={coachPrompt.custom} max={COACH_PROMPT_MAX} />
+        <details className="text-sm">
+          <summary className="cursor-pointer text-accent-700 font-medium">Instrucciones de la app que se añaden siempre al final</summary>
+          <p className="m-0 mt-2 text-neutral-700 max-w-[80ch] [text-wrap:pretty]">No se pueden cambiar: evitan que el tutor se invente datos o se salga del tema, y marcan el texto final para que la app le ponga el botón «Copiar». Si el prompt no usa la cartera o las reglas, también se añaden aquí.</p>
+          <pre className="mt-2 mb-0 p-3 rounded-[10px] border border-divider whitespace-pre-wrap text-xs" style={{ background: "var(--color-neutral-100)", fontFamily: "var(--font-numeric)" }}>{coachFixedInstructions("{{NOMBRE_USUARIO}}")}</pre>
+        </details>
       </section>
 
       <section className="flex flex-col gap-2" aria-labelledby="familias-title">

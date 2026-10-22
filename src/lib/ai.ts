@@ -2,6 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "./prisma";
 import { DEFAULT_AI_MODEL, aiModelName, isAiModel } from "./aiModels";
+import { DEFAULT_COACH_PROMPT } from "./decisionCoach";
 
 /**
  * Claude (API de Anthropic) para los análisis con IA. La clave vive en ANTHROPIC_API_KEY: en local en .env y en
@@ -70,3 +71,26 @@ export function aiErrorMessage(error: unknown, modelId: string): string | null {
 
 /** Modelos con respaldo automático en el servidor de Anthropic si rechazan una petición por seguridad. */
 export const hasServerFallback = (modelId: string) => modelId !== "claude-haiku-5-5";
+
+export const COACH_PROMPT_SETTING = "ai.coachPrompt";
+
+/** Prompt de TutorIA: el que guardó el administrador o, si no hay ninguno, el de por defecto. */
+export async function getCoachPrompt(): Promise<{ text: string; custom: boolean; updatedAt: Date | null; updatedBy: string | null }> {
+  const row = await prisma.siteSetting.findUnique({ where: { key: COACH_PROMPT_SETTING } });
+  if (!row?.value.trim()) return { text: DEFAULT_COACH_PROMPT, custom: false, updatedAt: null, updatedBy: null };
+  const who = row.updatedById ? await prisma.user.findUnique({ where: { id: row.updatedById }, select: { name: true } }) : null;
+  return { text: row.value, custom: true, updatedAt: row.updatedAt, updatedBy: who?.name ?? null };
+}
+
+export async function setCoachPrompt(text: string, userId: string): Promise<void> {
+  await prisma.siteSetting.upsert({
+    where: { key: COACH_PROMPT_SETTING },
+    create: { key: COACH_PROMPT_SETTING, value: text, updatedById: userId },
+    update: { value: text, updatedById: userId },
+  });
+}
+
+/** Vuelve al prompt de por defecto (borra el guardado). */
+export async function resetCoachPrompt(): Promise<void> {
+  await prisma.siteSetting.deleteMany({ where: { key: COACH_PROMPT_SETTING } });
+}

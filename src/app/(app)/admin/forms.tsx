@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
-import { checkAiAction, setAiModelAction, setInvitePackAction } from "@/app/actions/siteAdmin";
+import { useActionState, useState } from "react";
+import { checkAiAction, saveCoachPromptAction, setAiModelAction, setInvitePackAction } from "@/app/actions/siteAdmin";
 import { AI_MODELS } from "@/lib/aiModels";
 
 /** Paquete de invitaciones, sin límite y administración de la web para un usuario. */
@@ -60,6 +60,55 @@ export function AiModelForm({ current }: { current: string }) {
         {state?.error && <span role="alert" className="text-sm text-neutral-800">{state.error}</span>}
         {state?.ok && <span role="status" className="text-sm text-accent-700">{state.ok}</span>}
       </div>
+    </form>
+  );
+}
+
+/** Caja para editar el prompt de TutorIA, con guardar y volver al de por defecto. */
+export function CoachPromptForm({ text, custom, max }: { text: string; custom: boolean; max: number }) {
+  const [state, action, pending] = useActionState(saveCoachPromptAction, undefined);
+  // Controlado: si guardar falla, lo escrito sigue en la caja. Cuando cambia lo guardado (guardar o restaurar), se recarga.
+  const [value, setValue] = useState(text);
+  const [saved, setSaved] = useState(text);
+  if (text !== saved) {
+    setSaved(text);
+    setValue(text);
+  }
+  const dirty = value.replace(/\r\n/g, "\n").trim() !== text.trim();
+  return (
+    <form action={action} className="flex flex-col gap-2">
+      <label htmlFor="tutoria-prompt" className="text-sm font-medium">Prompt de TutorIA{custom ? "" : " (el de por defecto)"}</label>
+      <textarea
+        id="tutoria-prompt"
+        name="prompt"
+        className="input"
+        value={value}
+        maxLength={max}
+        spellCheck={false}
+        rows={18}
+        onChange={(e) => setValue(e.target.value)}
+        style={{ fontFamily: "var(--font-numeric)", fontSize: 13, lineHeight: 1.55, minHeight: 320 }}
+      />
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <button className="btn-primary" name="intent" value="save" disabled={pending}>{pending ? "Guardando…" : "Guardar prompt"}</button>
+        {dirty && !pending && <button type="button" className="btn-ghost" onClick={() => setValue(text)}>Descartar cambios</button>}
+        {custom && (
+          <button
+            className="btn-ghost"
+            name="intent"
+            value="reset"
+            disabled={pending}
+            onClick={(e) => {
+              if (!window.confirm("¿Volver al prompt de por defecto? Se perderá el que tienes guardado.")) e.preventDefault();
+            }}
+          >
+            Volver al de por defecto
+          </button>
+        )}
+        <span className="text-xs text-neutral-700">{dirty ? "Cambios sin guardar · " : ""}{value.length.toLocaleString("es-ES")} de {max.toLocaleString("es-ES")} caracteres</span>
+      </div>
+      {state?.error && <p role="alert" className="m-0 text-sm text-neutral-800">{state.error}</p>}
+      {state?.ok && <p role="status" className="m-0 text-sm text-accent-700">{state.ok}</p>}
     </form>
   );
 }
