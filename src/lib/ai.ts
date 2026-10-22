@@ -15,7 +15,9 @@ let client: Anthropic | null = null;
 export function getAnthropic(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (!apiKey) throw new Error("Falta ANTHROPIC_API_KEY");
-  client ??= new Anthropic({ apiKey, maxRetries: 2 });
+  // Las claves que no pertenecen a un espacio de trabajo exigen indicar cuál usar en cada petición.
+  const workspace = process.env.ANTHROPIC_WORKSPACE_ID?.trim();
+  client ??= new Anthropic({ apiKey, maxRetries: 2, defaultHeaders: workspace ? { "anthropic-workspace-id": workspace } : undefined });
   return client;
 }
 
@@ -28,6 +30,7 @@ export async function checkAiConnection(): Promise<AiCheck> {
     const model = await getAnthropic().models.retrieve(AI_MODEL, {}, { timeout: 10_000 });
     return { ok: true, model: model.display_name || model.id };
   } catch (error) {
+    if (error instanceof Anthropic.BadRequestError && /workspace/i.test(error.message)) return { ok: false, error: "La clave no pertenece a un espacio de trabajo: añade ANTHROPIC_WORKSPACE_ID o crea la clave dentro de un espacio de trabajo." };
     if (error instanceof Anthropic.AuthenticationError) return { ok: false, error: "Anthropic rechaza la clave: revisa que esté bien copiada y no esté revocada." };
     if (error instanceof Anthropic.PermissionDeniedError) return { ok: false, error: "La clave no tiene permiso para usar la API (revisa el espacio de trabajo en la consola de Anthropic)." };
     if (error instanceof Anthropic.NotFoundError) return { ok: false, error: `La cuenta no tiene acceso al modelo ${AI_MODEL}.` };
