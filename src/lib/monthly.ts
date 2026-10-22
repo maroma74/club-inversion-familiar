@@ -89,3 +89,6 @@ export async function findUnlinkedTrades(p: PortfolioFull): Promise<UnlinkedTrad
       journalEntryId: t.journal?.id ?? null,
     }));
 }
+
+/** La recomendación del Club, dicha en lenguaje llano (la puntuación queda como detalle). */
+export const clubSignalText = (action: string) => (action === "COMPRAR" ? "El club ve buena señal" : action === "VENDER" ? "El club ve señales de precaución" : "El club ve una señal neutra: mejor seguir observando");

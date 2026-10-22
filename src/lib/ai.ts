@@ -49,13 +49,24 @@ export async function checkAiConnection(): Promise<AiCheck> {
     const model = await getAnthropic().models.retrieve(modelId, {}, { timeout: 10_000 });
     return { ok: true, model: model.display_name || model.id };
   } catch (error) {
-    if (error instanceof Anthropic.BadRequestError && /workspace/i.test(error.message)) return { ok: false, error: "La clave no pertenece a un espacio de trabajo: añade ANTHROPIC_WORKSPACE_ID o crea la clave dentro de un espacio de trabajo." };
-    if (error instanceof Anthropic.AuthenticationError) return { ok: false, error: "Anthropic rechaza la clave: revisa que esté bien copiada y no esté revocada." };
-    if (error instanceof Anthropic.PermissionDeniedError) return { ok: false, error: "La clave no tiene permiso para usar la API (revisa el espacio de trabajo en la consola de Anthropic)." };
-    if (error instanceof Anthropic.NotFoundError) return { ok: false, error: `La cuenta no tiene acceso a ${aiModelName(modelId)}: elige otro modelo.` };
-    if (error instanceof Anthropic.RateLimitError) return { ok: false, error: "Límite de peticiones alcanzado; prueba en un minuto." };
-    if (error instanceof Anthropic.APIConnectionError) return { ok: false, error: "No se pudo conectar con Anthropic desde el servidor." };
-    if (error instanceof Anthropic.APIError) return { ok: false, error: `Anthropic respondió con un error ${error.status ?? ""}.`.trim() };
+    const message = aiErrorMessage(error, modelId);
+    if (message) return { ok: false, error: message };
     throw error;
   }
 }
+
+/** Explicación en castellano de un error de la API de Anthropic, o null si no es un error de la API. */
+export function aiErrorMessage(error: unknown, modelId: string): string | null {
+  if (error instanceof Anthropic.BadRequestError && /workspace/i.test(error.message)) return "La clave no pertenece a un espacio de trabajo: añade ANTHROPIC_WORKSPACE_ID o crea la clave dentro de un espacio de trabajo.";
+  if (error instanceof Anthropic.BadRequestError && /credit balance/i.test(error.message)) return "La cuenta de Anthropic no tiene saldo: añade crédito en la consola de Anthropic.";
+  if (error instanceof Anthropic.AuthenticationError) return "Anthropic rechaza la clave: revisa que esté bien copiada y no esté revocada.";
+  if (error instanceof Anthropic.PermissionDeniedError) return "La clave no tiene permiso para usar la API (revisa el espacio de trabajo en la consola de Anthropic).";
+  if (error instanceof Anthropic.NotFoundError) return `La cuenta no tiene acceso a ${aiModelName(modelId)}: elige otro modelo.`;
+  if (error instanceof Anthropic.RateLimitError) return "Límite de peticiones alcanzado; prueba en un minuto.";
+  if (error instanceof Anthropic.APIConnectionError) return "No se pudo conectar con Anthropic desde el servidor.";
+  if (error instanceof Anthropic.APIError) return `Anthropic respondió con un error ${error.status ?? ""}.`.trim();
+  return null;
+}
+
+/** Modelos con respaldo automático en el servidor de Anthropic si rechazan una petición por seguridad. */
+export const hasServerFallback = (modelId: string) => modelId !== "claude-haiku-5-5";

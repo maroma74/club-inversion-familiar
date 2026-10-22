@@ -2,18 +2,18 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { firstName } from "@/lib/names";
-import { getCurrentPortfolio, isDeadlinePassed, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
+import { clubSignalText as signalText, getCurrentPortfolio, isDeadlinePassed, monthLabelLong, STATUS_LABEL } from "@/lib/monthly";
 import { Markdown } from "@/components/Markdown";
 import { getPrices } from "@/lib/prices";
 import { getClubRecommendations } from "@/lib/club";
 import { eur, fmtDate, signed } from "@/lib/format";
+import { aiConfigured } from "@/lib/ai";
 import { DecisionForm } from "./DecisionForm";
+import { DecisionCoach } from "./DecisionCoach";
 
 const analysisHref = (kind: string, symbol: string) => (kind === "COMMODITY" ? `/materias-primas/${encodeURIComponent(symbol)}` : kind === "CRYPTO" ? `/cripto/${encodeURIComponent(symbol)}` : kind === "ETF" ? `/etf/${encodeURIComponent(symbol)}` : `/acciones/${encodeURIComponent(symbol)}`);
 const kindLabel = (k: string) => (k === "ETF" ? "ETF" : k === "CRYPTO" ? "cripto" : k === "COMMODITY" ? "materia prima" : "acción");
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-/** La recomendación del Club, dicha en lenguaje llano; la puntuación queda como detalle al pasar el ratón. */
-const signalText = (action: string) => (action === "COMPRAR" ? "El club ve buena señal" : action === "VENDER" ? "El club ve señales de precaución" : "El club ve una señal neutra: mejor seguir observando");
 
 type Choice = { id: string; amount: number; why: string; exitCondition: string | null; price: number | null; quantity: number | null; option: { symbol: string; name: string } };
 
@@ -51,6 +51,8 @@ export default async function CarteraPage() {
   const canDecide = open && !myDecision && myAllocation > 0;
   // Quien nunca ha decidido en una cartera del mes ve una guía corta antes del formulario
   const firstDecision = canDecide && (await prisma.monthlyDecision.count({ where: { userId: user.id } })) === 0;
+  // Tutor con IA: solo con la clave configurada y nunca en «Visualizar como» (gasta y habla en nombre del miembro)
+  const coach = canDecide && aiConfigured() && !user.impersonator;
   const others = p.decisions.filter((d) => d.userId !== user.id);
   const memberNames = new Map(p.allocations.map((a) => [a.userId, firstName(a.user.name)]));
   const deciders = p.allocations.filter((a) => a.amount > 0);
@@ -105,7 +107,12 @@ export default async function CarteraPage() {
             <h2 id="estado-decision" className="m-0 text-xl">{status.title}</h2>
             <p className="m-0 mt-1 text-sm text-neutral-700 max-w-[62ch] [text-wrap:pretty]">{status.text}</p>
           </div>
-          {canDecide && <a href="#decidir" className="btn-primary">Ir a decidir</a>}
+          {(canDecide || coach) && (
+            <div className="flex flex-wrap gap-2">
+              {coach && <a href="#ayuda-decision" className="btn-secondary">Ayuda para tomar la decisión</a>}
+              {canDecide && <a href="#decidir" className="btn-primary">Ir a decidir</a>}
+            </div>
+          )}
           {myDecision && <Link href="/inicio" className="btn-secondary">Ver mi diario</Link>}
         </div>
         {isAdmin && !open && pendingMembers.length > 0 && (
@@ -177,6 +184,8 @@ export default async function CarteraPage() {
           </ol>
         </section>
       )}
+
+      {coach && <DecisionCoach portfolioId={p.id} userId={user.id} name={firstName(user.name)} options={optionView.map(({ o, href }) => ({ symbol: o.symbol, name: o.name, href }))} />}
 
       {canDecide && (
         <section id="decidir" aria-label="Tu decisión" className="card card-roomy scroll-mt-20">

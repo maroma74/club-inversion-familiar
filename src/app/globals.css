@@ -388,6 +388,9 @@ table thead th { font-size: 11px; letter-spacing: 0.08em; text-transform: upperc
 .md-h3 { font-size: 18px; margin-top: 18px; }
 .md-h4 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-accent-700); }
 .md-p { margin: 0; text-wrap: pretty; }
+/* Respuestas del tutor de la cartera: algo más compactas, con aire entre párrafos */
+.md.md-chat { font-size: 15px; line-height: 1.55; }
+.md.md-chat > * + * { margin-top: 10px; }
 .md-ul, .md-ol { margin: 0; padding-left: 24px; display: flex; flex-direction: column; gap: 4px; }
 .md-ul li::marker { color: var(--color-accent); }
 .md-ol li::marker { color: var(--color-accent-700); font-family: var(--font-numeric); font-weight: 700; }
