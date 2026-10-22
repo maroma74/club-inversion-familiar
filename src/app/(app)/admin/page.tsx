@@ -3,8 +3,9 @@ import { requireSiteAdmin } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
 import { firstName } from "@/lib/names";
 import { getFamiliesActivity, getSiteStats, getSiteUsers } from "@/lib/siteAdmin";
-import { AI_MODEL, aiConfigured } from "@/lib/ai";
-import { AiCheckForm, PackForm } from "./forms";
+import { aiConfigured, getAiModel } from "@/lib/ai";
+import { aiModelName } from "@/lib/aiModels";
+import { AiCheckForm, AiModelForm, PackForm } from "./forms";
 
 const fmtDateTime = (d: Date) => d.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" });
 const STATE: Record<"activa" | "dormida" | "sin-accesos", { label: string; cls: string }> = {
@@ -28,7 +29,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const me = await requireSiteAdmin();
   const { q = "" } = await searchParams;
   const query = q.trim().slice(0, 60);
-  const [stats, families, users] = await Promise.all([getSiteStats(), getFamiliesActivity(), getSiteUsers(query)]);
+  const [stats, families, users, aiModel] = await Promise.all([getSiteStats(), getFamiliesActivity(), getSiteUsers(query), getAiModel()]);
   const maxDay = Math.max(1, ...stats.loginsByDay.map((d) => d.count));
   const activeFamilies = families.filter((f) => f.state === "activa").length;
 
@@ -71,9 +72,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </div>
         <p className="m-0 text-sm text-neutral-700 max-w-[80ch] [text-wrap:pretty]">
           {aiConfigured()
-            ? `La clave está en el servidor y no se muestra en ningún sitio. Modelo: ${AI_MODEL}. La prueba comprueba la clave sin gastar tokens.`
-            : "Añade ANTHROPIC_API_KEY al servidor (en local, en .env; en producción, en Secret Manager) para activar los análisis con IA."}
+            ? `La clave está en el servidor y no se muestra en ningún sitio. Ahora se usa ${aiModelName(aiModel)}; la prueba comprueba la clave y ese modelo sin gastar tokens.`
+            : "Añade ANTHROPIC_API_KEY al servidor (en local, en .env; en producción, en Secret Manager) para activar los análisis con IA. Puedes elegir ya el modelo."}
         </p>
+        <AiModelForm current={aiModel} />
         {aiConfigured() && <AiCheckForm />}
       </section>
 

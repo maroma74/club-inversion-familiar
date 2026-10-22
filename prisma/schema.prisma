@@ -8,17 +8,17 @@ datasource db {
 }
 
 model Family {
-  id               String       @id @default(cuid())
+  id               String          @id @default(cuid())
   name             String
-  inviteCode       String       @unique
+  inviteCode       String          @unique
   /// Cómo se entra con el código general: CODE (directo), CODE_APPROVAL (queda pendiente de aprobación), INVITE_ONLY (solo con invitación personal)
-  joinMode         String       @default("CODE")
-  monthlyAllowance Float        @default(100)
+  joinMode         String          @default("CODE")
+  monthlyAllowance Float           @default(100)
   /// Cuándo confirmó el presidente la paga (asistente de puesta en marcha o Familia); null = sigue la de por defecto
   allowanceSetAt   DateTime?
   /// El presidente cerró el asistente de puesta en marcha sin terminarlo
   setupDismissedAt DateTime?
-  createdAt        DateTime     @default(now())
+  createdAt        DateTime        @default(now())
   users            User[]
   invitations      Invitation[]
   manualPrices     ManualPrice[]
@@ -27,45 +27,45 @@ model Family {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  familyId      String
-  family        Family         @relation(fields: [familyId], references: [id])
-  name          String
-  email         String         @unique
-  passwordHash  String
-  role          String         @default("MEMBER") // ADMIN | MEMBER
-  status        String         @default("ACTIVE") // ACTIVE | PENDING (esperando aprobación)
-  badgeCount    Int            @default(0) // logros conseguidos (se actualiza al calcular la liga)
-  createdAt     DateTime       @default(now())
-  contributions Contribution[]
-  trades        Trade[]
-  snapshots     PortfolioSnapshot[]
-  invitationsSent Invitation[] @relation("InvitationCreator")
-  invitationUsed  Invitation?  @relation("InvitationUser")
-  lessonProgress  LessonProgress[]
-  journalEntries  JournalEntry[]
-  monthlyAllocations MonthlyAllocation[]
-  monthlyDecisions   MonthlyDecision[]
+  id                     String              @id @default(cuid())
+  familyId               String
+  family                 Family              @relation(fields: [familyId], references: [id])
+  name                   String
+  email                  String              @unique
+  passwordHash           String
+  role                   String              @default("MEMBER") // ADMIN | MEMBER
+  status                 String              @default("ACTIVE") // ACTIVE | PENDING (esperando aprobación)
+  badgeCount             Int                 @default(0) // logros conseguidos (se actualiza al calcular la liga)
+  createdAt              DateTime            @default(now())
+  contributions          Contribution[]
+  trades                 Trade[]
+  snapshots              PortfolioSnapshot[]
+  invitationsSent        Invitation[]        @relation("InvitationCreator")
+  invitationUsed         Invitation?         @relation("InvitationUser")
+  lessonProgress         LessonProgress[]
+  journalEntries         JournalEntry[]
+  monthlyAllocations     MonthlyAllocation[]
+  monthlyDecisions       MonthlyDecision[]
   /// Cuándo se subió la foto de perfil (null = sin foto). Sirve para cachear la imagen con ?v=.
-  avatarUpdatedAt    DateTime?
-  avatar             UserAvatar?
+  avatarUpdatedAt        DateTime?
+  avatar                 UserAvatar?
   /// Teléfono móvil en formato internacional (+34…) para recibir avisos por WhatsApp; lo pone cada uno en su perfil.
-  phone              String?
-  communicationsSent Communication[]
+  phone                  String?
+  communicationsSent     Communication[]
   /// Sube al cambiar o restablecer la contraseña: las sesiones firmadas con un valor anterior dejan de valer.
-  sessionVersion     Int            @default(0)
-  passwordResets     PasswordReset[] @relation("PasswordResetUser")
-  passwordResetsIssued PasswordReset[] @relation("PasswordResetIssuer")
+  sessionVersion         Int                 @default(0)
+  passwordResets         PasswordReset[]     @relation("PasswordResetUser")
+  passwordResetsIssued   PasswordReset[]     @relation("PasswordResetIssuer")
   /// Administración de la web (estadísticas de todas las familias, paquetes de invitaciones). No da acceso a los datos de otras familias.
-  siteAdmin          Boolean        @default(false)
+  siteAdmin              Boolean             @default(false)
   /// Paquete de invitaciones para familias nuevas asignado por la administración, además de las cinco del club (solo las usa el presidente).
-  familyInvitePack   Int            @default(0)
+  familyInvitePack       Int                 @default(0)
   /// Invitaciones para familias nuevas sin límite (administración de la web).
-  unlimitedFamilyInvites Boolean    @default(false)
-  lastLoginAt        DateTime?
-  loginEvents        LoginEvent[]
+  unlimitedFamilyInvites Boolean             @default(false)
+  lastLoginAt            DateTime?
+  loginEvents            LoginEvent[]
   /// Cuándo vio (o se saltó) la bienvenida para miembros nuevos; null = aún no la ha visto
-  welcomedAt         DateTime?
+  welcomedAt             DateTime?
 
   @@index([familyId, status])
 }
@@ -126,7 +126,7 @@ model Invitation {
   usedBy      User?     @relation("InvitationUser", fields: [usedById], references: [id], onDelete: SetNull)
   revokedAt   DateTime?
   sentAt      DateTime? // último envío por correo
-  sentTo      String?   // dirección a la que se envió
+  sentTo      String? // dirección a la que se envió
   /// Invitación para crear una familia nueva: quien la usa funda su club y es su presidente.
   newFamily   Boolean   @default(false)
   /// Salió de un paquete personal (o de un usuario sin límite), no de las cinco del club.
@@ -152,20 +152,20 @@ model Contribution {
 }
 
 model Trade {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      DateTime
   symbol    String
   name      String
   side      String // BUY | SELL
   quantity  Float
   price     Float // precio por unidad en `currency`
-  currency  String   @default("EUR")
-  fxRate    Float    @default(1) // euros por unidad de `currency` en la fecha de la operación
-  fees      Float    @default(0) // siempre en EUR
+  currency  String        @default("EUR")
+  fxRate    Float         @default(1) // euros por unidad de `currency` en la fecha de la operación
+  fees      Float         @default(0) // siempre en EUR
   broker    String? // entidad donde se ejecutó la orden (Trade Republic, Degiro, Binance…)
-  createdAt DateTime @default(now())
+  createdAt DateTime      @default(now())
   journal   JournalEntry?
 
   @@index([userId, date])
@@ -327,25 +327,25 @@ model JournalEntry {
 /// puede usar para crear la cartera de un mes. Las hay del club (semilla, source CLUB) y compartidas por presidentes
 /// (source FAMILY), firmadas con el nombre de su familia o anónimas.
 model Proposal {
-  id                String           @id @default(cuid())
-  slug              String?          @unique // identificador estable de las propuestas del club
+  id                String             @id @default(cuid())
+  slug              String?            @unique // identificador estable de las propuestas del club
   source            String // CLUB | FAMILY
   familyId          String? // familia autora; nunca se expone si la propuesta es anónima
-  family            Family?          @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  signed            Boolean          @default(false) // true: se muestra «Familia X»; false: anónima
-  sourcePortfolioId String?          @unique // cartera de la que se copió (solo FAMILY): permite actualizar o retirar
+  family            Family?            @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  signed            Boolean            @default(false) // true: se muestra «Familia X»; false: anónima
+  sourcePortfolioId String?            @unique // cartera de la que se copió (solo FAMILY): permite actualizar o retirar
   title             String
   theme             String // categoría (Núcleo global, Dividendos, Tecnología…)
   risk              Int // 1 (bajo) a 5 (muy alto)
   lesson            String // texto de la lección, en neutro
-  minChoices        Int              @default(1)
-  maxChoices        Int              @default(1)
-  uses              Int              @default(0) // veces que se ha usado para crear una cartera
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  minChoices        Int                @default(1)
+  maxChoices        Int                @default(1)
+  uses              Int                @default(0) // veces que se ha usado para crear una cartera
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
   options           ProposalOption[]
   /// Carteras creadas a partir de esta propuesta
-  portfolios MonthlyPortfolio[]
+  portfolios        MonthlyPortfolio[]
 
   @@index([source, theme])
 }
@@ -364,39 +364,39 @@ model ProposalOption {
 }
 
 model MonthlyPortfolio {
-  id          String   @id @default(cuid())
-  familyId    String
-  month       String // YYYY-MM
-  title       String
-  lesson      String // explicación / lección del mes (texto, párrafos separados por líneas en blanco)
-  status      String   @default("DRAFT") // DRAFT | PUBLISHED | CLOSED
-  minChoices  Int      @default(1)
-  maxChoices  Int      @default(1)
-  deadline    DateTime?
-  createdById String
-  createdAt   DateTime @default(now())
-  publishedAt DateTime?
-  closedAt    DateTime?
+  id               String              @id @default(cuid())
+  familyId         String
+  month            String // YYYY-MM
+  title            String
+  lesson           String // explicación / lección del mes (texto, párrafos separados por líneas en blanco)
+  status           String              @default("DRAFT") // DRAFT | PUBLISHED | CLOSED
+  minChoices       Int                 @default(1)
+  maxChoices       Int                 @default(1)
+  deadline         DateTime?
+  createdById      String
+  createdAt        DateTime            @default(now())
+  publishedAt      DateTime?
+  closedAt         DateTime?
   /// Propuesta del repositorio de la que se creó (para marcarla como usada por la familia)
   sourceProposalId String?
-  sourceProposal   Proposal? @relation(fields: [sourceProposalId], references: [id], onDelete: SetNull)
-  options     MonthlyOption[]
-  allocations MonthlyAllocation[]
-  decisions   MonthlyDecision[]
+  sourceProposal   Proposal?           @relation(fields: [sourceProposalId], references: [id], onDelete: SetNull)
+  options          MonthlyOption[]
+  allocations      MonthlyAllocation[]
+  decisions        MonthlyDecision[]
 
   @@unique([familyId, month])
   @@index([sourceProposalId])
 }
 
 model MonthlyOption {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   portfolioId String
   portfolio   MonthlyPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
   symbol      String
   name        String
-  kind        String   @default("STOCK") // STOCK | ETF | CRYPTO
+  kind        String           @default("STOCK") // STOCK | ETF | CRYPTO
   note        String? // qué investigar / por qué está en la lista
-  order       Int      @default(0)
+  order       Int              @default(0)
   choices     MonthlyChoice[]
 
   @@unique([portfolioId, symbol])
@@ -404,36 +404,36 @@ model MonthlyOption {
 
 /// Cantidad asignada por el presidente a cada miembro para ese mes (se convierte en aportación al publicar).
 model MonthlyAllocation {
-  id             String   @id @default(cuid())
+  id             String           @id @default(cuid())
   portfolioId    String
   portfolio      MonthlyPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
   userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   amount         Float
-  contributionId String?  @unique
+  contributionId String?          @unique
 
   @@unique([portfolioId, userId])
 }
 
 model MonthlyDecision {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   portfolioId String
   portfolio   MonthlyPortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   argument    String // razonamiento general
-  submittedAt DateTime @default(now())
+  submittedAt DateTime         @default(now())
   choices     MonthlyChoice[]
 
   @@unique([portfolioId, userId])
 }
 
 model MonthlyChoice {
-  id             String   @id @default(cuid())
+  id             String          @id @default(cuid())
   decisionId     String
   decision       MonthlyDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
   optionId       String
-  option         MonthlyOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  option         MonthlyOption   @relation(fields: [optionId], references: [id], onDelete: Cascade)
   amount         Float
   why            String
   exitCondition  String?
@@ -452,6 +452,14 @@ model ApiCache {
   key       String   @id
   data      Json
   fetchedAt DateTime
+}
+
+/// Ajustes de toda la web que cambia el administrador del sitio (p. ej. el modelo de Claude para los análisis).
+model SiteSetting {
+  key         String   @id
+  value       String
+  updatedAt   DateTime @updatedAt
+  updatedById String?
 }
 
 /// Comunicación del presidente a los miembros (hoy, por WhatsApp con «clic para chatear»). Se guarda el texto

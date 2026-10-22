@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSiteAdmin } from "@/lib/auth";
-import { checkAiConnection } from "@/lib/ai";
+import { checkAiConnection, setAiModel } from "@/lib/ai";
+import { aiModelName, isAiModel } from "@/lib/aiModels";
 import type { FormState } from "./auth";
 
 /* Administración de la web: paquetes de invitaciones para familias y administradores del sitio. */
@@ -43,4 +44,14 @@ export async function checkAiAction(): Promise<FormState> {
   await requireSiteAdmin();
   const res = await checkAiConnection();
   return res.ok ? { ok: `Conectado: la clave es válida y los análisis usarán ${res.model}.` } : { error: res.error };
+}
+
+/** Elige el modelo de Claude que usan los análisis con IA de toda la web. */
+export async function setAiModelAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const me = await requireSiteAdmin();
+  const model = formData.get("model");
+  if (!isAiModel(model)) return { error: "Elige uno de los modelos de la lista." };
+  await setAiModel(model, me.id);
+  revalidatePath("/admin");
+  return { ok: `Guardado: los análisis usarán ${aiModelName(model)}.` };
 }
