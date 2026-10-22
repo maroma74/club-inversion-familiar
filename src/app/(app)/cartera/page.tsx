@@ -52,8 +52,8 @@ export default async function CarteraPage() {
   const canDecide = open && !myDecision && myAllocation > 0;
   // Quien nunca ha decidido en una cartera del mes ve una guía corta antes del formulario
   const firstDecision = canDecide && (await prisma.monthlyDecision.count({ where: { userId: user.id } })) === 0;
-  // Tutor con IA: solo con la clave configurada y nunca en «Visualizar como» (gasta y habla en nombre del miembro)
-  const coach = canDecide && aiConfigured() && !user.impersonator;
+  // TutorIA: si el presidente lo tiene activado, con la clave configurada y nunca en «Visualizar como» (gasta y habla en nombre del miembro)
+  const coach = canDecide && user.family.tutorEnabled && aiConfigured() && !user.impersonator;
   const others = p.decisions.filter((d) => d.userId !== user.id);
   const memberNames = new Map(p.allocations.map((a) => [a.userId, firstName(a.user.name)]));
   const deciders = p.allocations.filter((a) => a.amount > 0);

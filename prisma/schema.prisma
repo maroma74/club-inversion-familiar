@@ -18,6 +18,8 @@ model Family {
   allowanceSetAt   DateTime?
   /// El presidente cerró el asistente de puesta en marcha sin terminarlo
   setupDismissedAt DateTime?
+  /// TutorIA (ayuda con IA para decidir la cartera del mes): el presidente la activa o desactiva para su familia
+  tutorEnabled     Boolean         @default(true)
   createdAt        DateTime        @default(now())
   users            User[]
   invitations      Invitation[]

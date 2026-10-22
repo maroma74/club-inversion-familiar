@@ -388,6 +388,13 @@ table thead th { font-size: 11px; letter-spacing: 0.08em; text-transform: upperc
 .md-h3 { font-size: 18px; margin-top: 18px; }
 .md-h4 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-accent-700); }
 .md-p { margin: 0; text-wrap: pretty; }
+/* Interruptor on/off (botón con role="switch" y aria-checked) */
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; border-radius: 999px; background: var(--color-neutral-400); transition: background 0.15s; flex-shrink: 0; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 3px rgba(14, 33, 56, 0.3); transition: transform 0.15s; }
+[aria-checked="true"] > .switch { background: var(--color-accent-600); }
+[aria-checked="true"] > .switch::after { transform: translateX(20px); }
+:focus-visible > .switch { outline: 2px solid var(--color-accent-600); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .switch, .switch::after { transition: none; } }
 /* Respuestas del tutor de la cartera: algo más compactas, con aire entre párrafos */
 .md.md-chat { font-size: 15px; line-height: 1.55; }
 .md.md-chat > * + * { margin-top: 10px; }

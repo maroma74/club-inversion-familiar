@@ -4,7 +4,8 @@ import { currentMonth, listPortfolios, monthLabelLong, STATUS_LABEL } from "@/li
 import { fmtDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { proposalSignature, RISK_LABEL } from "@/lib/proposals";
-import { PortfolioDetailsForm, UseSuggestionForm } from "./forms";
+import { aiConfigured } from "@/lib/ai";
+import { PortfolioDetailsForm, TutorToggle, UseSuggestionForm } from "./forms";
 
 const nextMonth = (ym: string) => {
   const [y, m] = ym.split("-").map(Number);
@@ -43,6 +44,8 @@ export default async function GestionPage() {
           <Link href="/cartera" className="btn-secondary">Ver como miembro</Link>
         </div>
       </header>
+
+      <TutorToggle enabled={admin.family.tutorEnabled} available={aiConfigured()} />
 
       {suggestions.length > 0 && (
         <section className="flex flex-col gap-2.5">

@@ -21,3 +21,13 @@ export async function renameFamilyAction(_prev: FormState, formData: FormData): 
   revalidatePath("/", "layout");
   return { ok: `La familia ahora se llama «${name}»` };
 }
+
+/** Activa o desactiva TutorIA para la familia (solo el presidente). */
+export async function setTutorEnabledAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requireAdmin();
+  const enabled = formData.get("enabled") === "on";
+  await prisma.family.update({ where: { id: admin.familyId }, data: { tutorEnabled: enabled } });
+  revalidatePath("/cartera/gestion");
+  revalidatePath("/cartera");
+  return { ok: enabled ? "TutorIA está activado: los miembros lo verán en la cartera del mes." : "TutorIA está desactivado: no aparecerá en la cartera del mes." };
+}

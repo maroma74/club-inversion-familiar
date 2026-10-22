@@ -5,6 +5,8 @@ import { firstName } from "@/lib/names";
 import { useActionState, useEffect, useState } from "react";
 import { addOptionAction, createPortfolioAction, publishAction, scheduleAction, setAllocationsAction, updatePortfolioAction } from "@/app/actions/monthly";
 import { adoptProposalAction } from "@/app/actions/proposals";
+import { setTutorEnabledAction } from "@/app/actions/family";
+import { TutorIAIcon } from "@/components/TutorIA";
 import { autoFormat, LESSON_TEMPLATE, Markdown } from "@/components/Markdown";
 
 function Msg({ state }: { state: { error?: string; ok?: string } | undefined }) {
@@ -227,5 +229,41 @@ export function UseSuggestionForm({ proposalId, month, label }: { proposalId: st
       <button className="btn-primary py-1.5 text-xs" disabled={pending}>{pending ? "Creando…" : `Usar para ${label}`}</button>
       {state?.error && <span role="alert" className="text-xs text-neutral-800">{state.error}</span>}
     </form>
+  );
+}
+
+/** Interruptor de TutorIA para la familia. Cambia al momento y se guarda en el servidor. */
+export function TutorToggle({ enabled, available }: { enabled: boolean; available: boolean }) {
+  const [state, action, pending] = useActionState(setTutorEnabledAction, undefined);
+  const [on, setOn] = useState(enabled);
+  const [saved, setSaved] = useState(enabled);
+  if (enabled !== saved) {
+    setSaved(enabled);
+    setOn(enabled);
+  }
+  return (
+    <section aria-labelledby="tutoria-club" className="card card-snug gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-start gap-3 min-w-0 flex-1 basis-[300px]">
+          <TutorIAIcon size={48} />
+          <div className="min-w-0">
+            <h3 id="tutoria-club" className="m-0">TutorIA en tu club</h3>
+            <p className="m-0 mt-1 text-sm text-neutral-700 max-w-[64ch] [text-wrap:pretty]">
+              Un tutor con inteligencia artificial que, en la cartera del mes, hace preguntas a cada miembro, le explica las opciones con palabras sencillas y le ayuda a escribir su porqué. La decisión siempre es suya.
+              {!available && " Ahora mismo no está disponible en la web, así que aunque lo actives no aparecerá."}
+            </p>
+          </div>
+        </div>
+        <form action={action} onSubmit={() => setOn((v) => !v)}>
+          <input type="hidden" name="enabled" value={on ? "off" : "on"} />
+          <button type="submit" role="switch" aria-checked={on} aria-labelledby="tutoria-club tutoria-estado" className="inline-flex items-center gap-2.5 min-h-[44px] cursor-pointer" disabled={pending}>
+            <span className="switch" aria-hidden="true" />
+            <span id="tutoria-estado" className="font-heading font-bold text-[15px] w-[92px] text-left">{on ? "Activado" : "Desactivado"}</span>
+          </button>
+        </form>
+      </div>
+      {state?.error && <p role="alert" className="m-0 text-sm text-neutral-800">{state.error}</p>}
+      {state?.ok && <p role="status" className="m-0 text-sm text-neutral-700">{state.ok}</p>}
+    </section>
   );
 }

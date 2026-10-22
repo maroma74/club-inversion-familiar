@@ -28,6 +28,7 @@ export async function POST(req: Request) {
   if (!user || user.status !== "ACTIVE") return fail("Tu sesión ha caducado: vuelve a entrar.", 401);
   if (user.impersonator) return fail("Mientras visualizas como otro miembro no se puede usar la ayuda.", 403);
   if (!aiConfigured()) return fail("La ayuda con IA no está disponible ahora mismo.", 503);
+  if (!user.family.tutorEnabled) return fail("El presidente del club ha desactivado TutorIA.", 403);
   if (!req.headers.get("content-type")?.includes("application/json")) return fail("Formato no admitido.", 415);
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
