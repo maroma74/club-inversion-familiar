@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Markdown } from "@/components/Markdown";
 import { TutorIAIcon } from "@/components/TutorIA";
-import { COACH_MAX_MESSAGES, COACH_MAX_USER_CHARS, COACH_OPENING, parseCoachReply, type CoachPiece } from "@/lib/coachSummary";
+import { COACH_MAX_MESSAGES, COACH_MAX_USER_CHARS, COACH_OPENING, hasSummary, parseCoachReply, type CoachPiece } from "@/lib/coachSummary";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Opt = { symbol: string; name: string; href: string };
@@ -182,6 +182,13 @@ export function DecisionCoach({ portfolioId, userId, name, options }: { portfoli
             )}
           </div>
 
+          {!pending && messages.at(-1)?.role === "assistant" && hasSummary(messages.at(-1)!.content) && (
+            <p className="m-0 text-sm flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="text-neutral-700">Pega cada texto en su casilla del paso 2, «Explica», de tu decisión.</span>
+              <a href="#decidir" className="btn-secondary">Ir a mi decisión</a>
+            </p>
+          )}
+
           {tooLong ? (
             <p className="m-0 text-sm text-neutral-700">La conversación ya es muy larga. Copia lo que te sirva y empieza otra si lo necesitas.</p>
           ) : (
@@ -259,7 +266,8 @@ function Bubble({ role, text, symbols, options = [] }: { role: "user" | "assista
 function SummaryPiece({ piece, options }: { piece: Exclude<CoachPiece, { type: "text" }>; options: Opt[] }) {
   const [copied, setCopied] = useState(false);
   const opt = "symbol" in piece ? options.find((o) => o.symbol.toUpperCase() === piece.symbol.toUpperCase()) : null;
-  const label = piece.type === "porque" ? `Por qué eliges ${opt?.symbol ?? piece.symbol}` : piece.type === "vender" ? `Qué te haría vender ${opt?.symbol ?? piece.symbol} (opcional)` : piece.type === "resumen" ? "Tu justificación, lista para copiar" : "Tu idea general";
+  // Los mismos nombres que las casillas del formulario de decisión, para saber dónde pegar cada texto
+  const label = piece.type === "porque" ? `¿Por qué eliges ${opt?.symbol ?? piece.symbol}?` : piece.type === "vender" ? `¿Qué te haría vender ${opt?.symbol ?? piece.symbol}? (opcional)` : piece.type === "resumen" ? "Tu justificación, lista para copiar" : "Tu idea general";
 
   async function copy() {
     try {

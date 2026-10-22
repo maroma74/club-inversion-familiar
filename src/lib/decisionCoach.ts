@@ -80,13 +80,11 @@ Eres un mentor experto en economía y educación financiera. Tu misión es guiar
    - Con cada respuesta de {{NOMBRE_USUARIO}}, valida su razonamiento, aporta un dato o perspectiva didáctica relevante de la cartera y formula la siguiente pregunta para acotar la elección.
 
 3. **Cierre y justificación final:**
-   - Una vez que {{NOMBRE_USUARIO}} haya definido claramente su elección de activos, genera un bloque de texto final claro y sintetizado.
-   - Presenta el texto en un bloque fácil de copiar bajo la siguiente instrucción:
-     *"Aquí tienes el resumen de tu razonamiento. Puedes copiar y pegar este texto directamente en el campo de justificación de tu operación:"*
-   - El texto resumido debe incluir:
-     - Activo(s) seleccionado(s).
-     - Motivo principal de la elección alineado con su objetivo y las reglas del mes.
-     - Nivel de riesgo/expectativa asumida de forma consciente.`;
+   - Una vez que {{NOMBRE_USUARIO}} haya definido claramente su elección de activos, genera los textos finales, claros y sintetizados: uno para cada casilla del formulario de su decisión.
+   - Preséntalos bajo la siguiente instrucción:
+     *"Aquí tienes el resumen de tu razonamiento. Copia cada texto en su casilla del formulario de tu decisión:"*
+   - Para cada activo seleccionado, un texto de por qué lo elige (motivo principal alineado con su objetivo y las reglas del mes, y el nivel de riesgo/expectativa asumida de forma consciente) y otro de qué le haría vender.
+   - Además, su idea general: qué ha aprendido de la lección y cómo la aplica en su decisión.`;
 
 export const COACH_PROMPT_MAX = 20_000;
 
@@ -106,7 +104,11 @@ export function coachFixedInstructions(name: string): string {
   return `# INSTRUCCIONES DE LA APP
 - Usa solo los datos de este contexto y tu conocimiento general. No inventes precios, resultados ni noticias recientes: si hace falta un dato, pide a ${name} que pulse «Analizar» en esa opción, dentro de la app, para ver la gráfica, la lectura del club y, si es una empresa, su PER. La «lectura automática del club» es una pista calculada con datos de mercado, no una orden.
 - Habla solo de la decisión de este mes y de aprender a invertir; si te pregunta otra cosa, reconduce con amabilidad. No pidas datos personales.
-- Escribe el texto final para copiar entre las etiquetas <resumen> y </resumen>, sin nada más dentro: la app lo muestra aparte con un botón «Copiar». Escríbelo en primera persona, como si lo escribiera ${name}, con sus propias razones.`;
+- Los textos finales para copiar van uno por cada casilla del formulario de decisión, cada uno entre sus etiquetas y sin nada más dentro, para que la app los muestre aparte con el nombre de su casilla y un botón «Copiar». Usa el símbolo tal como aparece en las opciones:
+  <porque valor="SÍMBOLO">…</porque> → casilla «¿Por qué eliges SÍMBOLO?»: de 2 a 4 frases (uno por cada valor elegido).
+  <vender valor="SÍMBOLO">…</vender> → casilla «¿Qué te haría vender?»: una frase con un precio, un dato o un plazo (uno por cada valor elegido).
+  <idea>…</idea> → casilla «Tu idea general»: de 2 a 4 frases sobre lo que ha aprendido de la lección y cómo lo aplica.
+  Escríbelos en primera persona, como si los escribiera ${name}, con sus propias razones de la conversación y palabras sencillas.`;
 }
 
 /** Datos de la cartera del mes, tal como los ve el tutor. */

@@ -45,8 +45,10 @@ test("el prompt por defecto sustituye sus variables: nombre, cartera con sus dat
   assert.match(p, /Fíjate en las comisiones\./);
   assert.match(p, /Reglas y límites de inversión de este mes: \n- Este mes tiene 20,00 €/);
   // Las instrucciones de la app van siempre al final
-  assert.match(p, /# INSTRUCCIONES DE LA APP[\s\S]*<resumen> y <\/resumen>[\s\S]*como si lo escribiera Pablo/);
-  assert.ok(p.trimEnd().endsWith("con sus propias razones."));
+  assert.match(p, /# INSTRUCCIONES DE LA APP[\s\S]*<porque valor="SÍMBOLO">…<\/porque> → casilla «¿Por qué eliges SÍMBOLO\?»[\s\S]*<vender valor="SÍMBOLO">[\s\S]*<idea>…<\/idea> → casilla «Tu idea general»[\s\S]*como si los escribiera Pablo/);
+  assert.ok(p.trimEnd().endsWith("palabras sencillas."));
+  // El paso 3 del prompt pide un texto por casilla, no un único bloque
+  assert.match(p, /uno para cada casilla del formulario de su decisión/);
 });
 
 test("un prompt cambiado admite espacios en las variables y, si no usa la cartera o las reglas, se añaden", () => {
