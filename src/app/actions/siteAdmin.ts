@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSiteAdmin } from "@/lib/auth";
+import { checkAiConnection } from "@/lib/ai";
 import type { FormState } from "./auth";
 
 /* Administración de la web: paquetes de invitaciones para familias y administradores del sitio. */
@@ -35,4 +36,11 @@ export async function setInvitePackAction(_prev: FormState, formData: FormData):
   revalidatePath("/invitar");
   revalidatePath("/invitaciones");
   return { ok: `${target.name}: ${d.unlimited ? "invitaciones sin límite" : `paquete de ${d.pack}`}${siteAdmin ? " · administra la web" : ""}` };
+}
+
+/** Prueba la clave de Claude desde el servidor (sin gastar tokens): dice si es válida y qué modelo se usará. */
+export async function checkAiAction(): Promise<FormState> {
+  await requireSiteAdmin();
+  const res = await checkAiConnection();
+  return res.ok ? { ok: `Conectado: la clave es válida y los análisis usarán ${res.model}.` } : { error: res.error };
 }

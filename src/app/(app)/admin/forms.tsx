@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { setInvitePackAction } from "@/app/actions/siteAdmin";
+import { checkAiAction, setInvitePackAction } from "@/app/actions/siteAdmin";
 
 /** Paquete de invitaciones, sin límite y administración de la web para un usuario. */
 export function PackForm({ userId, pack, unlimited, siteAdmin, isMe }: { userId: string; pack: number; unlimited: boolean; siteAdmin: boolean; isMe: boolean }) {
@@ -20,6 +20,18 @@ export function PackForm({ userId, pack, unlimited, siteAdmin, isMe }: { userId:
       <button className="btn-secondary py-0.5 text-xs" disabled={pending}>{pending ? "Guardando…" : "Guardar"}</button>
       {state?.error && <span role="alert" className="text-neutral-800">{state.error}</span>}
       {state?.ok && <span role="status" className="text-accent-700">{state.ok}</span>}
+    </form>
+  );
+}
+
+/** Botón para probar la conexión con Claude. */
+export function AiCheckForm() {
+  const [state, action, pending] = useActionState(checkAiAction, undefined);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <button className="btn-secondary py-1 text-xs" disabled={pending}>{pending ? "Probando…" : "Probar la conexión"}</button>
+      {state?.error && <span role="alert" className="text-sm text-neutral-800">{state.error}</span>}
+      {state?.ok && <span role="status" className="text-sm text-accent-700">{state.ok}</span>}
     </form>
   );
 }

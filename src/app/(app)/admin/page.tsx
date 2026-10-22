@@ -3,7 +3,8 @@ import { requireSiteAdmin } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
 import { firstName } from "@/lib/names";
 import { getFamiliesActivity, getSiteStats, getSiteUsers } from "@/lib/siteAdmin";
-import { PackForm } from "./forms";
+import { AI_MODEL, aiConfigured } from "@/lib/ai";
+import { AiCheckForm, PackForm } from "./forms";
 
 const fmtDateTime = (d: Date) => d.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" });
 const STATE: Record<"activa" | "dormida" | "sin-accesos", { label: string; cls: string }> = {
@@ -61,6 +62,19 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           ))}
         </ol>
         <div className="flex justify-between text-[11px] text-neutral-700 tabular-nums"><span>{stats.loginsByDay[0]?.day}</span><span>{stats.loginsByDay.at(-1)?.day}</span></div>
+      </section>
+
+      <section className="card gap-2" aria-labelledby="ia-title">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 id="ia-title" className="m-0">Análisis con IA (Claude)</h3>
+          {aiConfigured() ? <span className="tag tag-accent">Clave configurada</span> : <span className="tag tag-gold">Falta la clave</span>}
+        </div>
+        <p className="m-0 text-sm text-neutral-700 max-w-[80ch] [text-wrap:pretty]">
+          {aiConfigured()
+            ? `La clave está en el servidor y no se muestra en ningún sitio. Modelo: ${AI_MODEL}. La prueba comprueba la clave sin gastar tokens.`
+            : "Añade ANTHROPIC_API_KEY al servidor (en local, en .env; en producción, en Secret Manager) para activar los análisis con IA."}
+        </p>
+        {aiConfigured() && <AiCheckForm />}
       </section>
 
       <section className="flex flex-col gap-2" aria-labelledby="familias-title">
