@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Markdown } from "@/components/Markdown";
+import { TutorIAIcon } from "@/components/TutorIA";
 import { COACH_MAX_MESSAGES, COACH_MAX_USER_CHARS, COACH_OPENING, parseCoachReply, type CoachPiece } from "@/lib/coachSummary";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -10,7 +11,7 @@ type Opt = { symbol: string; name: string; href: string };
 const ANCHOR = "ayuda-decision";
 
 /**
- * «Ayuda para tomar la decisión»: conversación con el tutor de IA de la cartera del mes. La conversación se
+ * TutorIA («Ayuda para tomar la decisión»): conversación con el tutor de IA de la cartera del mes. La conversación se
  * guarda solo en este dispositivo, para poder salir a «Analizar» una opción y volver sin perderla.
  */
 export function DecisionCoach({ portfolioId, userId, name, options }: { portfolioId: string; userId: string; name: string; options: Opt[] }) {
@@ -153,22 +154,26 @@ export function DecisionCoach({ portfolioId, userId, name, options }: { portfoli
 
   return (
     <section id={ANCHOR} ref={sectionRef} aria-labelledby="ayuda-decision-titulo" className="card card-roomy gap-4 scroll-mt-20">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 id="ayuda-decision-titulo" className="m-0 text-[22px]">¿Te ayudo a decidir, {name}?</h2>
-          <p className="m-0 mt-1 text-sm text-neutral-700 max-w-[64ch] [text-wrap:pretty]">
-            Un tutor con inteligencia artificial conoce la lección y las opciones de este mes. Te hará preguntas, te explicará lo que no entiendas y, cuando lo tengas claro, te preparará un resumen para tu porqué. La decisión es tuya.
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0 flex-1 basis-[320px]">
+          <TutorIAIcon size={64} className="max-sm:w-12 max-sm:h-12" />
+          <div className="min-w-0">
+            <div className="card-kicker" style={{ textTransform: "none", letterSpacing: "0.02em" }}>TutorIA</div>
+            <h2 id="ayuda-decision-titulo" className="m-0 mt-0.5 text-[22px]">¿Te ayudo a decidir, {name}?</h2>
+            <p className="m-0 mt-1 text-sm text-neutral-700 max-w-[64ch] [text-wrap:pretty]">
+              TutorIA es un tutor con inteligencia artificial que conoce la lección y las opciones de este mes. Te hará preguntas, te explicará lo que no entiendas y, cuando lo tengas claro, te preparará un resumen para tu porqué. La decisión es tuya.
+            </p>
+          </div>
         </div>
-        {!open && <button type="button" className="btn-secondary" onClick={start} disabled={!ready}>Ayuda para tomar la decisión</button>}
+        {!open && <TutorIAButton onClick={start} disabled={!ready} />}
       </div>
 
       {open && (
         <>
-          <div ref={logRef} role="log" aria-live="polite" aria-label="Conversación con el tutor" className="flex flex-col gap-3 max-h-[min(70vh,640px)] overflow-y-auto overscroll-contain rounded-[10px] border border-divider p-3" style={{ background: "var(--color-neutral-100)" }}>
+          <div ref={logRef} role="log" aria-live="polite" aria-label="Conversación con TutorIA" className="flex flex-col gap-3 max-h-[min(70vh,640px)] overflow-y-auto overscroll-contain rounded-[10px] border border-divider p-3" style={{ background: "var(--color-neutral-100)" }}>
             {messages.map((m, i) => <Bubble key={i} role={m.role} text={m.content} symbols={symbols} options={options} />)}
             {streaming !== null &&
-              (streaming ? <Bubble role="assistant" text={streaming} symbols={symbols} options={options} /> : <p className="m-0 text-sm text-neutral-700" aria-busy="true">El tutor está pensando…</p>)}
+              (streaming ? <Bubble role="assistant" text={streaming} symbols={symbols} options={options} /> : <p className="m-0 text-sm text-neutral-700" aria-busy="true">TutorIA está pensando…</p>)}
             {error && (
               <p role="alert" className="m-0 text-sm font-medium p-3 border border-divider rounded-[10px]" style={{ background: "var(--color-amber-100)", color: "var(--color-amber-700)" }}>
                 {error}
@@ -233,17 +238,20 @@ function Bubble({ role, text, symbols, options = [] }: { role: "user" | "assista
   }
   const pieces = parseCoachReply(text);
   return (
-    <div className="self-start max-w-[92%] flex flex-col gap-2 min-w-0">
+    <div className="self-start max-w-[94%] flex items-start gap-2 min-w-0">
+      <TutorIAIcon size={30} className="mt-1" />
+      <div className="flex flex-col gap-2 min-w-0">
       {pieces.map((p, i) =>
         p.type === "text" ? (
           <div key={i} className="rounded-[12px] rounded-bl-[4px] border border-divider bg-[var(--color-surface,#fff)] px-3 py-2 text-[15px] [overflow-wrap:anywhere]">
-            {i === 0 && <span className="sr-only">Tutor: </span>}
+            {i === 0 && <span className="sr-only">TutorIA: </span>}
             <Markdown text={p.text} auto={false} symbols={symbols} className="md-chat" />
           </div>
         ) : (
           <SummaryPiece key={i} piece={p} options={options} />
         ),
       )}
+      </div>
     </div>
   );
 }
@@ -282,5 +290,15 @@ function SummaryPiece({ piece, options }: { piece: Exclude<CoachPiece, { type: "
       <p className="m-0 text-[15px] [text-wrap:pretty] whitespace-pre-wrap">{piece.text}</p>
       <span className="sr-only" role="status">{copied ? "Texto copiado" : ""}</span>
     </div>
+  );
+}
+
+/** Botón de TutorIA: el búho y el nombre. */
+export function TutorIAButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+  return (
+    <button type="button" className="btn-secondary" style={{ paddingBlock: 4, paddingLeft: 5 }} onClick={onClick} disabled={disabled} aria-label="TutorIA: ayuda para tomar la decisión">
+      <TutorIAIcon size={32} />
+      TutorIA
+    </button>
   );
 }

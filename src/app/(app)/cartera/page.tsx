@@ -10,6 +10,7 @@ import { eur, fmtDate, signed } from "@/lib/format";
 import { aiConfigured } from "@/lib/ai";
 import { DecisionForm } from "./DecisionForm";
 import { DecisionCoach } from "./DecisionCoach";
+import { TutorIAIcon } from "@/components/TutorIA";
 
 const analysisHref = (kind: string, symbol: string) => (kind === "COMMODITY" ? `/materias-primas/${encodeURIComponent(symbol)}` : kind === "CRYPTO" ? `/cripto/${encodeURIComponent(symbol)}` : kind === "ETF" ? `/etf/${encodeURIComponent(symbol)}` : `/acciones/${encodeURIComponent(symbol)}`);
 const kindLabel = (k: string) => (k === "ETF" ? "ETF" : k === "CRYPTO" ? "cripto" : k === "COMMODITY" ? "materia prima" : "acción");
@@ -109,7 +110,7 @@ export default async function CarteraPage() {
           </div>
           {(canDecide || coach) && (
             <div className="flex flex-wrap gap-2">
-              {coach && <a href="#ayuda-decision" className="btn-secondary">Ayuda para tomar la decisión</a>}
+              {coach && <a href="#ayuda-decision" className="btn-secondary" style={{ paddingBlock: 4, paddingLeft: 5 }} aria-label="TutorIA: ayuda para tomar la decisión"><TutorIAIcon size={32} />TutorIA</a>}
               {canDecide && <a href="#decidir" className="btn-primary">Ir a decidir</a>}
             </div>
           )}
