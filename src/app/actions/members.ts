@@ -27,8 +27,11 @@ export async function updateMemberAction(_prev: FormState, formData: FormData): 
   const d = parsed.data;
   const limit = await rateLimit(`member-edit:${admin.id}`, 60, 60 * 60 * 1000);
   if (!limit.ok) return { error: "Has hecho muchos cambios seguidos. Prueba dentro de un rato." };
-  const member = await prisma.user.findFirst({ where: { id: d.userId, familyId: admin.familyId }, select: { id: true, email: true } });
+  const member = await prisma.user.findFirst({ where: { id: d.userId, familyId: admin.familyId }, select: { id: true, email: true, role: true, siteAdmin: true } });
   if (!member) return { error: "Miembro no encontrado" };
+  // El email es la llave de la cuenta: solo se cambia a los miembros, no a otro presidente ni a quien administra la web
+  if (member.siteAdmin && member.id !== admin.id) return { error: "Quien administra la web edita su ficha desde su perfil." };
+  if (d.email !== member.email && member.role === "ADMIN" && member.id !== admin.id) return { error: "El email de otro presidente solo lo cambia él desde su perfil." };
   const phone = d.phone ? normalizePhone(d.phone) : null;
   if (d.phone && !phone) return { error: "El móvil no parece válido. Escríbelo con prefijo (+34 612 345 678) o los nueve dígitos." };
   if (d.email !== member.email && (await prisma.user.findUnique({ where: { email: d.email }, select: { id: true } }))) {

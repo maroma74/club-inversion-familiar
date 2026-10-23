@@ -6,6 +6,7 @@ import { randomInt } from "crypto";
 import { prisma } from "./prisma";
 import { isAcceptableSecret, secretProblem } from "./secretPolicy";
 import { safeInternalPath } from "./validation";
+import { isActionRequest } from "./actionRequest";
 
 // Firebase Hosting solo deja pasar la cookie llamada __session hacia Cloud Run, así que la sesión
 // (y el modo «ver como miembro» del presidente) viajan juntos en esa única cookie.
@@ -129,7 +130,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
  */
 async function blockWritesWhileViewingAs() {
   const h = await headers();
-  if (!h.get("next-action")) return;
+  if (!isActionRequest(h)) return;
   let back = "/inicio";
   try {
     const ref = h.get("referer");
@@ -160,10 +161,13 @@ export async function requireAdmin(): Promise<CurrentUser> {
   return user;
 }
 
-/** Administración de la web (estadísticas globales y paquetes de invitaciones): solo usuarios con `siteAdmin`. */
+/**
+ * Administración de la web (estadísticas globales y paquetes de invitaciones): solo usuarios con `siteAdmin`,
+ * y nunca a través de «Visualizar como» (el presidente no hereda la administración de la web de un miembro).
+ */
 export async function requireSiteAdmin(): Promise<CurrentUser> {
   const user = await requireUser();
-  if (!user.siteAdmin) redirect("/inicio");
+  if (!user.siteAdmin || user.impersonator) redirect("/inicio");
   return user;
 }
 

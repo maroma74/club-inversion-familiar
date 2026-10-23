@@ -26,7 +26,7 @@ export default async function InvitacionesPage() {
   const [family, invitations, members, invitedBy] = await Promise.all([
     prisma.family.findUniqueOrThrow({ where: { id: admin.familyId } }),
     prisma.invitation.findMany({ where: { familyId: admin.familyId }, orderBy: { createdAt: "desc" }, include: { usedBy: { select: { name: true, family: { select: { name: true } } } }, createdBy: { select: { name: true } } } }),
-    prisma.user.findMany({ where: { familyId: admin.familyId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, email: true, role: true, status: true, createdAt: true, avatarUpdatedAt: true, _count: { select: { trades: true } } } }),
+    prisma.user.findMany({ where: { familyId: admin.familyId }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, email: true, role: true, siteAdmin: true, status: true, createdAt: true, avatarUpdatedAt: true, _count: { select: { trades: true } } } }),
     // La familia que nos dio una de sus cinco invitaciones (si el club nació así)
     prisma.invitation.findFirst({ where: { newFamily: true, usedBy: { familyId: admin.familyId } }, select: { family: { select: { name: true } } } }),
   ]);
@@ -188,7 +188,9 @@ export default async function InvitacionesPage() {
           <tbody>
             {activeMembers.map((m) => {
               const isMe = m.id === admin.id;
-              const lastAdmin = m.role === "ADMIN" && activeAdmins <= 1;
+              // Quien administra la web no se gestiona desde la familia (ni papel, ni expulsión, ni contraseña)
+              const protectedUser = m.siteAdmin && !isMe;
+              const lastAdmin = (m.role === "ADMIN" && activeAdmins <= 1) || protectedUser;
               return (
                 <tr key={m.id} className="border-t border-slate-100">
                   <td className="px-5 py-2"><div className="flex items-center gap-2.5"><Avatar id={m.id} name={m.name} updatedAt={m.avatarUpdatedAt} size={32} /><div><Link href={`/familia/miembro/${m.id}`} className="font-medium text-inherit hover:underline">{firstName(m.name)}{isMe ? " (tú)" : ""}</Link><div className="text-xs text-slate-400">{m.email}</div></div></div></td>
@@ -201,13 +203,13 @@ export default async function InvitacionesPage() {
                       </select>
                       {!lastAdmin && <button className="text-xs text-indigo-600 hover:underline">Guardar</button>}
                     </form>
-                    {lastAdmin && <div className="text-[11px] text-slate-400">Único presidente</div>}
+                    {lastAdmin && <div className="text-[11px] text-slate-400">{protectedUser ? "Administra la web" : "Único presidente"}</div>}
                   </td>
                   <td className="px-2 py-2 text-right hidden md:table-cell">{m._count.trades}</td>
                   <td className="px-2 py-2 text-slate-500 hidden md:table-cell">{fmtDate(m.createdAt)}</td>
                   <td className="px-5 py-2 text-right">
                     <div className="inline-flex flex-wrap items-start justify-end gap-x-3 gap-y-1">
-                      {!isMe && <ResetLinkButton userId={m.id} name={firstName(m.name)} />}
+                      {!isMe && m.role === "MEMBER" && !m.siteAdmin && <ResetLinkButton userId={m.id} name={firstName(m.name)} />}
                       {!isMe && !lastAdmin && (
                         <form action={removeMemberAction} className="inline"><input type="hidden" name="userId" value={m.id} /><ConfirmButton className="text-xs text-slate-400 hover:text-red-600" message={`¿Expulsar a ${firstName(m.name)} del club? Se borrarán su cuenta, sus operaciones y sus aportaciones. Esta acción no se puede deshacer.`}>Expulsar</ConfirmButton></form>
                       )}

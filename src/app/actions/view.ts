@@ -2,18 +2,23 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { createSession, getCurrentUser, getSessionAdmin } from "@/lib/auth";
+import { createSession, getSession, getSessionAdmin } from "@/lib/auth";
 import { safeInternalPath } from "@/lib/validation";
 
 /**
  * El presidente puede ver la app como la ven los miembros (y volver). Solo afecta a su sesión:
- * se reemite la cookie de sesión con o sin el modo «ver como miembro».
+ * se reemite la cookie de sesión con o sin el modo «ver como miembro». Siempre a partir de la sesión real:
+ * nunca se emite una sesión para el miembro que se esté visualizando.
  */
 export async function setViewAsAction(formData: FormData) {
-  const user = await getCurrentUser();
+  const back = safeInternalPath(formData.get("back"));
+  const session = await getSession();
+  if (!session || session.viewAsUserId) redirect(back);
+  const admin = await getSessionAdmin();
+  if (!admin) redirect(back);
   const mode = String(formData.get("mode") ?? "");
-  if (user) await createSession(user, user.realRole === "ADMIN" && mode === "member" ? "member" : null);
-  redirect(safeInternalPath(formData.get("back")));
+  await createSession(admin, mode === "member" ? "member" : null);
+  redirect(back);
 }
 
 /**

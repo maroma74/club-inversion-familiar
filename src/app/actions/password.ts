@@ -22,6 +22,7 @@ const changeSchema = z.object({ current: z.string().min(1, "Indica tu contraseñ
 /** El propio usuario cambia su contraseña. Cierra sus demás sesiones y mantiene abierta la de este dispositivo. */
 export async function changePasswordAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
+  if (user.impersonator) return { error: "Mientras visualizas como otro miembro no se puede cambiar la contraseña." };
   const limit = await rateLimit(`pwchange:${user.id}`, 10, 60 * 60 * 1000);
   if (!limit.ok) return { error: "Demasiados intentos. Prueba dentro de un rato." };
   const parsed = changeSchema.safeParse(Object.fromEntries(formData));
@@ -39,15 +40,16 @@ export async function changePasswordAction(_prev: FormState, formData: FormData)
 
 /**
  * El presidente genera un enlace de un solo uso (una hora) para que un miembro de su familia fije una contraseña nueva.
- * El enlace se envía por correo al miembro y, además, se devuelve para que el presidente pueda pasárselo en mano.
+ * Solo para miembros (no para otros presidentes ni para quien administra la web: el enlace da acceso a la cuenta).
+ * El enlace se envía por correo al miembro; si el correo no sale, se devuelve para que el presidente se lo pase en mano.
  */
 export async function createPasswordResetAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const admin = await requireAdmin();
   const limit = await rateLimit(`pwreset-issue:${admin.id}`, 10, 60 * 60 * 1000);
   if (!limit.ok) return { error: "Has generado muchos enlaces seguidos. Prueba dentro de un rato." };
   const userId = String(formData.get("userId") ?? "");
-  const member = await prisma.user.findFirst({ where: { id: userId, familyId: admin.familyId }, select: { id: true, name: true, email: true } });
-  if (!member) return { error: "Miembro no válido" };
+  const member = await prisma.user.findFirst({ where: { AND: [{ id: userId }, { id: { not: admin.id } }], familyId: admin.familyId, role: "MEMBER", siteAdmin: false }, select: { id: true, name: true, email: true } });
+  if (!member) return { error: "Solo puedes generar enlaces para los miembros de tu club. Otro presidente o quien administra la web cambia su contraseña desde su perfil." };
 
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + RESET_TTL_MS);
@@ -60,7 +62,8 @@ export async function createPasswordResetAction(_prev: FormState, formData: Form
   const mail = await sendEmail(passwordResetEmail({ to: member.email, name: firstName(member.name), presidentName: firstName(admin.name), link }));
   if (!mail.sent) logError("password.reset-mail", new Error(mail.error), { userId: member.id });
   revalidatePath("/invitaciones");
-  return { ok: `${mail.sent ? `Enlace enviado a ${member.email}.` : "No se pudo enviar el correo."} Válido una hora y para un solo uso. Si prefieres pasárselo tú: ${link}` };
+  // El enlace solo se devuelve si el correo no ha salido: así el presidente no se queda con un acceso a la cuenta
+  return { ok: mail.sent ? `Enlace enviado a ${member.email}. Válido una hora y para un solo uso.` : `No se pudo enviar el correo. Pásale tú este enlace, válido una hora y para un solo uso: ${link}` };
 }
 
 const resetSchema = z.object({ token: z.string().min(20).max(200), password: newPasswordSchema, confirm: z.string() });

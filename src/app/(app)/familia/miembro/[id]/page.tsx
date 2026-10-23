@@ -22,7 +22,7 @@ export default async function MiembroPage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const m = await prisma.user.findFirst({
     where: { id, familyId: admin.familyId },
-    select: { id: true, name: true, email: true, phone: true, role: true, status: true, createdAt: true, lastLoginAt: true, avatarUpdatedAt: true, welcomedAt: true, _count: { select: { trades: true, journalEntries: true, monthlyDecisions: true } } },
+    select: { id: true, name: true, email: true, phone: true, role: true, siteAdmin: true, status: true, createdAt: true, lastLoginAt: true, avatarUpdatedAt: true, welcomedAt: true, _count: { select: { trades: true, journalEntries: true, monthlyDecisions: true } } },
   });
   if (!m) notFound();
   const [overview, lessons] = await Promise.all([
@@ -62,11 +62,14 @@ export default async function MiembroPage({ params }: { params: Promise<{ id: st
       <section className="card card-roomy gap-4" aria-labelledby="ficha-datos">
         <h2 id="ficha-datos" className="m-0 text-[20px]">Datos de {name}</h2>
         <MemberForm id={m.id} name={m.name} email={m.email} phone={m.phone ? formatPhone(m.phone) : ""} />
-        {!isMe && (
+        {!isMe && m.role === "MEMBER" && !m.siteAdmin && (
           <div className="flex flex-wrap items-start justify-between gap-3 pt-3 border-t border-divider">
             <p className="m-0 text-sm text-neutral-700 max-w-[56ch]">¿Ha olvidado la contraseña? Genera un enlace para que elija una nueva (vale una hora). Tú nunca ves ni pones su contraseña.</p>
             <ResetLinkButton userId={m.id} name={name} />
           </div>
+        )}
+        {!isMe && (m.role === "ADMIN" || m.siteAdmin) && (
+          <p className="m-0 pt-3 border-t border-divider text-sm text-neutral-700 max-w-[64ch] [text-wrap:pretty]">{m.siteAdmin ? "Administra la web, así que su ficha, su email y su contraseña los cambia desde su propio perfil." : "Es presidente: su email y su contraseña los cambia desde su propio perfil."}</p>
         )}
       </section>
 

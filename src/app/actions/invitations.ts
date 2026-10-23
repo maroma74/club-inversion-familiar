@@ -159,7 +159,8 @@ async function ensureAdminRemains(tx: Parameters<Parameters<typeof prisma.$trans
 export async function removeMemberAction(formData: FormData) {
   const admin = await requireAdmin();
   const m = await memberOfMyFamily(admin.familyId, String(formData.get("userId")));
-  if (!m || m.id === admin.id) return;
+  // Quien administra la web no se puede expulsar desde la familia
+  if (!m || m.id === admin.id || m.siteAdmin) return;
   // Borrado y comprobación en la misma transacción: dos presidentes no pueden expulsarse a la vez y dejar la familia sin ninguno.
   await prisma.$transaction(async (tx) => {
     await tx.user.delete({ where: { id: m.id } });
@@ -172,7 +173,8 @@ export async function setMemberRoleAction(formData: FormData) {
   const admin = await requireAdmin();
   const m = await memberOfMyFamily(admin.familyId, String(formData.get("userId")));
   const role = String(formData.get("role"));
-  if (!m || !["ADMIN", "MEMBER"].includes(role)) return;
+  // A quien administra la web no le cambia el papel otro presidente
+  if (!m || !["ADMIN", "MEMBER"].includes(role) || (m.siteAdmin && m.id !== admin.id)) return;
   await prisma.$transaction(async (tx) => {
     await tx.user.update({ where: { id: m.id }, data: { role } });
     await ensureAdminRemains(tx, admin.familyId); // siempre debe quedar un presidente
